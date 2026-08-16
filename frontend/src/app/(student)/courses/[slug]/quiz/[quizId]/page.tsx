@@ -1,13 +1,13 @@
 "use client";
 
 import { use, useState } from "react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { getContinueHref } from "@/lib/course-paths";
 import { moduleQuiz, getCourseBySlug } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +23,7 @@ export default function QuizPage({ params }: Props) {
 
   if (!course) notFound();
 
+  const courseHref = getContinueHref(course);
   const question = quiz.questions[currentQ];
   const score = submitted
     ? Math.round(
@@ -43,7 +44,7 @@ export default function QuizPage({ params }: Props) {
       <PageHeader
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
-          { label: course.title, href: `/courses/${slug}/learn/l1` },
+          { label: course.title, href: courseHref },
           { label: quiz.title },
         ]}
         title={quiz.title}
@@ -142,7 +143,7 @@ export default function QuizPage({ params }: Props) {
                 </Button>
               )}
               <ButtonLink
-                href={`/courses/${slug}/learn/l1`}
+                href={courseHref}
                 className="bg-brand-navy text-white hover:bg-brand-navy/90"
               >
                 Back to Course

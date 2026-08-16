@@ -3,11 +3,10 @@ import Image from "next/image";
 import { Award, CheckCircle, Clock, Star, Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
-import { ButtonLink } from "@/components/ui/button-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { formatPrice, getCourseBySlug } from "@/lib/mock-data";
+import { CourseEnrollCta } from "@/components/course/course-enroll-cta";
+import { getCourseBySlug } from "@/lib/mock-data";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -52,18 +51,12 @@ export default async function CourseDetailsPage({ params }: Props) {
               {course.duration}
             </span>
           </div>
-          <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
-            <span className="font-heading text-3xl font-bold text-brand-navy">
-              {formatPrice(course.price, course.currency)}
-            </span>
-            <ButtonLink
-              href="/register"
-              size="lg"
-              className="bg-brand-orange text-white hover:bg-brand-orange/90"
-            >
-              Enroll Now
-            </ButtonLink>
-          </div>
+          <CourseEnrollCta
+            slug={course.slug}
+            price={course.price}
+            currency={course.currency}
+            comingSoon={course.comingSoon}
+          />
             </div>
             <div className="relative aspect-video overflow-hidden rounded-xl shadow-elevated">
               <Image
@@ -111,10 +104,12 @@ export default async function CourseDetailsPage({ params }: Props) {
                       {module.lessons.map((lesson) => (
                         <div
                           key={lesson.id}
-                          className="flex justify-between text-sm text-muted-foreground"
+                          className="flex items-start justify-between gap-4 text-sm"
                         >
-                          <span>{lesson.title}</span>
-                          <span>{lesson.duration}</span>
+                          <span className="text-muted-foreground">{lesson.title}</span>
+                          <span className="shrink-0 rounded-md bg-brand-orange/10 px-2 py-0.5 text-xs font-semibold text-brand-orange">
+                            {lesson.duration}
+                          </span>
                         </div>
                       ))}
                     </CardContent>

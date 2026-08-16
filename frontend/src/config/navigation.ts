@@ -1,5 +1,6 @@
 export type NavItemId =
   | "dashboard"
+  | "classroom"
   | "courses"
   | "explore"
   | "certificates"
@@ -16,14 +17,16 @@ export type NavItem = {
 };
 
 export const marketingNav = [
-  { title: "Courses", href: "/courses" },
-  { title: "Pricing", href: "/pricing" },
+  { title: "Instructor-Led", href: "/instructor-led" },
+  { title: "Self-Paced", href: "/courses" },
   { title: "Community", href: "/community" },
-  { title: "About", href: "/about" },
+  { title: "Blog", href: "/blog" },
+  { title: "About us", href: "/about" },
 ] as const;
 
 export const studentNav: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: "dashboard" },
+  { title: "Classroom", href: "/classroom", icon: "classroom" },
   { title: "My Courses", href: "/my-courses", icon: "courses" },
   { title: "Explore", href: "/explore", icon: "explore" },
   { title: "Certificates", href: "/certificates", icon: "certificates" },

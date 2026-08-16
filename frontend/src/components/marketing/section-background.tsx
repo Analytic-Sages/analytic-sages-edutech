@@ -1,7 +1,8 @@
 import { cn } from "@/lib/utils";
+import { PatternBackground } from "@/components/marketing/pattern-background";
 
 type SectionBackgroundProps = {
-  variant?: "glow" | "dots" | "grid" | "lines" | "none";
+  variant?: "glow" | "dots" | "grid" | "lines" | "diamonds" | "none";
   className?: string;
 };
 
@@ -10,6 +11,10 @@ export function SectionBackground({
   className,
 }: SectionBackgroundProps) {
   if (variant === "none") return null;
+
+  if (variant === "diamonds") {
+    return <PatternBackground className={className} />;
+  }
 
   return (
     <div

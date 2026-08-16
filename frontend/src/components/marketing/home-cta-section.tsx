@@ -10,19 +10,34 @@ export function HomeCtaSection() {
           <SectionBackground variant="glow" className="opacity-60" />
           <div className="relative mx-auto max-w-2xl text-center">
             <h2 className="font-heading text-4xl font-bold text-white sm:text-5xl">
-              Ready to start your journey?
+              Your career in blockchain starts with one decision.
             </h2>
-            <p className="mx-auto mt-6 max-w-xl text-base text-white/80 sm:text-lg">
-              Join thousands of learners building careers in blockchain, data, and quantitative finance.
+            <p className="mx-auto mt-6 max-w-xl text-base text-white/90 sm:text-lg">
+              The demand for blockchain engineers, analysts, and AI builders is growing.
+              The question isn&apos;t whether opportunities exist. It&apos;s whether
+              you&apos;ll be ready when they arrive.
             </p>
-            <ButtonLink
-              href="/register"
-              size="lg"
-              className="group mt-10 h-14 bg-brand-orange px-10 text-base text-white shadow-elevated transition-all hover:-translate-y-0.5 hover:bg-brand-orange/90 hover:shadow-float"
-            >
-              Get Started Today
-              <ArrowRight className="ml-2 size-4 transition-transform group-hover:translate-x-1" />
-            </ButtonLink>
+            <p className="mt-4 text-base font-medium text-white/90 sm:text-lg">
+              Start learning today.
+            </p>
+            <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+              <ButtonLink
+                href="/instructor-led"
+                size="lg"
+                className="group h-14 bg-brand-orange px-10 text-base text-white shadow-elevated transition-all hover:-translate-y-0.5 hover:bg-brand-orange/90 hover:shadow-float"
+              >
+                View live training
+                <ArrowRight className="ml-2 size-4 transition-transform group-hover:translate-x-1" />
+              </ButtonLink>
+              <ButtonLink
+                href="/courses"
+                size="lg"
+                variant="outline"
+                className="h-14 border-white/30 bg-transparent px-10 text-base text-white transition-all hover:-translate-y-0.5 hover:bg-white/10 hover:text-white"
+              >
+                Explore self-paced
+              </ButtonLink>
+            </div>
           </div>
         </div>
       </div>

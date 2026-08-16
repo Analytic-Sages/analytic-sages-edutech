@@ -20,7 +20,7 @@ export function FeatureCard({
   title,
   description,
   stat,
-  href = "/courses",
+  href = "/instructor-led",
   className,
 }: FeatureCardProps) {
   const reducedMotion = useReducedMotion();

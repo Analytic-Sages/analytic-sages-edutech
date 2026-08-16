@@ -22,7 +22,7 @@ export default function AdminSettingsPage() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="supportEmail">Support Email</Label>
-            <Input id="supportEmail" defaultValue="support@analyticsages.com" />
+            <Input id="supportEmail" defaultValue="support@analyticsages.io" />
           </div>
           <Button className="bg-brand-navy text-white hover:bg-brand-navy/90">Save Settings</Button>
         </CardContent>

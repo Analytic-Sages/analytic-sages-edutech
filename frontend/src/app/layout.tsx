@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { inter, manrope } from "@/lib/fonts";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { AuthSessionSync } from "@/components/providers/auth-session-sync";
 import { siteConfig } from "@/config/site";
 import { LOGO_SRC } from "@/components/brand/logo";
 import "./globals.css";
@@ -25,15 +26,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("theme");document.documentElement.classList.toggle("dark",t==="dark");}catch(e){document.documentElement.classList.remove("dark");}})();`,
-          }}
-        />
-      </head>
       <body className={`${inter.variable} ${manrope.variable} min-h-screen font-sans antialiased`}>
         <ThemeProvider>
+          <AuthSessionSync />
           <QueryProvider>{children}</QueryProvider>
         </ThemeProvider>
       </body>

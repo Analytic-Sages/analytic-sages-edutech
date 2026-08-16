@@ -5,13 +5,14 @@ import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { getContinueHref, getFirstLesson } from "@/lib/course-paths";
 import { formatPrice } from "@/lib/mock-data";
 import type { Course } from "@/types/course";
 import { cn } from "@/lib/utils";
 
 type CourseCardProps = {
   course: Course;
-  variant?: "catalog" | "enrolled";
+  variant?: "catalog" | "enrolled" | "path";
   className?: string;
 };
 
@@ -22,12 +23,15 @@ const difficultyColors = {
 };
 
 export function CourseCard({ course, variant = "catalog", className }: CourseCardProps) {
-  const href =
-    variant === "enrolled"
-      ? `/courses/${course.slug}/learn/l1`
-      : `/courses/${course.slug}`;
+  const href = variant === "enrolled" ? getContinueHref(course) : `/courses/${course.slug}`;
+  const enrolledCta = getFirstLesson(course) ? "Continue" : "Open course";
 
   const toolTags = course.skills.slice(0, 3);
+  const description =
+    variant === "path" && course.roleDescription
+      ? course.roleDescription
+      : course.description;
+  const careerOutcomes = course.careerOutcomes ?? [];
 
   return (
     <Card
@@ -70,6 +74,11 @@ export function CourseCard({ course, variant = "catalog", className }: CourseCar
         <Badge className="absolute top-3 left-3 bg-background/90 text-foreground backdrop-blur-sm">
           {course.category}
         </Badge>
+        {course.comingSoon && (
+          <Badge className="absolute top-3 right-3 bg-brand-orange text-white shadow-sm">
+            Launching soon
+          </Badge>
+        )}
       </div>
       <CardHeader>
         <div className="flex items-center gap-2">
@@ -86,14 +95,30 @@ export function CourseCard({ course, variant = "catalog", className }: CourseCar
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="line-clamp-2 text-base text-muted-foreground">{course.description}</p>
-        <div className="flex flex-wrap gap-1.5">
-          {toolTags.map((tool) => (
-            <Badge key={tool} variant="outline" className="text-xs font-normal">
-              {tool}
-            </Badge>
-          ))}
-        </div>
+        <p className="line-clamp-2 text-base text-muted-foreground">{description}</p>
+        {variant === "path" && careerOutcomes.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-brand-orange">
+              Career outcomes
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {careerOutcomes.map((role) => (
+                <Badge key={role} variant="outline" className="text-xs font-normal">
+                  {role}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+        {variant !== "path" && (
+          <div className="flex flex-wrap gap-1.5">
+            {toolTags.map((tool) => (
+              <Badge key={tool} variant="outline" className="text-xs font-normal">
+                {tool}
+              </Badge>
+            ))}
+          </div>
+        )}
         <div className="flex items-center gap-2 border-t pt-3">
           <div className="flex size-7 items-center justify-center rounded-full bg-brand-navy text-[10px] font-medium text-white">
             {course.instructor.avatar}
@@ -123,20 +148,33 @@ export function CourseCard({ course, variant = "catalog", className }: CourseCar
         )}
       </CardContent>
       <CardFooter className="flex items-center justify-between border-t bg-transparent">
-        <span className="font-heading text-lg font-bold text-brand-navy">
-          {formatPrice(course.price, course.currency)}
-        </span>
+        {course.comingSoon ? (
+          <span className="rounded-full bg-brand-orange/10 px-3 py-1 text-sm font-semibold text-brand-orange">
+            Launching soon
+          </span>
+        ) : (
+          <span className="font-heading text-lg font-bold text-brand-navy dark:text-brand-orange">
+            {formatPrice(course.price, course.currency)}
+          </span>
+        )}
         <ButtonLink
           href={href}
           size="sm"
           className={cn(
             variant === "enrolled"
               ? "bg-brand-navy hover:bg-brand-navy/90"
-              : "bg-brand-orange hover:bg-brand-orange/90",
-            "text-white transition-all hover:-translate-y-0.5"
+              : course.comingSoon
+                ? "bg-muted text-foreground hover:bg-muted"
+                : "bg-brand-orange hover:bg-brand-orange/90",
+            !course.comingSoon && "text-white",
+            "transition-all hover:-translate-y-0.5"
           )}
         >
-          {variant === "enrolled" ? "Continue" : "View Course"}
+          {variant === "enrolled"
+            ? enrolledCta
+            : course.comingSoon
+              ? "View details"
+              : "View Course"}
         </ButtonLink>
       </CardFooter>
     </Card>

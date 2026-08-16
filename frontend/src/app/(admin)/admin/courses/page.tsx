@@ -47,9 +47,21 @@ export default function AdminCoursesPage() {
                 <TableCell className="font-medium">{course.title}</TableCell>
                 <TableCell>{course.category}</TableCell>
                 <TableCell>{course.studentsCount.toLocaleString()}</TableCell>
-                <TableCell>{formatPrice(course.price, course.currency)}</TableCell>
                 <TableCell>
-                  <Badge className="bg-success/10 text-success">Published</Badge>
+                  {course.comingSoon
+                    ? "Launching soon"
+                    : formatPrice(course.price, course.currency)}
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    className={
+                      course.comingSoon
+                        ? "bg-brand-orange/10 text-brand-orange"
+                        : "bg-success/10 text-success"
+                    }
+                  >
+                    {course.comingSoon ? "Coming soon" : "Published"}
+                  </Badge>
                 </TableCell>
               </TableRow>
             ))}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, Moon, Sun } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
@@ -9,11 +10,17 @@ import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { marketingNav } from "@/config/navigation";
+import { getAccessToken } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 export function MarketingHeader() {
   const pathname = usePathname();
-  const { theme, toggleTheme } = useTheme();
+  const { toggleTheme } = useTheme();
+  const [signedIn, setSignedIn] = useState(false);
+
+  useEffect(() => {
+    setSignedIn(Boolean(getAccessToken()));
+  }, [pathname]);
 
   return (
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -24,7 +31,8 @@ export function MarketingHeader() {
 
         <nav className="hidden items-center gap-10 md:flex">
           {marketingNav.map((item) => {
-            const active = pathname === item.href;
+            const active =
+              pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
               <Link
                 key={item.href}
@@ -48,26 +56,48 @@ export function MarketingHeader() {
             variant="ghost"
             size="icon"
             onClick={toggleTheme}
-            aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+            aria-label="Toggle theme"
             className="shrink-0"
           >
-            {theme === "light" ? <Moon className="size-4" /> : <Sun className="size-4" />}
+            {/* CSS-driven so SSR output matches the client regardless of stored theme */}
+            <Moon className="size-4 dark:hidden" />
+            <Sun className="hidden size-4 dark:block" />
           </Button>
 
           <div className="hidden items-center gap-4 md:flex">
-            <ButtonLink
-              href="/login"
-              variant="ghost"
-              className="text-base transition-all hover:-translate-y-0.5"
-            >
-              Log in
-            </ButtonLink>
-            <ButtonLink
-              href="/register"
-              className="h-11 px-6 text-base bg-brand-orange text-white shadow-card transition-all hover:-translate-y-0.5 hover:bg-brand-orange/90 hover:shadow-elevated"
-            >
-              Get Started
-            </ButtonLink>
+            {signedIn ? (
+              <>
+                <ButtonLink
+                  href="/my-courses"
+                  variant="ghost"
+                  className="text-base transition-all hover:-translate-y-0.5"
+                >
+                  My Courses
+                </ButtonLink>
+                <ButtonLink
+                  href="/dashboard"
+                  className="h-11 px-6 text-base bg-brand-orange text-white shadow-card transition-all hover:-translate-y-0.5 hover:bg-brand-orange/90 hover:shadow-elevated"
+                >
+                  Dashboard
+                </ButtonLink>
+              </>
+            ) : (
+              <>
+                <ButtonLink
+                  href="/login"
+                  variant="ghost"
+                  className="text-base transition-all hover:-translate-y-0.5"
+                >
+                  Log in
+                </ButtonLink>
+                <ButtonLink
+                  href="/register"
+                  className="h-11 px-6 text-base bg-brand-orange text-white shadow-card transition-all hover:-translate-y-0.5 hover:bg-brand-orange/90 hover:shadow-elevated"
+                >
+                  Get Started
+                </ButtonLink>
+              </>
+            )}
           </div>
 
           <Sheet>
@@ -83,28 +113,48 @@ export function MarketingHeader() {
             <SheetContent side="right" className="w-72">
               <Logo size="lg" className="mb-2" />
               <nav className="mt-6 flex flex-col gap-5">
-                {marketingNav.map((item) => (
+                {marketingNav.map((item) => {
+                  const active =
+                    pathname === item.href || pathname.startsWith(`${item.href}/`);
+                  return (
                   <Link
                     key={item.href}
                     href={item.href}
                     className={cn(
                       "text-lg font-medium",
-                      pathname === item.href ? "text-brand-navy dark:text-brand-orange" : "text-foreground"
+                      active ? "text-brand-navy dark:text-brand-orange" : "text-foreground"
                     )}
                   >
                     {item.title}
                   </Link>
-                ))}
+                  );
+                })}
                 <hr className="my-2" />
-                <Link href="/login" className="text-lg font-medium">
-                  Log in
-                </Link>
-                <ButtonLink
-                  href="/register"
-                  className="h-11 bg-brand-orange text-base text-white hover:bg-brand-orange/90"
-                >
-                  Get Started
-                </ButtonLink>
+                {signedIn ? (
+                  <>
+                    <Link href="/my-courses" className="text-lg font-medium">
+                      My Courses
+                    </Link>
+                    <ButtonLink
+                      href="/dashboard"
+                      className="h-11 bg-brand-orange text-base text-white hover:bg-brand-orange/90"
+                    >
+                      Dashboard
+                    </ButtonLink>
+                  </>
+                ) : (
+                  <>
+                    <Link href="/login" className="text-lg font-medium">
+                      Log in
+                    </Link>
+                    <ButtonLink
+                      href="/register"
+                      className="h-11 bg-brand-orange text-base text-white hover:bg-brand-orange/90"
+                    >
+                      Get Started
+                    </ButtonLink>
+                  </>
+                )}
               </nav>
             </SheetContent>
           </Sheet>

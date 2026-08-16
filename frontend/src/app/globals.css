@@ -67,17 +67,17 @@
   --brand-navy-muted-bg: rgb(16 26 138 / 10%);
 
   --background: #ffffff;
-  --foreground: #111827;
+  --foreground: #0f172a;
   --card: #ffffff;
-  --card-foreground: #111827;
+  --card-foreground: #0f172a;
   --popover: #ffffff;
-  --popover-foreground: #111827;
+  --popover-foreground: #0f172a;
   --primary: #101a8a;
   --primary-foreground: #ffffff;
   --secondary: #f8fafc;
-  --secondary-foreground: #111827;
+  --secondary-foreground: #0f172a;
   --muted: #f8fafc;
-  --muted-foreground: #6b7280;
+  --muted-foreground: #334155;
   --accent: #fff7ed;
   --accent-foreground: #101a8a;
   --destructive: #ef4444;
@@ -88,14 +88,14 @@
   --chart-2: #f58220;
   --chart-3: #10b981;
   --chart-4: #f59e0b;
-  --chart-5: #6b7280;
+  --chart-5: #64748b;
   --radius: 0.625rem;
   --sidebar: #ffffff;
-  --sidebar-foreground: #111827;
+  --sidebar-foreground: #0f172a;
   --sidebar-primary: #101a8a;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #f8fafc;
-  --sidebar-accent-foreground: #111827;
+  --sidebar-accent-foreground: #0f172a;
   --sidebar-border: #e5e7eb;
   --sidebar-ring: #101a8a;
 }
@@ -107,17 +107,17 @@
   --brand-navy-muted-bg: rgb(165 184 255 / 12%);
 
   --background: #0b0f1a;
-  --foreground: #f9fafb;
+  --foreground: #f8fafc;
   --card: #111827;
-  --card-foreground: #f9fafb;
+  --card-foreground: #f8fafc;
   --popover: #111827;
-  --popover-foreground: #f9fafb;
+  --popover-foreground: #f8fafc;
   --primary: #3b4fd4;
   --primary-foreground: #ffffff;
   --secondary: #1f2937;
-  --secondary-foreground: #f9fafb;
+  --secondary-foreground: #f8fafc;
   --muted: #1f2937;
-  --muted-foreground: #9ca3af;
+  --muted-foreground: #cbd5e1;
   --accent: #1f2937;
   --accent-foreground: #f58220;
   --destructive: #f87171;
@@ -125,11 +125,11 @@
   --input: rgb(255 255 255 / 15%);
   --ring: #3b4fd4;
   --sidebar: #111827;
-  --sidebar-foreground: #f9fafb;
+  --sidebar-foreground: #f8fafc;
   --sidebar-primary: #3b4fd4;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #1f2937;
-  --sidebar-accent-foreground: #f9fafb;
+  --sidebar-accent-foreground: #f8fafc;
   --sidebar-border: rgb(255 255 255 / 10%);
   --sidebar-ring: #3b4fd4;
 
@@ -170,6 +170,57 @@
     box-shadow: var(--shadow-float);
   }
 
+  /**
+   * Analytic Sages subtle geometric diamond pattern.
+   * Use on white/editorial surfaces. First glance should still read as white.
+   */
+  .analytic-pattern-bg {
+    background-color: #ffffff;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='58' height='58' viewBox='0 0 58 58'%3E%3Cpath d='M14.5 9.5L20.5 15.5L14.5 21.5L8.5 15.5Z' fill='none' stroke='%230f172a' stroke-opacity='0.05' stroke-width='1'/%3E%3Cpath d='M43.5 37.5L49 43L43.5 48.5L38 43Z' fill='%230f172a' fill-opacity='0.065'/%3E%3C/svg%3E");
+    background-size: 58px 58px;
+    background-repeat: repeat;
+  }
+
+  .dark .analytic-pattern-bg {
+    background-color: var(--background);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='58' height='58' viewBox='0 0 58 58'%3E%3Cpath d='M14.5 9.5L20.5 15.5L14.5 21.5L8.5 15.5Z' fill='none' stroke='%23ffffff' stroke-opacity='0.045' stroke-width='1'/%3E%3Cpath d='M43.5 37.5L49 43L43.5 48.5L38 43Z' fill='%23ffffff' fill-opacity='0.055'/%3E%3C/svg%3E");
+  }
+
+  @media (max-width: 767px) {
+    .analytic-pattern-bg {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='58' height='58' viewBox='0 0 58 58'%3E%3Cpath d='M14.5 9.5L20.5 15.5L14.5 21.5L8.5 15.5Z' fill='none' stroke='%230f172a' stroke-opacity='0.04' stroke-width='1'/%3E%3Cpath d='M43.5 37.5L49 43L43.5 48.5L38 43Z' fill='%230f172a' fill-opacity='0.05'/%3E%3C/svg%3E");
+    }
+
+    .dark .analytic-pattern-bg {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='58' height='58' viewBox='0 0 58 58'%3E%3Cpath d='M14.5 9.5L20.5 15.5L14.5 21.5L8.5 15.5Z' fill='none' stroke='%23ffffff' stroke-opacity='0.035' stroke-width='1'/%3E%3Cpath d='M43.5 37.5L49 43L43.5 48.5L38 43Z' fill='%23ffffff' fill-opacity='0.045'/%3E%3C/svg%3E");
+    }
+  }
+
+  /* Glassmorphism & Modern Edutech Utilities */
+  .glass-panel {
+    background: color-mix(in srgb, var(--card) 85%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  }
+
+  .glow-border {
+    position: relative;
+  }
+  .glow-border::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    background: linear-gradient(135deg, rgba(16, 26, 138, 0.4), rgba(245, 130, 32, 0.4));
+    border-radius: inherit;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  .glow-border:hover::after {
+    opacity: 1;
+  }
+
   /* Readable brand navy text/icons on dark backgrounds */
   .text-brand-navy {
     color: var(--brand-navy-text);
@@ -186,6 +237,22 @@
   .group:hover .group-hover\:text-brand-navy {
     color: var(--brand-navy-text);
   }
+}
+
+/* Custom Scrollbar for Code & Sandbox UI */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--muted-foreground) 25%, transparent);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--muted-foreground) 45%, transparent);
 }
 
 @keyframes pulse-glow {
@@ -209,3 +276,4 @@
     animation: none;
   }
 }
+

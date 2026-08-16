@@ -11,11 +11,29 @@ export function MarketingFooter() {
           <div className="md:col-span-2">
             <Logo size="lg" href="/" />
             <p className="mt-4 max-w-sm text-sm text-muted-foreground">
-              {siteConfig.description}
+              {siteConfig.footerTagline}
             </p>
             <p className="mt-2 text-sm font-medium text-brand-navy dark:text-brand-orange">
               {siteConfig.tagline}
             </p>
+            <div className="mt-4 space-y-1 text-sm">
+              <p>
+                <a
+                  href={`mailto:${siteConfig.emails.hello}`}
+                  className="text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {siteConfig.emails.hello}
+                </a>
+              </p>
+              <p>
+                <a
+                  href={`mailto:${siteConfig.emails.support}`}
+                  className="text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {siteConfig.emails.support}
+                </a>
+              </p>
+            </div>
           </div>
           <div>
             <h4 className="font-heading text-sm font-semibold">Platform</h4>
@@ -30,6 +48,14 @@ export function MarketingFooter() {
                   </Link>
                 </li>
               ))}
+              <li>
+                <Link
+                  href="/faq"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  FAQ
+                </Link>
+              </li>
             </ul>
           </div>
           <div>
@@ -73,6 +99,9 @@ export function MarketingFooter() {
             © {new Date().getFullYear()} {siteConfig.name}. All rights reserved.
           </p>
           <div className="flex gap-6">
+            <Link href="/faq" className="text-sm text-muted-foreground hover:text-foreground">
+              FAQ
+            </Link>
             <Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground">
               Contact
             </Link>

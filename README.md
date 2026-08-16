@@ -46,7 +46,23 @@ Open [http://localhost:3000](http://localhost:3000) — marketing site, student 
 
 ### 3. Backend
 
-Backend setup begins in **Phase 2 — Authentication & Security**.
+```bash
+cd backend
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+alembic upgrade head
+uvicorn app.main:app --reload --port 8000
+```
+
+See [backend/README.md](backend/README.md) for auth endpoints, admin seeding, and security details.
+
+**Phase 2 milestone:** register, login, logout, email verification (Resend when configured), password reset, RBAC (admin / instructor / student). Go-live auth checklist in [backend/README.md](backend/README.md).
+
+**Epic D (Payments):** mock Stripe + **live Paystack (NGN/USD)** + **live NOWPayments invoice/IPN** (when keys set) → webhook → enrollment unlock. Seed courses with `python scripts/seed_courses.py`. See [backend/README.md](backend/README.md).
+
+**Classroom V1:** cohorts + live sessions + authorized RealtimeKit join. Seed with `python scripts/seed_classroom.py --email you@example.com`. Bunny Stream remains for recorded premium courses.
+
+**Next phases:** recording → Bunny, attendance webhooks, assignments, live payment keys, admin cohort ops.
 
 ## MVP Scope (Phase 1 Launch)
 

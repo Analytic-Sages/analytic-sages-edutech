@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Award,
   BarChart3,
@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   Menu,
   Moon,
+  Radio,
   Search,
   Settings,
   Sun,
@@ -32,10 +33,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import type { NavItem, NavItemId } from "@/config/navigation";
+import { logout } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const navIcons: Record<NavItemId, LucideIcon> = {
   dashboard: LayoutDashboard,
+  classroom: Radio,
   courses: BookOpen,
   explore: GraduationCap,
   certificates: Award,
@@ -123,7 +126,14 @@ export function MobileNav({ nav }: AppSidebarProps) {
 }
 
 export function AppTopbar() {
-  const { theme, toggleTheme } = useTheme();
+  const { toggleTheme } = useTheme();
+  const router = useRouter();
+
+  async function handleLogout() {
+    await logout();
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background/95 px-4 backdrop-blur sm:px-6">
@@ -139,8 +149,10 @@ export function AppTopbar() {
           <Bell className="size-4" />
           <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-brand-orange" />
         </Button>
-        <Button variant="ghost" size="icon" onClick={toggleTheme}>
-          {theme === "light" ? <Moon className="size-4" /> : <Sun className="size-4" />}
+        <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
+          {/* CSS-driven so SSR output matches the client regardless of stored theme */}
+          <Moon className="size-4 dark:hidden" />
+          <Sun className="hidden size-4 dark:block" />
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -165,9 +177,13 @@ export function AppTopbar() {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="p-0">
-              <Link href="/login" className="flex w-full items-center px-1.5 py-1">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex w-full items-center px-1.5 py-1 text-left"
+              >
                 Log out
-              </Link>
+              </button>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
