@@ -108,35 +108,6 @@ def parse_mock_webhook(
     )
 
 
-class MockStripeProvider:
-    name = PaymentProviderName.STRIPE
-
-    def __init__(self, settings: Settings) -> None:
-        self.settings = settings
-
-    def create_checkout(self, request: CheckoutRequest) -> CheckoutSession:
-        return create_mock_checkout(
-            provider=self.name,
-            request=request,
-            frontend_url=self.settings.frontend_url,
-        )
-
-    def verify_webhook(
-        self,
-        *,
-        headers: dict[str, str],
-        body: bytes,
-        payload: dict[str, Any],
-    ) -> WebhookEvent:
-        return parse_mock_webhook(
-            provider=self.name,
-            settings=self.settings,
-            headers=headers,
-            body=body,
-            payload=payload,
-        )
-
-
 class MockPaystackProvider:
     name = PaymentProviderName.PAYSTACK
 

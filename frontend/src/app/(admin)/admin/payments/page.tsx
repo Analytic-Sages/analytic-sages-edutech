@@ -11,7 +11,7 @@ import {
 
 const payments = [
   { id: "PAY-001", student: "Ada Okonkwo", course: "Python for Blockchain Analytics", amount: "₦79,000", provider: "Paystack", status: "Success", date: "2026-03-01" },
-  { id: "PAY-002", student: "James Adeyemi", course: "Quantitative Trading with Python", amount: "₦109,000", provider: "Stripe", status: "Success", date: "2026-03-02" },
+  { id: "PAY-002", student: "James Adeyemi", course: "Quantitative Trading with Python", amount: "$150", provider: "NOWPayments", status: "Success", date: "2026-03-02" },
   { id: "PAY-003", student: "Chidi Nwosu", course: "Applied AI for Blockchain", amount: "₦95,000", provider: "Paystack", status: "Pending", date: "2026-03-03" },
 ];
 

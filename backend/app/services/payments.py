@@ -211,8 +211,6 @@ class PaymentService:
         self.db.refresh(payment)
 
         mode = "live" if self.settings.payment_mode == "live" else "mock"
-        if provider_name == PaymentProviderName.STRIPE and not self.settings.stripe_secret_key:
-            mode = "mock"
         if provider_name == PaymentProviderName.PAYSTACK:
             mode = "live" if self.settings.paystack_secret_key else "mock"
         if provider_name == PaymentProviderName.NOWPAYMENTS:
@@ -248,7 +246,6 @@ class PaymentService:
                 not self.settings.is_production
                 and event.provider
                 in {
-                    PaymentProviderName.STRIPE,
                     PaymentProviderName.PAYSTACK,
                     PaymentProviderName.NOWPAYMENTS,
                 }

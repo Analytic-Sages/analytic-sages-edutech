@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Bitcoin, CreditCard, Landmark, Loader2 } from "lucide-react";
+import { Bitcoin, Landmark, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,19 +19,13 @@ const providers: {
   id: PaymentProvider;
   name: string;
   description: string;
-  icon: typeof CreditCard;
+  icon: typeof Landmark;
 }[] = [
   {
     id: "paystack",
     name: "Paystack",
     description: "Cards and bank (NGN / USD)",
     icon: Landmark,
-  },
-  {
-    id: "stripe",
-    name: "Stripe",
-    description: "International cards",
-    icon: CreditCard,
   },
   {
     id: "nowpayments",
@@ -193,7 +187,7 @@ export default function CheckoutPage() {
       </div>
 
       <p className="mt-8 text-sm text-muted-foreground">
-        Mock mode is active until live Stripe / Paystack / NOWPayments keys are configured.
+        Mock mode is active until live Paystack / NOWPayments keys are configured.
         Enrollment is never unlocked from this page, only from a verified webhook.
       </p>
     </div>

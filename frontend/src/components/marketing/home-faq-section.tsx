@@ -52,7 +52,7 @@ const faqs = [
   {
     question: "What payment methods are accepted?",
     answer:
-      "Checkout supports Paystack, Stripe (card), and crypto via NOWPayments. Available options depend on how payment providers are configured for your region.",
+      "Checkout supports cards and bank transfer via Paystack, and crypto via NOWPayments.",
   },
   {
     question: "Are there any prerequisites for the courses?",

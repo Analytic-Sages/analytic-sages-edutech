@@ -3,7 +3,6 @@ from enum import Enum
 
 class PaymentProviderName(str, Enum):
     MOCK = "mock"
-    STRIPE = "stripe"
     PAYSTACK = "paystack"
     NOWPAYMENTS = "nowpayments"
 

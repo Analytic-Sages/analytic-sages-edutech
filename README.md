@@ -38,9 +38,12 @@ This starts PostgreSQL and Redis. See `docker-compose.yml` for ports and credent
 
 ```bash
 cd frontend
+cp .env.example .env.local   # set NEXT_PUBLIC_API_URL if the API is not on localhost:8000
 npm install
 npm run dev
 ```
+
+Next.js only reads env files from `frontend/` (not the repo-root `.env`). `NEXT_PUBLIC_API_URL` defaults to `http://localhost:8000` if unset.
 
 Open [http://localhost:3000](http://localhost:3000) — marketing site, student dashboard, course player, admin portal (mock data).
 
@@ -58,7 +61,7 @@ See [backend/README.md](backend/README.md) for auth endpoints, admin seeding, an
 
 **Phase 2 milestone:** register, login, logout, email verification (Resend when configured), password reset, RBAC (admin / instructor / student). Go-live auth checklist in [backend/README.md](backend/README.md).
 
-**Epic D (Payments):** mock Stripe + **live Paystack (NGN/USD)** + **live NOWPayments invoice/IPN** (when keys set) → webhook → enrollment unlock. Seed courses with `python scripts/seed_courses.py`. See [backend/README.md](backend/README.md).
+**Epic D (Payments):** **live Paystack (NGN/USD)** + **live NOWPayments invoice/IPN** (when keys set) → webhook → enrollment unlock. Seed courses with `python scripts/seed_courses.py`. See [backend/README.md](backend/README.md).
 
 **Classroom V1:** cohorts + live sessions + authorized RealtimeKit join. Seed with `python scripts/seed_classroom.py --email you@example.com`. Bunny Stream remains for recorded premium courses.
 
@@ -70,7 +73,7 @@ See [backend/README.md](backend/README.md) for auth endpoints, admin seeding, an
 - Authentication (email + Google)
 - Student dashboard & course player (Bunny Stream)
 - Progress tracking, quizzes, downloadable resources
-- Payments (Paystack + Stripe)
+- Payments (Paystack + NOWPayments)
 - Certificates & admin portal
 
 ## License

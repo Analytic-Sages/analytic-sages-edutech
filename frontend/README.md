@@ -5,11 +5,14 @@ Premium EdTech platform UI built with Next.js 16, React 19, TypeScript, Tailwind
 ## Quick Start
 
 ```bash
+cp .env.example .env.local   # NEXT_PUBLIC_API_URL=http://localhost:8000
 npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+Open [http://localhost:3000](http://localhost:3000).
+
+Next.js only loads env from this directory. Repo-root `.env` is for Docker/backend (`FRONTEND_URL`, secrets). The browser API origin is `NEXT_PUBLIC_API_URL` in `.env.local`.
 
 ## Brand
 

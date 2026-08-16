@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Bitcoin, CreditCard, Landmark, Loader2 } from "lucide-react";
+import { Bitcoin, Landmark, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +19,7 @@ const providers: {
   id: PaymentProvider;
   name: string;
   description: string;
-  icon: typeof CreditCard;
+  icon: typeof Landmark;
   recommended?: boolean;
 }[] = [
   {
@@ -33,12 +33,6 @@ const providers: {
     name: "Crypto (NOWPayments)",
     description: "BTC, ETH, USDT, and more",
     icon: Bitcoin,
-  },
-  {
-    id: "stripe",
-    name: "Stripe",
-    description: "International cards",
-    icon: CreditCard,
   },
 ];
 

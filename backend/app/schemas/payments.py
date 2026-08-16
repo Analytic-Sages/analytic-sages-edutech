@@ -14,13 +14,18 @@ class CheckoutRequest(BaseModel):
     course_id: UUID | None = None
     cohort_id: UUID | None = None
     provider: PaymentProviderName = Field(
-        description="stripe | paystack | nowpayments (mock until live keys are set)"
+        description="paystack | nowpayments (mock checkout until live keys are set)"
     )
 
     @model_validator(mode="after")
     def require_one_target(self) -> CheckoutRequest:
         if bool(self.course_id) == bool(self.cohort_id):
             raise ValueError("Provide exactly one of course_id or cohort_id")
+        if self.provider not in {
+            PaymentProviderName.PAYSTACK,
+            PaymentProviderName.NOWPAYMENTS,
+        }:
+            raise ValueError("provider must be paystack or nowpayments")
         return self
 
 

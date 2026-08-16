@@ -58,7 +58,7 @@ Or: `bash scripts/dev.sh`
 ### Go-live checklist (real users)
 
 1. Set a strong `SECRET_KEY` (32+ chars) and `ENVIRONMENT=production`
-2. Set `FRONTEND_URL` / `NEXT_PUBLIC_API_URL` to your HTTPS hosts
+2. Set backend `FRONTEND_URL` to the HTTPS site origin. Set `NEXT_PUBLIC_API_URL` in `frontend/.env.local` (or the host's frontend env) to the HTTPS API origin — Next.js does not read the repo-root `.env`
 3. Set `EMAIL_API_KEY` (Resend) + verified `EMAIL_FROM` domain so verification/reset emails send
 4. Optional Google: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`
 5. `COOKIE_SECURE` is forced on in production
@@ -89,10 +89,10 @@ Without `EMAIL_API_KEY`, links are printed in API logs as `[dev-email]`.
 | POST | `/api/v1/checkout` | Create checkout (auth). Body: `{ course_id \| cohort_id, provider }` |
 | GET | `/api/v1/payments/{order_id}` | Payment status for current user |
 | GET | `/api/v1/me/enrollments` | Active enrollments |
-| POST | `/api/v1/webhooks/payments/{provider}` | Provider webhook (`stripe` \| `paystack` \| `nowpayments`) |
+| POST | `/api/v1/webhooks/payments/{provider}` | Provider webhook (`paystack` \| `nowpayments`) |
 | POST | `/api/v1/webhooks/payments/mock/confirm` | Dev-only unlock helper |
 
-Providers: **Stripe**, **Paystack**, **NOWPayments**. With empty API keys they all return a mock checkout URL. Enrollment unlocks **only** after webhook confirmation — never from the frontend redirect.
+Providers: **Paystack**, **NOWPayments**. With empty API keys they return a mock checkout URL. Enrollment unlocks **only** after webhook confirmation — never from the frontend redirect.
 
 ```bash
 # After migrations
@@ -102,7 +102,7 @@ python scripts/seed_courses.py
 ### Mock checkout flow
 
 1. Login → get `access_token`
-2. `POST /api/v1/checkout` with `provider: paystack|stripe|nowpayments`
+2. `POST /api/v1/checkout` with `provider: paystack|nowpayments`
 3. Open `checkout_url` (frontend `/checkout/mock`)
 4. Click **Simulate success** → calls mock confirm → creates enrollment
 5. Check backend logs for receipt + enrollment emails
@@ -113,7 +113,6 @@ python scripts/seed_courses.py
 |----------|--------|------|
 | **NOWPayments** | Live invoice + IPN implemented | `NOWPAYMENTS_API_KEY`, `NOWPAYMENTS_IPN_SECRET`, `PUBLIC_API_URL` |
 | **Paystack** | Live initialize + webhook implemented (NGN/USD) | `PAYSTACK_SECRET_KEY`, `PUBLIC_API_URL` |
-| Stripe | Mock until live branch is implemented | `STRIPE_SECRET_KEY` |
 
 #### NOWPayments (crypto)
 
@@ -171,5 +170,4 @@ Default presets (must exist on your RealtimeKit app): `group_call_host` (instruc
 
 - Attendance webhooks, assignments gradebook, recording → Bunny pipeline
 - Full LMS (modules, lessons, Bunny VOD player, quizzes, certificates)
-- Live Stripe / Paystack / NOWPayments API calls (adapters stubbed)
 - Production email provider integration

@@ -1,7 +1,7 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export const ACCESS_TOKEN_KEY = "as_access_token";
-/** Readable session flag for Next.js middleware (not the JWT). */
+/** Readable session flag for Next.js proxy (not the JWT). */
 export const SESSION_COOKIE = "as_logged_in";
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
@@ -34,7 +34,7 @@ export function clearAccessToken() {
   writeSessionCookie(false);
 }
 
-/** Keep middleware cookie aligned with localStorage token (e.g. after deploy). */
+/** Keep proxy cookie aligned with localStorage token (e.g. after deploy). */
 export function syncAuthSession() {
   if (typeof window === "undefined") return;
   writeSessionCookie(Boolean(getAccessToken()));
@@ -69,7 +69,7 @@ export class ApiError extends Error {
 }
 
 function networkErrorMessage() {
-  return `Can't reach the API at ${API_URL}. Start Docker, create a .env, then run the backend on port 8000.`;
+  return `Can't reach the API at ${API_URL}. Start Docker, copy frontend/.env.example to frontend/.env.local, then run the backend on port 8000.`;
 }
 
 export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promise<T> {
@@ -116,7 +116,7 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promi
   return response.json() as Promise<T>;
 }
 
-export type PaymentProvider = "stripe" | "paystack" | "nowpayments" | "mock";
+export type PaymentProvider = "paystack" | "nowpayments" | "mock";
 
 export type CheckoutResponse = {
   order_id: string;

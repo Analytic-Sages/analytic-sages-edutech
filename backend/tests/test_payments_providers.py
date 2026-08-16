@@ -29,7 +29,6 @@ def _settings(**overrides) -> Settings:
         payment_mode="mock",
         mock_webhook_secret="",
         paystack_secret_key=None,
-        stripe_secret_key=None,
         nowpayments_api_key=None,
         nowpayments_ipn_secret=None,
     )

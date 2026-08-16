@@ -50,8 +50,6 @@ class Settings(BaseSettings):
     # Payments — leave keys empty to force mock adapters (recommended for local MVP)
     payment_mode: Literal["mock", "live"] = "mock"
     mock_webhook_secret: str = "dev-mock-webhook-secret"
-    stripe_secret_key: str | None = None
-    stripe_webhook_secret: str | None = None
     paystack_secret_key: str | None = None
     paystack_api_url: str = "https://api.paystack.co"
     # Most NG merchants settle in NGN. USD catalog prices convert at this rate for Paystack.

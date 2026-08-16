@@ -47,7 +47,7 @@ function MockCheckoutInner() {
     <div className="mx-auto max-w-lg px-4 py-12 sm:px-6 lg:px-8">
       <PageHeader
         title="Mock payment gateway"
-        description="Simulates Stripe, Paystack, or NOWPayments until live keys are configured."
+        description="Simulates Paystack or NOWPayments until live keys are configured."
       />
 
       <Card className="shadow-card">
