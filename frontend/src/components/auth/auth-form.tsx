@@ -10,6 +10,7 @@ import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/auth/password-input";
 import { Separator } from "@/components/ui/separator";
 import { siteConfig } from "@/config/site";
 import {
@@ -258,10 +259,10 @@ export function AuthForm({ mode }: AuthFormProps) {
                 </Link>
               )}
             </div>
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
               placeholder="••••••••"
+              autoComplete={mode === "login" ? "current-password" : "new-password"}
               {...register("password")}
               aria-invalid={!!errors.password}
             />

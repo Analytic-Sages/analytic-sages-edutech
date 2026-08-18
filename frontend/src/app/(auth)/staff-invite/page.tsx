@@ -8,8 +8,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/auth/password-input";
 import { ApiError, acceptStaffInvite, setAccessToken } from "@/lib/api";
 import { resolvePostLoginPath } from "@/lib/auth-redirect";
 
@@ -69,14 +69,14 @@ function StaffInviteInner() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" autoComplete="new-password" {...register("password")} />
+            <PasswordInput id="password" autoComplete="new-password" {...register("password")} />
             {errors.password && (
               <p className="text-xs text-destructive">{errors.password.message}</p>
             )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirm">Confirm password</Label>
-            <Input id="confirm" type="password" autoComplete="new-password" {...register("confirm")} />
+            <PasswordInput id="confirm" autoComplete="new-password" {...register("confirm")} />
             {errors.confirm && (
               <p className="text-xs text-destructive">{errors.confirm.message}</p>
             )}
