@@ -385,7 +385,7 @@ export function AboutPageContent() {
 
       {/* 7. Where we're going: belief statement */}
       <section className="relative overflow-hidden border-y bg-brand-navy py-24 sm:py-32">
-        <SectionBackground variant="brick" tone="dark" />
+        <SectionBackground variant="glow" />
         <div className="relative mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-10">
           <FadeIn className="mx-auto max-w-3xl text-center">
             <p className={eyebrowClass}>Where we&apos;re going</p>
@@ -493,8 +493,7 @@ export function AboutPageContent() {
         <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-10">
           <FadeIn>
             <div className="relative overflow-hidden rounded-3xl bg-brand-navy px-8 py-16 sm:px-16 sm:py-20">
-              <SectionBackground variant="brick" tone="dark" />
-              <SectionBackground variant="glow" tone="dark" className="opacity-80" />
+              <SectionBackground variant="glow" className="opacity-80" />
               <div className="relative mx-auto max-w-2xl text-center">
                 <h2 className="font-heading text-4xl font-bold text-white sm:text-5xl">
                   Ready to build what&apos;s next?
