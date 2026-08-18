@@ -187,8 +187,8 @@ export default function CheckoutPage() {
       </div>
 
       <p className="mt-8 text-sm text-muted-foreground">
-        Mock mode is active until live Paystack / NOWPayments keys are configured.
-        Enrollment is never unlocked from this page, only from a verified webhook.
+        Access unlocks after payment is confirmed. That can take a moment after you leave
+        checkout.
       </p>
     </div>
   );

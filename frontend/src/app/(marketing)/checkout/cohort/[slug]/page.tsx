@@ -188,8 +188,8 @@ export default function CohortCheckoutPage() {
           </div>
 
           <p className="pt-2 text-xs text-muted-foreground">
-            Enrollment unlocks after payment confirmation (webhook), not from the redirect alone.
-            After confirmation, open Classroom to join live sessions.
+            Your seat unlocks after payment is confirmed. That can take a moment after you
+            leave checkout. Then open Classroom to join live sessions.
           </p>
         </CardContent>
       </Card>

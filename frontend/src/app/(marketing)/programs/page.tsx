@@ -1,6 +1,11 @@
-import { redirect } from "next/navigation";
+import { ProgramsPageContent } from "@/components/marketing/programs-page-content";
 
-/** Legacy URL — Instructor-Led is now the primary live training surface. */
-export default function ProgramsRedirectPage() {
-  redirect("/instructor-led");
+export const metadata = {
+  title: "Our Programs",
+  description:
+    "Choose Instructor-Led live cohorts or Self-Paced courses in blockchain data, AI, and quantitative finance.",
+};
+
+export default function ProgramsPage() {
+  return <ProgramsPageContent />;
 }

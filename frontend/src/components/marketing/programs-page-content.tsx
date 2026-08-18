@@ -7,6 +7,7 @@ import { CourseCard } from "@/components/course/course-card";
 import { SectionBackground } from "@/components/marketing/section-background";
 import { ButtonLink } from "@/components/ui/button-link";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { LearningPathsSection } from "@/components/marketing/learning-paths-section";
 import { getFeaturedCourses } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
@@ -111,36 +112,38 @@ export function ProgramsPageContent() {
         <div className="relative mx-auto flex min-h-[78vh] max-w-screen-2xl flex-col justify-center px-4 py-24 sm:px-6 sm:py-32 lg:px-10">
           <FadeIn className="max-w-3xl">
             <p className="text-lg font-bold uppercase tracking-[0.14em] text-brand-orange sm:text-xl">
-              Analytic Sages
+              Our Programs
             </p>
             <h1 className="mt-5 font-heading text-5xl font-bold tracking-tight text-white sm:text-6xl lg:text-7xl lg:leading-[1.05]">
-              Your Web3 Journey Starts Here!
+              Two ways to learn. One platform.
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-white/90 sm:text-xl">
-              Pick your path, build your stack, and grow with a community built for blockchain
-              data careers.
+              Live expert-led cohorts and self-paced paths in blockchain data, AI, and
+              quantitative finance.
             </p>
             <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:gap-5">
               <ButtonLink
-                href="/courses"
+                href="/instructor-led"
                 size="lg"
                 className="group h-14 bg-brand-orange px-10 text-base text-white shadow-elevated transition-all hover:-translate-y-0.5 hover:bg-brand-orange/90 hover:shadow-float"
               >
-                Enroll Now
+                View live training
                 <ArrowRight className="ml-2 size-4 transition-transform group-hover:translate-x-1" />
               </ButtonLink>
               <ButtonLink
-                href="/community"
+                href="/courses"
                 size="lg"
                 variant="outline"
                 className="h-14 border-white/40 bg-white/5 px-10 text-base text-white backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:bg-white/10 hover:text-white"
               >
-                Join our Community
+                Explore self-paced
               </ButtonLink>
             </div>
           </FadeIn>
         </div>
       </section>
+
+      <LearningPathsSection />
 
       {/* Paths */}
       <section id="programs" className="relative overflow-hidden bg-background py-24 sm:py-32">

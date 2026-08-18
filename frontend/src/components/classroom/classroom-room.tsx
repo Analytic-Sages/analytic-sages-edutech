@@ -480,8 +480,7 @@ function EndedState({ session }: { session: LiveSessionPublic }) {
     <div className="flex flex-1 flex-col items-center justify-center rounded-xl border bg-card p-10 text-center shadow-card">
       <p className="font-heading text-3xl font-semibold">Class completed</p>
       <p className="mt-2 max-w-md text-muted-foreground">
-        Attendance will be recorded when webhooks are enabled. Check back for the session
-        recording on Bunny Stream.
+        Attendance is being recorded. Check back later if a session recording becomes available.
       </p>
       {session.recording_url ? (
         <a

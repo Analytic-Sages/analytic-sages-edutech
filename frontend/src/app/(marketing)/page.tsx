@@ -23,31 +23,31 @@ export default function HomePage() {
           <div className="grid items-center gap-16 lg:grid-cols-2 lg:gap-24 xl:gap-32">
             <div className="max-w-2xl">
               <p className="mb-5 text-base font-semibold tracking-wide text-brand-orange uppercase sm:text-lg">
-                Analytic Sages
+                Global Technology Education Platform
               </p>
               <h1 className="font-heading text-5xl font-bold tracking-tight text-foreground sm:text-6xl lg:text-7xl xl:text-8xl xl:leading-[1.05]">
-                Build the Skills That Power the Future of Blockchain.
+                Learn the Technologies Shaping the Future.
               </h1>
               <p className="mt-8 max-w-xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-                Learn through live expert-led cohorts or flexible self-paced programs in
-                blockchain data, analytics, and AI.
+                Build practical expertise across data, AI, quantitative finance, blockchain, and
+                emerging technologies through expert-led and self-paced learning.
               </p>
               <div className="mt-12 flex flex-col gap-4 sm:flex-row sm:gap-5">
                 <ButtonLink
-                  href="/instructor-led"
+                  href="/programs"
                   size="lg"
                   className="group h-14 bg-brand-orange px-10 text-base text-white shadow-elevated transition-all hover:-translate-y-0.5 hover:bg-brand-orange/90 hover:shadow-float"
                 >
-                  View live training
+                  Explore Programs
                   <ArrowRight className="ml-2 size-4 transition-transform group-hover:translate-x-1" />
                 </ButtonLink>
                 <ButtonLink
-                  href="/courses"
+                  href="/instructor-led"
                   size="lg"
                   variant="outline"
                   className="h-14 px-10 text-base transition-all hover:-translate-y-0.5 hover:shadow-elevated"
                 >
-                  Explore self-paced
+                  View Upcoming Training
                 </ButtonLink>
               </div>
             </div>

@@ -37,8 +37,8 @@ function SuccessInner() {
         title="Payment received"
         description={
           payment?.cohort_id
-            ? "If the webhook confirmed successfully, your cohort seat is unlocked. Open Classroom when sessions go live."
-            : "If the webhook confirmed successfully, your course is unlocked. Enrollment never depends on this page alone."
+            ? "Once payment is confirmed, your cohort seat is unlocked. Open Classroom when sessions go live."
+            : "Once payment is confirmed, your course is unlocked. That can take a moment after you leave checkout."
         }
         className="items-center text-center [&_h1]:mx-auto [&_p]:mx-auto"
       />

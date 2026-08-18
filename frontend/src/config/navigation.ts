@@ -17,8 +17,7 @@ export type NavItem = {
 };
 
 export const marketingNav = [
-  { title: "Instructor-Led", href: "/instructor-led" },
-  { title: "Self-Paced", href: "/courses" },
+  { title: "Our Programs", href: "/programs" },
   { title: "Community", href: "/community" },
   { title: "Blog", href: "/blog" },
   { title: "About us", href: "/about" },
