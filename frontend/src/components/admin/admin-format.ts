@@ -1,4 +1,7 @@
 import { formatPrice } from "@/lib/mock-data";
+import { initialsFor } from "@/lib/user-display";
+
+export { initialsFor };
 
 export function formatAdminDate(iso: string | null | undefined) {
   if (!iso) return "—";
@@ -13,15 +16,6 @@ export function formatAdminDate(iso: string | null | undefined) {
   } catch {
     return iso;
   }
-}
-
-export function initialsFor(name: string | null, email: string) {
-  const source = (name || email).trim();
-  const parts = source.split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) {
-    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-  }
-  return source.slice(0, 2).toUpperCase();
 }
 
 export function paymentStatusClass(status: string) {

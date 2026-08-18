@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Award,
@@ -33,7 +34,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import type { NavItem, NavItemId } from "@/config/navigation";
-import { logout } from "@/lib/api";
+import { getMe, logout, type AuthUser } from "@/lib/api";
+import { initialsFor } from "@/lib/user-display";
 import { cn } from "@/lib/utils";
 
 const navIcons: Record<NavItemId, LucideIcon> = {
@@ -128,12 +130,29 @@ export function MobileNav({ nav }: AppSidebarProps) {
 export function AppTopbar() {
   const { toggleTheme } = useTheme();
   const router = useRouter();
+  const [user, setUser] = useState<AuthUser | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getMe()
+      .then((me) => {
+        if (!cancelled) setUser(me);
+      })
+      .catch(() => {
+        if (!cancelled) setUser(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleLogout() {
     await logout();
     router.push("/login");
     router.refresh();
   }
+
+  const initials = user ? initialsFor(user.full_name, user.email) : "—";
 
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background/95 px-4 backdrop-blur sm:px-6">
@@ -161,10 +180,17 @@ export function AppTopbar() {
             }
           >
             <Avatar className="size-8">
-              <AvatarFallback className="bg-brand-navy text-xs text-white">AO</AvatarFallback>
+              <AvatarFallback className="bg-brand-navy text-xs text-white">{initials}</AvatarFallback>
             </Avatar>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuContent align="end" className="w-56">
+            {user && (
+              <div className="px-2 py-1.5">
+                <p className="truncate text-sm font-medium">{user.full_name || user.email}</p>
+                <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+              </div>
+            )}
+            <DropdownMenuSeparator />
             <DropdownMenuItem className="p-0">
               <Link href="/profile" className="flex w-full items-center px-1.5 py-1">
                 Profile
