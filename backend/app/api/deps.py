@@ -15,6 +15,7 @@ from app.models.user import User
 from app.services.auth import AuthService
 from app.services.email import EmailService
 from app.services.google_oauth import GoogleOAuthService
+from app.services.admin import AdminService
 from app.services.classroom import ClassroomService
 from app.services.payments import PaymentService
 
@@ -60,6 +61,10 @@ def get_classroom_service(
     settings: Settings = Depends(get_settings),
 ) -> ClassroomService:
     return ClassroomService(db, settings)
+
+
+def get_admin_service(db: Session = Depends(get_db)) -> AdminService:
+    return AdminService(db)
 
 
 def get_current_user(

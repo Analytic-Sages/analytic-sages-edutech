@@ -49,6 +49,23 @@ class EmailService:
         )
         self._send(to=email, subject=subject, html=html, dev_label="password-reset", link=link)
 
+    def send_staff_invite_email(self, *, email: str, token: str, full_name: str | None) -> None:
+        link = f"{self.settings.frontend_url.rstrip('/')}/staff-invite?token={token}"
+        greeting = f"Hi {full_name}," if full_name else "Hi,"
+        subject = "You're invited to Analytic Sages staff"
+        html = self._simple_html(
+            title="Staff invite",
+            body=(
+                f"<p>{greeting}</p>"
+                "<p>You've been invited to join Analytic Sages as an instructor. "
+                "Set your password to verify your email and open the staff classroom.</p>"
+                f'<p><a href="{link}">Set your password and join</a></p>'
+                f"<p style=\"color:#666;font-size:12px\">Or paste this link:<br>{link}</p>"
+                "<p>This link expires in 7 days. If you were not expecting this, ignore the email.</p>"
+            ),
+        )
+        self._send(to=email, subject=subject, html=html, dev_label="staff-invite", link=link)
+
     def send_payment_receipt(
         self,
         *,

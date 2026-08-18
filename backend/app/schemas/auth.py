@@ -48,6 +48,11 @@ class ResetPasswordRequest(BaseModel):
     new_password: str = Field(min_length=8, max_length=128)
 
 
+class AcceptInviteRequest(BaseModel):
+    token: str = Field(min_length=10, max_length=512)
+    password: str = Field(min_length=8, max_length=128)
+
+
 class VerifyEmailRequest(BaseModel):
     token: str = Field(min_length=10, max_length=512)
 

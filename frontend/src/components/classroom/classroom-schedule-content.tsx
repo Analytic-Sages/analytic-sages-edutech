@@ -58,7 +58,11 @@ function PhaseBadge({ phase }: { phase: LiveSessionPublic["phase"] }) {
   );
 }
 
-export function ClassroomScheduleContent() {
+export function ClassroomScheduleContent({
+  audience = "student",
+}: {
+  audience?: "student" | "staff";
+}) {
   const [sessions, setSessions] = useState<LiveSessionPublic[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -85,6 +89,8 @@ export function ClassroomScheduleContent() {
     };
   }, []);
 
+  const isStaff = audience === "staff";
+
   if (loading) {
     return (
       <div className="flex items-center justify-center gap-2 py-24 text-muted-foreground">
@@ -100,7 +106,10 @@ export function ClassroomScheduleContent() {
         icon={<Video className="size-5" />}
         title="Couldn't load classroom"
         description={error}
-        action={{ label: "Back to dashboard", href: "/dashboard" }}
+        action={{
+          label: isStaff ? "Back to staff classroom" : "Back to dashboard",
+          href: isStaff ? "/staff" : "/dashboard",
+        }}
       />
     );
   }
@@ -112,16 +121,28 @@ export function ClassroomScheduleContent() {
   return (
     <div>
       <PageHeader
-        title="Live Classroom"
-        description="Expert-led sessions for your cohort. Join when class is live; review resources anytime."
+        title={isStaff ? "Staff classroom" : "Live Classroom"}
+        description={
+          isStaff
+            ? "Join Cohort 9 sessions as instructor. Student seats unlock after payment is confirmed."
+            : "Expert-led sessions for your cohort. Join when class is live; review resources anytime."
+        }
       />
 
       {sessions.length === 0 ? (
         <EmptyState
           icon={<Radio className="size-5" />}
-          title="No cohort sessions yet"
-          description="You're signed in, but not enrolled in a live cohort yet. Ask an admin to add you, or for local dev run: python scripts/seed_classroom.py --email your@email.com"
-          action={{ label: "View live training", href: "/instructor-led" }}
+          title={isStaff ? "No sessions on the calendar yet" : "No cohort sessions yet"}
+          description={
+            isStaff
+              ? "When Cohort 9 sessions are scheduled, they will show here so you can join as instructor."
+              : "You're signed in, but not enrolled in a live cohort yet. Ask an admin to add you, or for local dev run: python scripts/seed_classroom.py --email your@email.com"
+          }
+          action={
+            isStaff
+              ? undefined
+              : { label: "View live training", href: "/instructor-led" }
+          }
         />
       ) : (
         <div className="space-y-10">

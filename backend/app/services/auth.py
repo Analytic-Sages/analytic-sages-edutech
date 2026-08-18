@@ -201,6 +201,90 @@ class AuthService:
         self._revoke_all_refresh_tokens(user.id)
         self.db.commit()
 
+    def invite_instructor(self, *, email: str, full_name: str | None) -> tuple[User, bool]:
+        email_normalized = email.lower()
+        user = self.db.scalar(select(User).where(User.email == email_normalized))
+
+        if user:
+            if user.role == UserRole.STUDENT:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="This email already has a learner account. Use a different staff email.",
+                )
+            if user.role == UserRole.ADMIN:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="This email is already an admin account.",
+                )
+            if user.password_hash:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="This instructor already has an account. They can sign in.",
+                )
+            if full_name and not user.full_name:
+                user.full_name = full_name
+            raw_token = self._issue_invite_token(user.id)
+            self.db.commit()
+            self.email_service.send_staff_invite_email(
+                email=user.email, token=raw_token, full_name=user.full_name
+            )
+            return user, True
+
+        user = User(
+            email=email_normalized,
+            password_hash=None,
+            full_name=full_name,
+            role=UserRole.INSTRUCTOR,
+            email_verified=False,
+        )
+        self.db.add(user)
+        self.db.flush()
+        raw_token = self._issue_invite_token(user.id)
+        self.db.commit()
+        self.db.refresh(user)
+        self.email_service.send_staff_invite_email(
+            email=user.email, token=raw_token, full_name=user.full_name
+        )
+        return user, False
+
+    def accept_invite(self, *, token: str, password: str) -> tuple[User, str, str]:
+        token_hash = self.security.hash_token(token)
+        record = self.db.scalar(
+            select(PasswordResetToken).where(PasswordResetToken.token_hash == token_hash)
+        )
+        now = datetime.now(UTC)
+
+        if not record or record.used_at is not None or record.expires_at <= now:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired invite link. Ask an admin to send a new invite.",
+            )
+
+        user = self.db.get(User, record.user_id)
+        if not user or user.role != UserRole.INSTRUCTOR:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired invite link. Ask an admin to send a new invite.",
+            )
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account is disabled",
+            )
+
+        user.password_hash = self.security.hash_password(password)
+        user.email_verified = True
+        record.used_at = now
+        self._revoke_all_refresh_tokens(user.id)
+        access_token = self.security.create_access_token(
+            user_id=str(user.id),
+            role=user.role.value,
+        )
+        refresh_token = self._issue_refresh_token(user.id)
+        self.db.commit()
+        self.db.refresh(user)
+        return user, access_token, refresh_token
+
     def login_with_google(
         self,
         *,
@@ -285,6 +369,17 @@ class AuthService:
                 user_id=user_id,
                 token_hash=self.security.hash_token(raw_token),
                 expires_at=self.security.password_reset_expires_at(),
+            )
+        )
+        return raw_token
+
+    def _issue_invite_token(self, user_id: UUID) -> str:
+        raw_token = self.security.generate_opaque_token()
+        self.db.add(
+            PasswordResetToken(
+                user_id=user_id,
+                token_hash=self.security.hash_token(raw_token),
+                expires_at=self.security.invite_token_expires_at(),
             )
         )
         return raw_token

@@ -3,8 +3,9 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { setAccessToken } from "@/lib/api";
+import { getMe, setAccessToken } from "@/lib/api";
 import { setLastAuthMethod } from "@/lib/auth-method";
+import { resolvePostLoginPath } from "@/lib/auth-redirect";
 
 function AuthCallbackInner() {
   const router = useRouter();
@@ -25,7 +26,10 @@ function AuthCallbackInner() {
     if (method === "google") {
       setLastAuthMethod("google");
     }
-    router.replace(next.startsWith("/") ? next : "/dashboard");
+    const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+    getMe()
+      .then((me) => router.replace(resolvePostLoginPath(me.role, safeNext)))
+      .catch(() => router.replace(safeNext));
   }, [router, searchParams]);
 
   if (error) {

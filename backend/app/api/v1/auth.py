@@ -13,8 +13,10 @@ from app.api.deps import (
 )
 from app.core.config import Settings
 from app.core.rate_limit import enforce_rate_limit
+from app.core.roles import UserRole
 from app.core.security import SecurityService
 from app.schemas.auth import (
+    AcceptInviteRequest,
     AuthProvidersResponse,
     AuthResponse,
     ForgotPasswordRequest,
@@ -36,6 +38,16 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 def _safe_next_path(next_path: str | None) -> str:
     if not next_path or not next_path.startswith("/") or next_path.startswith("//"):
         return "/dashboard"
+    return next_path
+
+
+def _post_login_path(role: UserRole, next_path: str) -> str:
+    if next_path != "/dashboard":
+        return next_path
+    if role == UserRole.ADMIN:
+        return "/admin"
+    if role == UserRole.INSTRUCTOR:
+        return "/staff"
     return next_path
 
 
@@ -167,6 +179,24 @@ def reset_password(
     return MessageResponse(message="Password updated successfully")
 
 
+@router.post("/accept-invite", response_model=AuthResponse)
+def accept_invite(
+    request: Request,
+    payload: AcceptInviteRequest,
+    response: Response,
+    auth_service: AuthService = Depends(get_auth_service),
+    security: SecurityService = Depends(get_security_service),
+    rate_limiter=Depends(get_rate_limiter),
+) -> AuthResponse:
+    enforce_rate_limit(rate_limiter, request, scope="auth-invite")
+    user, access_token, refresh_token = auth_service.accept_invite(
+        token=payload.token,
+        password=payload.password,
+    )
+    security.set_refresh_cookie(response, refresh_token)
+    return auth_service.build_auth_response(user, access_token)
+
+
 @router.get("/providers", response_model=AuthProvidersResponse)
 def auth_providers(settings: Settings = Depends(get_settings)) -> AuthProvidersResponse:
     mode = settings.google_auth_mode
@@ -248,11 +278,12 @@ def google_login_callback(
             detail="Google email is not verified",
         )
 
-    _user, access_token, refresh_token = auth_service.login_with_google(
+    user, access_token, refresh_token = auth_service.login_with_google(
         google_id=str(google_id),
         email=str(email),
         full_name=profile.get("name"),
     )
+    next_path = _post_login_path(user.role, next_path)
 
     query = urlencode(
         {

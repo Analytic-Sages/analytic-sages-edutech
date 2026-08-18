@@ -17,3 +17,16 @@ def test_health_endpoint_shape():
     assert "status" in body
     assert "database" in body
     assert "redis" in body
+
+
+def test_admin_overview_requires_auth():
+    response = client.get("/api/v1/admin/overview")
+    assert response.status_code == 401
+
+
+def test_admin_invite_instructor_requires_auth():
+    response = client.post(
+        "/api/v1/admin/instructors",
+        json={"email": "teacher@example.com", "full_name": "Teacher"},
+    )
+    assert response.status_code == 401

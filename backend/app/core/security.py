@@ -84,3 +84,6 @@ class SecurityService:
 
     def password_reset_expires_at(self) -> datetime:
         return datetime.now(UTC) + timedelta(hours=self.settings.password_reset_expire_hours)
+
+    def invite_token_expires_at(self) -> datetime:
+        return datetime.now(UTC) + timedelta(hours=self.settings.invite_expire_hours)

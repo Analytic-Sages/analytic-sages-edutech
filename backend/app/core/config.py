@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 7
     email_verification_expire_hours: int = 24
     password_reset_expire_hours: int = 1
+    invite_expire_hours: int = 168
 
     cookie_secure: bool = False
     cookie_domain: str | None = None

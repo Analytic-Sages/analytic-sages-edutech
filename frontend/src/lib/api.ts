@@ -192,7 +192,7 @@ export function getAuthProviders() {
 }
 
 export function mockGoogleLogin(email: string, fullName?: string) {
-  return apiFetch<{ access_token: string }>("/api/v1/auth/google/mock", {
+  return apiFetch<{ access_token: string; user: AuthUser }>("/api/v1/auth/google/mock", {
     method: "POST",
     auth: false,
     body: JSON.stringify({
@@ -310,5 +310,122 @@ export function getClassroomSession(sessionId: string) {
 export function joinClassroomSession(sessionId: string) {
   return apiFetch<ClassroomJoinResponse>(`/api/v1/classroom/sessions/${sessionId}/join`, {
     method: "POST",
+  });
+}
+
+export type AdminUserRow = {
+  id: string;
+  email: string;
+  full_name: string | null;
+  role: string;
+  email_verified: boolean;
+  is_active: boolean;
+  in_featured_cohort: boolean;
+  created_at: string;
+};
+
+export type AdminPaymentRow = {
+  id: string;
+  order_id: string;
+  status: string;
+  provider: string;
+  amount: number;
+  currency: string;
+  user_email: string;
+  user_name: string | null;
+  cohort_name: string | null;
+  course_title: string | null;
+  confirmed_at: string | null;
+  created_at: string;
+};
+
+export type AdminCohortMemberRow = {
+  id: string;
+  user_id: string;
+  email: string;
+  full_name: string | null;
+  role: string;
+  email_verified: boolean;
+  joined_at: string;
+};
+
+export type AdminFeaturedCohort = {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  price: number;
+  currency: string;
+  student_seats: number;
+  staff_count: number;
+  confirmed_payments: number;
+  pending_payments: number;
+  registration_deadline: string | null;
+  starts_at: string | null;
+};
+
+export type AdminOverview = {
+  users_total: number;
+  students_total: number;
+  users_verified: number;
+  signups_24h: number;
+  signups_7d: number;
+  payments_confirmed: number;
+  payments_pending: number;
+  revenue_by_currency: Array<{
+    currency: string;
+    confirmed_amount: number;
+    pending_amount: number;
+  }>;
+  featured_cohort: AdminFeaturedCohort | null;
+  recent_signups: AdminUserRow[];
+  recent_payments: AdminPaymentRow[];
+};
+
+export type AdminCohortDetail = {
+  cohort: AdminFeaturedCohort;
+  members: AdminCohortMemberRow[];
+  payments: AdminPaymentRow[];
+};
+
+export function getAdminOverview() {
+  return apiFetch<AdminOverview>("/api/v1/admin/overview");
+}
+
+export function getAdminUsers(limit = 200) {
+  return apiFetch<AdminUserRow[]>(`/api/v1/admin/users?limit=${limit}`);
+}
+
+export function getAdminPayments(limit = 200) {
+  return apiFetch<AdminPaymentRow[]>(`/api/v1/admin/payments?limit=${limit}`);
+}
+
+export function getAdminCohort(slug: string) {
+  return apiFetch<AdminCohortDetail>(`/api/v1/admin/cohorts/${encodeURIComponent(slug)}`);
+}
+
+export type InviteInstructorResponse = {
+  email: string;
+  full_name: string | null;
+  role: string;
+  resent: boolean;
+  message: string;
+};
+
+export function inviteInstructor(email: string, fullName?: string) {
+  return apiFetch<InviteInstructorResponse>("/api/v1/admin/instructors", {
+    method: "POST",
+    body: JSON.stringify({
+      email,
+      full_name: fullName || null,
+    }),
+  });
+}
+
+export function acceptStaffInvite(token: string, password: string) {
+  return apiFetch<{ access_token: string; user: AuthUser }>("/api/v1/auth/accept-invite", {
+    method: "POST",
+    auth: false,
+    body: JSON.stringify({ token, password }),
   });
 }

@@ -18,11 +18,14 @@ import {
   getAccessToken,
   getApiBaseUrl,
   getAuthProviders,
+  getMe,
   setAccessToken,
   syncAuthSession,
   type AuthProviders,
+  type AuthUser,
 } from "@/lib/api";
 import { getLastAuthMethod, setLastAuthMethod, type AuthMethod } from "@/lib/auth-method";
+import { resolvePostLoginPath } from "@/lib/auth-redirect";
 import { cn } from "@/lib/utils";
 
 const authSchema = z.object({
@@ -39,6 +42,7 @@ type AuthFormProps = {
 
 type AuthResponse = {
   access_token: string;
+  user: AuthUser;
 };
 
 function RecentlyUsedBadge() {
@@ -89,7 +93,9 @@ export function AuthForm({ mode }: AuthFormProps) {
     if (mode !== "login") return;
     if (!getAccessToken()) return;
     syncAuthSession();
-    router.replace(nextPath);
+    getMe()
+      .then((me) => router.replace(resolvePostLoginPath(me.role, nextPath)))
+      .catch(() => router.replace(nextPath));
   }, [mode, nextPath, router]);
 
   useEffect(() => {
@@ -132,7 +138,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       });
       setAccessToken(result.access_token);
       setLastAuthMethod("email");
-      router.push(nextPath);
+      router.push(resolvePostLoginPath(result.user.role, nextPath));
     } catch (err) {
       setFormError(err instanceof ApiError ? err.detail : "Authentication failed");
     }

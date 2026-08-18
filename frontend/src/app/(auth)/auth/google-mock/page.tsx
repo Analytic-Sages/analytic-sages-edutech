@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ApiError, mockGoogleLogin, setAccessToken } from "@/lib/api";
 import { setLastAuthMethod } from "@/lib/auth-method";
+import { resolvePostLoginPath } from "@/lib/auth-redirect";
 
 function GoogleMockInner() {
   const router = useRouter();
@@ -27,7 +28,8 @@ function GoogleMockInner() {
       const result = await mockGoogleLogin(email, fullName);
       setAccessToken(result.access_token);
       setLastAuthMethod("google");
-      router.replace(nextPath.startsWith("/") ? nextPath : "/dashboard");
+      const safeNext = nextPath.startsWith("/") ? nextPath : "/dashboard";
+      router.replace(resolvePostLoginPath(result.user.role, safeNext));
     } catch (err) {
       setError(err instanceof ApiError ? err.detail : "Mock Google login failed");
       setLoading(false);

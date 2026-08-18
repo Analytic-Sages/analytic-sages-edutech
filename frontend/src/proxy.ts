@@ -14,6 +14,7 @@ function isProtectedPath(pathname: string): boolean {
     "/profile",
     "/settings",
     "/admin",
+    "/staff",
     "/checkout",
   ];
 
@@ -63,7 +64,10 @@ export const config = {
     "/certificates/:path*",
     "/profile/:path*",
     "/settings/:path*",
+    "/admin",
     "/admin/:path*",
+    "/staff",
+    "/staff/:path*",
     "/checkout/:path*",
     "/courses/:slug/learn/:path*",
     "/courses/:slug/quiz/:path*",
