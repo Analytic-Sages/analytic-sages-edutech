@@ -102,7 +102,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
             )}
             <div className="mt-8">
               <ButtonLink
-                href="#register"
+                href={checkoutHref}
                 size="lg"
                 className="h-12 rounded-full bg-brand-orange px-10 text-base text-white hover:bg-brand-orange/90"
               >
