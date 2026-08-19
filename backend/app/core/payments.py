@@ -19,3 +19,4 @@ class PaymentStatus(str, Enum):
 class EnrollmentStatus(str, Enum):
     ACTIVE = "active"
     REVOKED = "revoked"
+    COMPLETED = "completed"

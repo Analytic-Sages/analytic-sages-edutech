@@ -14,6 +14,7 @@ from app.db.session import Base
 
 if TYPE_CHECKING:
     from app.models.course import Course
+    from app.models.lms import LessonProgress
     from app.models.payment import Payment
     from app.models.user import User
 
@@ -42,6 +43,8 @@ class Enrollment(Base):
     enrolled_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_activity_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -49,3 +52,8 @@ class Enrollment(Base):
     user: Mapped[User] = relationship()
     course: Mapped[Course] = relationship(back_populates="enrollments")
     payment: Mapped[Payment | None] = relationship()
+    lesson_progress: Mapped[list[LessonProgress]] = relationship(
+        "LessonProgress",
+        back_populates="enrollment",
+        cascade="all, delete-orphan",
+    )

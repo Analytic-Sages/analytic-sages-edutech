@@ -93,6 +93,10 @@ export function DashboardContent() {
   const firstName = user?.full_name?.split(" ")[0] || user?.email?.split("@")[0] || "there";
   const continueCourse = items[0]?.course;
   const courseCount = items.length;
+  const avgProgress =
+    courseCount > 0
+      ? Math.round(items.reduce((sum, item) => sum + (item.course.progress ?? 0), 0) / courseCount)
+      : 0;
 
   if (loading) {
     return (
@@ -138,14 +142,14 @@ export function DashboardContent() {
           title="Active enrollments"
           value={courseCount}
           icon="trending"
-          description="confirmed purchases"
+          description="courses in progress"
         />
-        <StatsCard title="Certificates" value={courseCount > 0 ? 1 : 0} icon="award" description="verified credentials" />
+        <StatsCard title="Certificates" value={0} icon="award" description="not issued yet" />
         <StatsCard
           title="Avg. progress"
-          value={courseCount > 0 ? "45%" : "0%"}
+          value={`${avgProgress}%`}
           icon="clock"
-          description="lesson tracking active"
+          description="lesson tracking"
         />
       </div>
 
@@ -214,11 +218,11 @@ export function DashboardContent() {
             <div>
               <h3 className="font-heading text-lg font-semibold">Start learning</h3>
               <p className="text-sm text-muted-foreground">
-                You don&apos;t have any enrollments yet. Browse courses and complete checkout.
+                You haven&apos;t enrolled in any courses yet.
               </p>
             </div>
             <ButtonLink href="/courses" className="bg-brand-orange text-white hover:bg-brand-orange/90">
-              Browse courses
+              Explore Free Courses
             </ButtonLink>
           </CardContent>
         </Card>
@@ -234,9 +238,9 @@ export function DashboardContent() {
         {items.length === 0 ? (
           <EmptyState
             icon={<BookOpen className="size-5" />}
-            title="No courses yet"
-            description="After a successful payment, your courses will show up here."
-            action={{ label: "Explore courses", href: "/explore" }}
+            title="You haven't enrolled in any courses yet."
+            description="Explore a free self-paced course to start learning."
+            action={{ label: "Explore Free Courses", href: "/courses" }}
           />
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

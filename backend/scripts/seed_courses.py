@@ -10,6 +10,7 @@ import sys
 import uuid
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+sys.path.insert(0, os.path.dirname(__file__))
 
 from sqlalchemy import select
 
@@ -125,9 +126,13 @@ def main() -> None:
                 )
             )
             created += 1
+        from seed_self_paced import seed_dune_course
+
+        seed_dune_course(db)
         db.commit()
         print(f"Seeded courses. Newly created: {created}. Total catalog: {len(COURSES)}.")
         print(f"Live for checkout: {', '.join(sorted(LIVE_SLUGS))}.")
+        print("Seeded free self-paced course: dune-analytics-practical-sql-dashboard-techniques.")
     finally:
         db.close()
 

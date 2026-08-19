@@ -24,7 +24,11 @@ const difficultyColors = {
 
 export function CourseCard({ course, variant = "catalog", className }: CourseCardProps) {
   const href = variant === "enrolled" ? getContinueHref(course) : `/courses/${course.slug}`;
-  const enrolledCta = getFirstLesson(course) ? "Continue" : "Open course";
+  const enrolledCta = course.completed
+    ? "Review Course"
+    : getFirstLesson(course) || course.resumeLessonSlug
+      ? "Continue Learning"
+      : "Open course";
 
   const toolTags = course.skills.slice(0, 3);
   const description =
@@ -127,21 +131,30 @@ export function CourseCard({ course, variant = "catalog", className }: CourseCar
             {course.instructor.name}
           </span>
         </div>
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <Star className="size-3.5 fill-brand-orange text-brand-orange" />
-            {course.rating}
-          </span>
-          <span className="flex items-center gap-1">
-            <Users className="size-3.5" />
-            {course.studentsCount.toLocaleString()}
-          </span>
-        </div>
+        {variant !== "path" && course.rating > 0 && (
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Star className="size-3.5 fill-brand-orange text-brand-orange" />
+              {course.rating}
+            </span>
+            {course.studentsCount > 0 && (
+              <span className="flex items-center gap-1">
+                <Users className="size-3.5" />
+                {course.studentsCount.toLocaleString()}
+              </span>
+            )}
+          </div>
+        )}
         {variant === "enrolled" && course.progress !== undefined && (
           <div className="space-y-1.5">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Progress</span>
-              <span className="font-medium">{course.progress}%</span>
+              <span className="font-medium">
+                {course.progress}%
+                {course.lessonsTotal
+                  ? ` · ${course.lessonsCompleted ?? 0} / ${course.lessonsTotal} lessons`
+                  : ""}
+              </span>
             </div>
             <Progress value={course.progress} className="h-1.5" />
           </div>
@@ -151,6 +164,10 @@ export function CourseCard({ course, variant = "catalog", className }: CourseCar
         {course.comingSoon ? (
           <span className="rounded-full bg-brand-orange/10 px-3 py-1 text-sm font-semibold text-brand-orange">
             Launching soon
+          </span>
+        ) : course.isFree || course.price === 0 ? (
+          <span className="font-heading text-lg font-bold text-brand-navy dark:text-brand-orange">
+            FREE
           </span>
         ) : (
           <span className="font-heading text-lg font-bold text-brand-navy dark:text-brand-orange">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { ArrowRight, Check, ChevronUp, Database, Loader2, X } from "lucide-react";
 import { ProgramDuneGrid } from "@/components/marketing/program-dune-grid";
 import { ProgramTestimonialCarousel } from "@/components/marketing/program-testimonial-carousel";
@@ -80,42 +81,56 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
 
   return (
     <div className="bg-white pb-24 text-foreground md:pb-0">
-      <section className="mx-auto max-w-4xl px-4 py-16 text-center sm:px-6 sm:py-20 lg:px-8">
-        <p className="text-sm font-semibold uppercase tracking-[0.14em] text-brand-orange">
-          {program.eyebrow}
-        </p>
-        <h1 className="mt-4 font-heading text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-          {program.headline}
-        </h1>
-        <p className="mx-auto mt-5 max-w-2xl text-lg text-muted-foreground sm:text-xl">
-          {program.support}
-        </p>
-        {loading ? (
-          <p className="mt-6 inline-flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            Loading cohort dates…
-          </p>
-        ) : (
-          <p className="mt-6 text-sm text-muted-foreground sm:text-base">
-            {[
-              deadline ? `Registration closes: ${deadline}` : null,
-              startDate ? `Classes start: ${startDate}` : null,
-              "Fully remote",
-              "Live sessions",
-            ]
-              .filter(Boolean)
-              .join("  ·  ")}
-          </p>
-        )}
-        <div className="mt-8">
-          <ButtonLink
-            href="#register"
-            size="lg"
-            className="h-12 rounded-full bg-brand-orange px-10 text-base text-white hover:bg-brand-orange/90"
-          >
-            Register for Cohort 9
-            <ArrowRight className="ml-2 size-4" />
-          </ButtonLink>
+      <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
+        <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="text-center lg:text-left">
+            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-brand-orange">
+              {program.eyebrow}
+            </p>
+            <h1 className="mt-4 font-heading text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
+              {program.headline}
+            </h1>
+            <p className="mx-auto mt-5 max-w-2xl text-lg text-muted-foreground sm:text-xl lg:mx-0">
+              {program.support}
+            </p>
+            {loading ? (
+              <p className="mt-6 inline-flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" />
+                Loading cohort dates…
+              </p>
+            ) : (
+              <p className="mt-6 text-sm text-muted-foreground sm:text-base">
+                {[
+                  deadline ? `Registration closes: ${deadline}` : null,
+                  startDate ? `Classes start: ${startDate}` : null,
+                  "Fully remote",
+                  "Live sessions",
+                ]
+                  .filter(Boolean)
+                  .join("  ·  ")}
+              </p>
+            )}
+            <div className="mt-8">
+              <ButtonLink
+                href="#register"
+                size="lg"
+                className="h-12 rounded-full bg-brand-orange px-10 text-base text-white hover:bg-brand-orange/90"
+              >
+                Register for Cohort 9
+                <ArrowRight className="ml-2 size-4" />
+              </ButtonLink>
+            </div>
+          </div>
+          <div className="relative aspect-[16/10] overflow-hidden rounded-2xl border bg-brand-surface shadow-card">
+            <Image
+              src={program.postcardImage}
+              alt={`${program.headline} course postcard`}
+              fill
+              className="object-cover"
+              priority
+              sizes="(max-width: 1024px) 100vw, 50vw"
+            />
+          </div>
         </div>
       </section>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Calendar, Loader2, Radio, Users } from "lucide-react";
 import { SectionBackground } from "@/components/marketing/section-background";
@@ -8,7 +9,7 @@ import { ButtonLink } from "@/components/ui/button-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ApiError, listPublicCohorts, type PublicCohortCard } from "@/lib/api";
 import { formatPrice } from "@/lib/mock-data";
-import { getProgramPageHref } from "@/lib/program-pages";
+import { getProgramPageHref, getProgramPostcard } from "@/lib/program-pages";
 import { cn } from "@/lib/utils";
 
 function formatWhen(iso: string | null) {
@@ -147,9 +148,21 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
   const when = formatWhen(cohort.next_session_starts_at);
   const isLive = cohort.next_session_phase === "live";
   const programHref = getProgramPageHref(cohort.slug);
+  const postcard = getProgramPostcard(cohort.slug);
 
   return (
-    <Card className="shadow-card">
+    <Card className="overflow-hidden shadow-card">
+      {postcard && (
+        <div className="relative aspect-[16/10] bg-brand-surface">
+          <Image
+            src={postcard}
+            alt={`${cohort.name} postcard`}
+            fill
+            className="object-cover"
+            sizes="(max-width: 1024px) 100vw, 50vw"
+          />
+        </div>
+      )}
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-md bg-brand-orange/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-brand-orange">

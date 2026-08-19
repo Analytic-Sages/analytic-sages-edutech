@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { ArrowRight, Calendar, Loader2 } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatPrice } from "@/lib/mock-data";
-import { getProgramPageHref } from "@/lib/program-pages";
+import { getProgramPageHref, getProgramPostcard } from "@/lib/program-pages";
 import { listPublicCohorts, type PublicCohortCard } from "@/lib/api";
 
 function formatDate(iso: string | null) {
@@ -82,8 +83,20 @@ export function HomeInstructorLedSection() {
           <div className="mt-12 grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
             {cohorts.map((cohort) => {
               const programHref = getProgramPageHref(cohort.slug);
+              const postcard = getProgramPostcard(cohort.slug);
               return (
-              <Card key={cohort.id} className="shadow-card">
+              <Card key={cohort.id} className="overflow-hidden shadow-card">
+                {postcard && (
+                  <div className="relative aspect-[16/10] bg-brand-surface">
+                    <Image
+                      src={postcard}
+                      alt={`${cohort.name} postcard`}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 1024px) 100vw, 33vw"
+                    />
+                  </div>
+                )}
                 <CardHeader>
                   <div className="mb-2 flex flex-wrap gap-2">
                     {cohort.next_session_phase === "live" ? (

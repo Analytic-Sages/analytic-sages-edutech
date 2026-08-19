@@ -1,23 +1,68 @@
+import type { Metadata } from "next";
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Image from "next/image";
-import { Award, CheckCircle, Clock, Star, Users } from "lucide-react";
+import { CheckCircle, Clock, Star, Users } from "lucide-react";
+import { SelfPacedCourseLanding } from "@/components/course/self-paced-course-landing";
+import { CourseEnrollCta } from "@/components/course/course-enroll-cta";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { CourseEnrollCta } from "@/components/course/course-enroll-cta";
+import { ApiError, getSelfPacedCourse, type SelfPacedCoursePublic } from "@/lib/api";
 import { getCourseBySlug } from "@/lib/mock-data";
+import { PUBLIC_SITE_ORIGIN } from "@/lib/program-pages";
+
+export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ slug: string }> };
 
-export async function generateMetadata({ params }: Props) {
+async function loadSelfPaced(slug: string): Promise<SelfPacedCoursePublic | null> {
+  try {
+    return await getSelfPacedCourse(slug);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    return null;
+  }
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
+  const live = await loadSelfPaced(slug);
+  if (live) {
+    const url = `${PUBLIC_SITE_ORIGIN}/courses/${live.slug}`;
+    const title = live.title;
+    const description =
+      live.description ||
+      "Learn practical Dune SQL and dashboard techniques through this free self-paced course from Analytic Sages.";
+    return {
+      title,
+      description,
+      alternates: { canonical: url },
+      openGraph: {
+        title: `${live.title} | Analytic Sages`,
+        description,
+        url,
+        siteName: "Analytic Sages",
+        type: "website",
+      },
+    };
+  }
   const course = getCourseBySlug(slug);
   return { title: course?.title ?? "Course" };
 }
 
 export default async function CourseDetailsPage({ params }: Props) {
   const { slug } = await params;
+  const live = await loadSelfPaced(slug);
+  if (live) {
+    return (
+      <Suspense>
+        <SelfPacedCourseLanding initialCourse={live} />
+      </Suspense>
+    );
+  }
+
   const course = getCourseBySlug(slug);
   if (!course) notFound();
 
@@ -149,15 +194,6 @@ export default async function CourseDetailsPage({ params }: Props) {
                   <li key={req}>• {req}</li>
                 ))}
               </ul>
-            </CardContent>
-          </Card>
-          <Card className="border-brand-navy/20 bg-brand-navy/5 shadow-card">
-            <CardContent className="pt-6">
-              <Award className="size-8 text-brand-navy" />
-              <h3 className="mt-3 font-heading font-semibold">Certificate included</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Earn a verified certificate upon completing all lessons and passing assessments.
-              </p>
             </CardContent>
           </Card>
         </div>

@@ -1,6 +1,7 @@
 from app.models.classroom import Cohort, CohortMember, LiveSession
 from app.models.course import Course
 from app.models.enrollment import Enrollment
+from app.models.lms import CourseModule, Lesson, LessonProgress
 from app.models.payment import Payment
 from app.models.user import (
     EmailVerificationToken,
@@ -15,6 +16,9 @@ __all__ = [
     "EmailVerificationToken",
     "PasswordResetToken",
     "Course",
+    "CourseModule",
+    "Lesson",
+    "LessonProgress",
     "Payment",
     "Enrollment",
     "Cohort",

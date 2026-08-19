@@ -40,6 +40,7 @@ export type ProgramPageContent = {
   testimonials: TestimonialVideo[];
   moreTestimonialsUrl: string;
   faqs: ProgramFaq[];
+  postcardImage: string;
 };
 
 const COHORT_9_PAGE_SLUG = "cohort-9-sql-blockchain-data-analytics";
@@ -56,6 +57,7 @@ const cohort9: ProgramPageContent = {
   seoDescription:
     "Learn SQL and practical blockchain data analytics through instructor-led training, real on-chain datasets, hands-on projects and expert guidance with Analytic Sages.",
   canonicalPath: `/programs/${COHORT_9_PAGE_SLUG}`,
+  postcardImage: "/cohort-9-sql-blockchain-data-analytics.png",
   format: "Live weekly sessions + recorded materials + community",
   timeCommitment: "5-8 hours per week",
   paymentOptions: "Paystack (cards and bank transfer) or crypto via NOWPayments. One-time payment.",
@@ -214,6 +216,10 @@ export function listProgramPageSlugs(): string[] {
 export function getProgramPageHref(cohortApiSlug: string): string | null {
   const page = programPages.find((item) => item.cohortSlug === cohortApiSlug);
   return page ? `/programs/${page.pageSlug}` : null;
+}
+
+export function getProgramPostcard(cohortApiSlug: string): string | null {
+  return programPages.find((item) => item.cohortSlug === cohortApiSlug)?.postcardImage ?? null;
 }
 
 export const PUBLIC_SITE_ORIGIN = "https://analyticsages.io";

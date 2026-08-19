@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Filter, Layers, RefreshCw, Search, Sparkles } from "lucide-react";
 import { CourseCard } from "@/components/course/course-card";
+import { SelfPacedCatalogCard } from "@/components/course/self-paced-catalog-card";
 import { SectionBackground } from "@/components/marketing/section-background";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { courses } from "@/lib/mock-data";
+import { listSelfPacedCourses, type SelfPacedCourseCard } from "@/lib/api";
 
 const eyebrowClass =
   "text-lg font-bold uppercase tracking-[0.12em] text-brand-orange sm:text-xl";
@@ -24,6 +26,21 @@ export function CatalogPageContent() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [level, setLevel] = useState("all");
+  const [freeCourses, setFreeCourses] = useState<SelfPacedCourseCard[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    listSelfPacedCourses()
+      .then((rows) => {
+        if (!cancelled) setFreeCourses(rows.filter((course) => course.is_free));
+      })
+      .catch(() => {
+        if (!cancelled) setFreeCourses([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const categories = ["all", ...new Set(courses.map((c) => c.category))];
   const levels = ["all", "Beginner", "Intermediate", "Advanced"];
@@ -55,8 +72,8 @@ export function CatalogPageContent() {
             Learn on your schedule.
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-            Our on-demand course library is being built. Browse the catalog below. Each path is
-            marked Launching soon until the self-paced player is ready.
+            Start with a free self-paced course, then browse upcoming on-demand programs. Paid
+            library paths stay marked Launching soon until the premium player is ready.
           </p>
           <p className="mt-4 text-sm text-muted-foreground">
             Want to learn live with experts now?{" "}
@@ -135,6 +152,21 @@ export function CatalogPageContent() {
           </div>
         </div>
 
+        {freeCourses.length > 0 && (
+          <section className="mb-12">
+            <h2 className="font-heading text-2xl font-bold tracking-tight">Free courses</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Enroll at no cost. Watch lessons on Analytic Sages and track your progress.
+            </p>
+            <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {freeCourses.map((course) => (
+                <SelfPacedCatalogCard key={course.id} course={course} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        <h2 className="mb-4 font-heading text-2xl font-bold tracking-tight">Coming soon</h2>
         {filteredCourses.length === 0 ? (
           <div className="rounded-2xl border border-dashed bg-background/60 py-16 text-center">
             <p className="font-heading text-lg font-semibold">No matching courses found</p>

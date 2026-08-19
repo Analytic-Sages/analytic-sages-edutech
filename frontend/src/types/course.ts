@@ -46,6 +46,11 @@ export type Course = {
   progress?: number;
   /** When true, course is listed but not open for enrollment yet. */
   comingSoon?: boolean;
+  isFree?: boolean;
+  resumeLessonSlug?: string;
+  completed?: boolean;
+  lessonsCompleted?: number;
+  lessonsTotal?: number;
 };
 
 export type Certificate = {

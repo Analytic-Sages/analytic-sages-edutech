@@ -18,6 +18,7 @@ from app.services.google_oauth import GoogleOAuthService
 from app.services.admin import AdminService
 from app.services.classroom import ClassroomService
 from app.services.payments import PaymentService
+from app.services.self_paced import SelfPacedService
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -54,6 +55,10 @@ def get_payment_service(
     email_service: EmailService = Depends(get_email_service),
 ) -> PaymentService:
     return PaymentService(db, settings, email_service)
+
+
+def get_self_paced_service(db: Session = Depends(get_db)) -> SelfPacedService:
+    return SelfPacedService(db)
 
 
 def get_classroom_service(
@@ -101,6 +106,26 @@ def get_current_user(
     return user
 
 
+def get_current_user_optional(
+    db: Session = Depends(get_db),
+    security: SecurityService = Depends(get_security_service),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+) -> User | None:
+    if not credentials or credentials.scheme.lower() != "bearer":
+        return None
+    try:
+        payload = security.decode_access_token(credentials.credentials)
+        if payload.get("type") != "access":
+            return None
+        user_id = UUID(payload["sub"])
+    except (jwt.PyJWTError, KeyError, ValueError):
+        return None
+    user = db.get(User, user_id)
+    if not user or not user.is_active:
+        return None
+    return user
+
+
 def require_roles(*roles: UserRole):
     def dependency(current_user: User = Depends(get_current_user)) -> User:
         if current_user.role not in roles:
@@ -118,3 +143,4 @@ require_instructor = require_roles(UserRole.ADMIN, UserRole.INSTRUCTOR)
 require_student = require_roles(UserRole.ADMIN, UserRole.INSTRUCTOR, UserRole.STUDENT)
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+OptionalUser = Annotated[User | None, Depends(get_current_user_optional)]

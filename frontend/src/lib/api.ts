@@ -184,9 +184,133 @@ export type PaymentPublic = {
 export type EnrollmentPublic = {
   id: string;
   course_id: string;
-  status: "active" | "revoked";
+  status: "active" | "revoked" | "completed";
   enrolled_at: string;
   payment_id: string | null;
+};
+
+export type SelfPacedLessonOutline = {
+  id: string;
+  slug: string;
+  title: string;
+  subtitle: string | null;
+  duration_seconds: number | null;
+  order_index: number;
+  video_provider: string;
+  video_id: string | null;
+  completed: boolean;
+};
+
+export type SelfPacedModuleOutline = {
+  id: string;
+  title: string;
+  description: string;
+  order_index: number;
+  lessons: SelfPacedLessonOutline[];
+};
+
+export type SelfPacedCourseCard = {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  thumbnail: string | null;
+  category: string;
+  difficulty: string;
+  duration: string;
+  estimated_minutes: number;
+  lessons_count: number;
+  price: number;
+  currency: string;
+  is_free: boolean;
+  delivery_type: string;
+  certificate_enabled: boolean;
+};
+
+export type SelfPacedCoursePublic = SelfPacedCourseCard & {
+  long_description: string;
+  published: boolean;
+  enrolled: boolean;
+  completed: boolean;
+  progress_percent: number;
+  lessons_completed: number;
+  resume_lesson_slug: string | null;
+  modules: SelfPacedModuleOutline[];
+};
+
+export type SelfPacedLessonDetail = {
+  id: string;
+  slug: string;
+  title: string;
+  subtitle: string | null;
+  description: string;
+  module_id: string;
+  module_title: string;
+  lesson_number: number;
+  lessons_total: number;
+  duration_seconds: number | null;
+  video_provider: string;
+  video_id: string | null;
+  what_you_learn: string[];
+  key_concepts: string[];
+  resources: { label: string; url: string }[];
+  completed: boolean;
+  prev_slug: string | null;
+  next_slug: string | null;
+  course_title: string;
+  course_slug: string;
+  course_completed: boolean;
+  progress_percent: number;
+  lessons_completed: number;
+};
+
+export type SelfPacedEnrollment = {
+  id: string;
+  course_id: string;
+  status: "active" | "revoked" | "completed";
+  enrolled_at: string;
+  completed_at: string | null;
+  last_activity_at: string | null;
+  progress_percent: number;
+  lessons_completed: number;
+  lessons_total: number;
+  resume_lesson_slug: string | null;
+  course: SelfPacedCourseCard;
+};
+
+export type SelfPacedEnrollResponse = {
+  enrollment_id: string;
+  course_slug: string;
+  already_enrolled: boolean;
+  resume_lesson_slug: string | null;
+  status: string;
+};
+
+export type LessonCompleteResponse = {
+  lesson_slug: string;
+  completed: boolean;
+  course_completed: boolean;
+  progress_percent: number;
+  lessons_completed: number;
+  lessons_total: number;
+  next_slug: string | null;
+};
+
+export type AdminCourseRow = {
+  id: string;
+  slug: string;
+  title: string;
+  published: boolean;
+  is_free: boolean;
+  delivery_type: string;
+  price: number;
+  currency: string;
+  lessons_count: number;
+  modules_count: number;
+  enrollments_count: number;
+  completions_count: number;
+  avg_progress_percent: number;
+  last_activity_at: string | null;
 };
 
 export type AuthUser = {
@@ -247,6 +371,50 @@ export function listApiCourses() {
 
 export function getMyEnrollments() {
   return apiFetch<EnrollmentPublic[]>("/api/v1/me/enrollments");
+}
+
+export function listSelfPacedCourses() {
+  return apiFetch<SelfPacedCourseCard[]>("/api/v1/self-paced/courses", { auth: false });
+}
+
+export function getSelfPacedCourse(slug: string) {
+  return apiFetch<SelfPacedCoursePublic>(
+    `/api/v1/self-paced/courses/${encodeURIComponent(slug)}`
+  );
+}
+
+export function enrollSelfPacedCourse(slug: string) {
+  return apiFetch<SelfPacedEnrollResponse>(
+    `/api/v1/self-paced/courses/${encodeURIComponent(slug)}/enroll`,
+    { method: "POST" }
+  );
+}
+
+export function getSelfPacedLearn(slug: string) {
+  return apiFetch<SelfPacedCoursePublic>(
+    `/api/v1/self-paced/courses/${encodeURIComponent(slug)}/learn`
+  );
+}
+
+export function getSelfPacedLesson(courseSlug: string, lessonSlug: string) {
+  return apiFetch<SelfPacedLessonDetail>(
+    `/api/v1/self-paced/courses/${encodeURIComponent(courseSlug)}/lessons/${encodeURIComponent(lessonSlug)}`
+  );
+}
+
+export function completeSelfPacedLesson(courseSlug: string, lessonSlug: string) {
+  return apiFetch<LessonCompleteResponse>(
+    `/api/v1/self-paced/courses/${encodeURIComponent(courseSlug)}/lessons/${encodeURIComponent(lessonSlug)}/complete`,
+    { method: "POST" }
+  );
+}
+
+export function getMySelfPacedEnrollments() {
+  return apiFetch<SelfPacedEnrollment[]>("/api/v1/self-paced/me/enrollments");
+}
+
+export function getAdminCourses() {
+  return apiFetch<AdminCourseRow[]>("/api/v1/admin/courses");
 }
 
 export function getMe() {

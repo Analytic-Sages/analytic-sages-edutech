@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 
-from app.api.deps import get_admin_service, get_auth_service, require_admin
+from app.api.deps import get_admin_service, get_auth_service, get_self_paced_service, require_admin
 from app.models.user import User
 from app.schemas.admin import (
     AdminCohortDetail,
@@ -10,8 +10,10 @@ from app.schemas.admin import (
     InviteInstructorRequest,
     InviteInstructorResponse,
 )
+from app.schemas.self_paced import AdminCourseAnalytics, AdminCourseRow
 from app.services.admin import AdminService
 from app.services.auth import AuthService
+from app.services.self_paced import SelfPacedService
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -40,6 +42,23 @@ def admin_payments(
     limit: int = Query(default=200, ge=1, le=500),
 ) -> list[AdminPaymentRow]:
     return admin.list_payments(limit=limit)
+
+
+@router.get("/courses", response_model=list[AdminCourseRow])
+def admin_courses(
+    _: User = Depends(require_admin),
+    lms: SelfPacedService = Depends(get_self_paced_service),
+) -> list[AdminCourseRow]:
+    return lms.list_admin_courses()
+
+
+@router.get("/courses/{slug}/analytics", response_model=AdminCourseAnalytics)
+def admin_course_analytics(
+    slug: str,
+    _: User = Depends(require_admin),
+    lms: SelfPacedService = Depends(get_self_paced_service),
+) -> AdminCourseAnalytics:
+    return lms.course_analytics(slug)
 
 
 @router.get("/cohorts/{slug}", response_model=AdminCohortDetail)

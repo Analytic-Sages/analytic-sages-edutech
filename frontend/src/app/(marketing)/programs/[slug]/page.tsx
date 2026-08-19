@@ -29,6 +29,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url,
       siteName: "Analytic Sages",
       type: "website",
+      images: [{ url: `${PUBLIC_SITE_ORIGIN}${program.postcardImage}` }],
     },
   };
 }

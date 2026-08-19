@@ -84,9 +84,9 @@ export function MyCoursesContent() {
       {!loading && authed && !error && items.length === 0 && (
         <EmptyState
           icon={<BookOpen className="size-5" />}
-          title="No enrollments yet"
-          description="Purchase a course to unlock it here. Access only appears after payment is confirmed."
-          action={{ label: "Browse courses", href: "/courses" }}
+          title="You haven't enrolled in any courses yet."
+          description="Explore a free self-paced course to start learning."
+          action={{ label: "Explore Free Courses", href: "/courses" }}
         />
       )}
 

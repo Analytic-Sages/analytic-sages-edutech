@@ -1,12 +1,30 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { CourseCard } from "@/components/course/course-card";
+import { SelfPacedCatalogCard } from "@/components/course/self-paced-catalog-card";
 import { ButtonLink } from "@/components/ui/button-link";
+import { listSelfPacedCourses, type SelfPacedCourseCard } from "@/lib/api";
 import { getSelfPacedCourses } from "@/lib/mock-data";
 
 export function HomeSelfPacedSection() {
-  const courses = getSelfPacedCourses().slice(0, 3);
+  const comingSoon = getSelfPacedCourses().slice(0, 2);
+  const [freeCourses, setFreeCourses] = useState<SelfPacedCourseCard[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    listSelfPacedCourses()
+      .then((rows) => {
+        if (!cancelled) setFreeCourses(rows.filter((course) => course.is_free));
+      })
+      .catch(() => {
+        if (!cancelled) setFreeCourses([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <section className="relative py-20 sm:py-28">
@@ -17,11 +35,11 @@ export function HomeSelfPacedSection() {
               Self-Paced Learning
             </p>
             <h2 className="mt-3 font-heading text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-              On-demand library
+              Learn on your schedule
             </h2>
             <p className="mt-3 max-w-xl text-lg text-muted-foreground">
-              Explore the courses we&apos;re shipping next. Each path is marked Launching soon
-              until the self-paced player is ready.
+              Start with a free Dune course. Additional on-demand programs are marked Coming soon
+              until the premium player is ready.
             </p>
           </div>
           <ButtonLink href="/courses" variant="outline" className="shrink-0">
@@ -30,7 +48,10 @@ export function HomeSelfPacedSection() {
           </ButtonLink>
         </div>
         <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {courses.map((course) => (
+          {freeCourses.map((course) => (
+            <SelfPacedCatalogCard key={course.id} course={course} />
+          ))}
+          {comingSoon.map((course) => (
             <CourseCard key={course.id} course={course} />
           ))}
         </div>
