@@ -32,7 +32,7 @@ export default function HomePage() {
                 Build practical expertise across data, AI, quantitative finance, blockchain, and
                 emerging technologies through expert-led and self-paced learning.
               </p>
-              <div className="mt-12 flex flex-col gap-4 sm:flex-row sm:gap-5">
+              <div className="mt-12">
                 <ButtonLink
                   href="/programs"
                   size="lg"
@@ -40,14 +40,6 @@ export default function HomePage() {
                 >
                   Explore Programs
                   <ArrowRight className="ml-2 size-4 transition-transform group-hover:translate-x-1" />
-                </ButtonLink>
-                <ButtonLink
-                  href="/instructor-led"
-                  size="lg"
-                  variant="outline"
-                  className="h-14 px-10 text-base transition-all hover:-translate-y-0.5 hover:shadow-elevated"
-                >
-                  View Upcoming Training
                 </ButtonLink>
               </div>
             </div>
