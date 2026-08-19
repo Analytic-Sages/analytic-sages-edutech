@@ -1,4 +1,4 @@
-import type { Certificate, Course, Module, Quiz } from "@/types/course";
+import type { Course, Module, Quiz } from "@/types/course";
 
 /** Placeholder curriculum until LMS modules ship from the API. */
 function starterModules(
@@ -518,15 +518,6 @@ export const courses: Course[] = [
       { id: "l2", title: "Building Your First Backtest", duration: "30 min" },
       { id: "l3", title: "Risk Metrics That Matter", duration: "24 min" },
     ]),
-  },
-];
-
-export const certificates: Certificate[] = [
-  {
-    id: "cert-1",
-    courseTitle: "SQL for Blockchain Analytics",
-    issuedAt: "2025-11-15",
-    certificateId: "AS-2025-00142",
   },
 ];
 

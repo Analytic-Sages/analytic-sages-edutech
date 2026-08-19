@@ -144,7 +144,7 @@ export function DashboardContent() {
           icon="trending"
           description="courses in progress"
         />
-        <StatsCard title="Certificates" value={0} icon="award" description="not issued yet" />
+        <StatsCard title="Certificates" value="—" icon="award" description="Coming soon" />
         <StatsCard
           title="Avg. progress"
           value={`${avgProgress}%`}
@@ -227,6 +227,19 @@ export function DashboardContent() {
           </CardContent>
         </Card>
       )}
+
+      <section className="mb-8">
+        <h2 className="mb-4 font-heading text-lg font-semibold">Certificates</h2>
+        <Card className="shadow-card">
+          <CardContent className="py-10 text-center">
+            <p className="font-heading text-lg font-semibold">Coming soon</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Platform certificates are not issued yet. Completing a course still gives you the work
+              you can show.
+            </p>
+          </CardContent>
+        </Card>
+      </section>
 
       <section>
         <div className="mb-4 flex items-center justify-between">
