@@ -190,7 +190,7 @@ function CommunityQaState() {
           </span>
           <div className="rounded-xl rounded-tl-sm border border-brand-navy/15 bg-brand-navy/5 px-3.5 py-2.5">
             <p className="text-xs font-semibold text-brand-navy dark:text-brand-orange">
-              Ada · Lead Instructor
+              Instructor
             </p>
             <p className="mt-1 text-sm">
               Daily buckets smooth out block-level noise, so trends are easier to read on a

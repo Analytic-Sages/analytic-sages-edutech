@@ -8,7 +8,6 @@ import { CourseEnrollCta } from "@/components/course/course-enroll-cta";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ApiError, getSelfPacedCourse, type SelfPacedCoursePublic } from "@/lib/api";
 import { getCourseBySlug } from "@/lib/mock-data";
 import { PUBLIC_SITE_ORIGIN } from "@/lib/program-pages";
@@ -168,22 +167,6 @@ export default async function CourseDetailsPage({ params }: Props) {
         </div>
 
         <div className="space-y-6">
-          <Card className="shadow-card">
-            <CardHeader>
-              <CardTitle className="text-base">Instructor</CardTitle>
-            </CardHeader>
-            <CardContent className="flex items-center gap-3">
-              <Avatar className="size-12">
-                <AvatarFallback className="bg-brand-navy text-white">
-                  {course.instructor.avatar}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="font-medium">{course.instructor.name}</p>
-                <p className="text-sm text-muted-foreground">{course.instructor.title}</p>
-              </div>
-            </CardContent>
-          </Card>
           <Card className="shadow-card">
             <CardHeader>
               <CardTitle className="text-base">Requirements</CardTitle>

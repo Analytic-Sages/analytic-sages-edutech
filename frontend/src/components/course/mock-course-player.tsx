@@ -45,27 +45,7 @@ type DiscussionComment = {
   likes: number;
 };
 
-const initialComments: DiscussionComment[] = [
-  {
-    id: "c1",
-    author: "Dr. Alex Rivera",
-    avatar: "AR",
-    role: "Lead Instructor",
-    timeAgo: "2 hours ago",
-    content:
-      "Welcome to this lesson! Make sure to test your SQL query in the interactive sandbox tab below. Pay special attention to how gas prices spike during high volatility events.",
-    likes: 12,
-  },
-  {
-    id: "c2",
-    author: "Sarah Chen",
-    avatar: "SC",
-    timeAgo: "1 hour ago",
-    content:
-      "Loved the breakdown of internal transactions versus standard ETH transfers! The sandbox example really helped clarify Etherscan trace outputs.",
-    likes: 4,
-  },
-];
+const initialComments: DiscussionComment[] = [];
 
 export function MockCoursePlayer({ params }: Props) {
   const { slug, lessonId } = use(params);

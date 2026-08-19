@@ -123,14 +123,6 @@ export function CourseCard({ course, variant = "catalog", className }: CourseCar
             ))}
           </div>
         )}
-        <div className="flex items-center gap-2 border-t pt-3">
-          <div className="flex size-7 items-center justify-center rounded-full bg-brand-navy text-[10px] font-medium text-white">
-            {course.instructor.avatar}
-          </div>
-          <span className="truncate text-sm text-muted-foreground">
-            {course.instructor.name}
-          </span>
-        </div>
         {variant !== "path" && course.rating > 0 && (
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
