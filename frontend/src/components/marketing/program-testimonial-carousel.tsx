@@ -1,15 +1,19 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button-link";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import {
   toYouTubeEmbedSrc,
   toYouTubeThumbnail,
   type TestimonialVideo,
 } from "@/lib/testimonials";
 import { cn } from "@/lib/utils";
+
+const LOOP_COPIES = 3;
+const AUTO_PX_PER_FRAME = 0.45;
 
 export function ProgramTestimonialCarousel({
   items,
@@ -19,21 +23,71 @@ export function ProgramTestimonialCarousel({
   moreUrl: string;
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const pausedRef = useRef(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const reducedMotion = useReducedMotion();
 
-  const visible = items.filter((item) => item.youtubeUrl.trim() || item.name);
+  const visible = items.filter((item) => item.youtubeUrl.trim());
+  const looped = Array.from({ length: LOOP_COPIES }, (_, copy) =>
+    visible.map((item) => ({ item, copy })),
+  ).flat();
+
+  useEffect(() => {
+    pausedRef.current = Boolean(playingId) || reducedMotion;
+  }, [playingId, reducedMotion]);
+
+  useEffect(() => {
+    const node = scrollerRef.current;
+    if (!node || visible.length === 0 || reducedMotion) return;
+
+    const setWidth = () => node.scrollWidth / LOOP_COPIES;
+    node.scrollLeft = setWidth();
+
+    let frame = 0;
+    function tick() {
+      const el = scrollerRef.current;
+      if (!el) return;
+      const oneSet = el.scrollWidth / LOOP_COPIES;
+      if (!pausedRef.current && oneSet > 0) {
+        el.scrollLeft += AUTO_PX_PER_FRAME;
+        if (el.scrollLeft >= oneSet * 2) {
+          el.scrollLeft -= oneSet;
+        }
+      }
+      frame = window.requestAnimationFrame(tick);
+    }
+    frame = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(frame);
+  }, [reducedMotion, visible.length]);
+
   if (visible.length === 0) return null;
+
+  function cardWidth() {
+    const node = scrollerRef.current;
+    const card = node?.querySelector("[data-testimonial-card]");
+    return card instanceof HTMLElement ? card.offsetWidth + 24 : 320;
+  }
 
   function scrollByCard(direction: -1 | 1) {
     const node = scrollerRef.current;
     if (!node) return;
-    const card = node.querySelector("[data-testimonial-card]");
-    const width = card instanceof HTMLElement ? card.offsetWidth + 24 : node.clientWidth * 0.8;
-    node.scrollBy({ left: direction * width, behavior: "smooth" });
+    pausedRef.current = true;
+    node.scrollBy({ left: direction * cardWidth(), behavior: "smooth" });
+    window.setTimeout(() => {
+      if (!playingId) pausedRef.current = false;
+    }, 800);
   }
 
   return (
-    <div className="relative">
+    <div
+      className="relative"
+      onMouseEnter={() => {
+        pausedRef.current = true;
+      }}
+      onMouseLeave={() => {
+        if (!playingId) pausedRef.current = false;
+      }}
+    >
       <button
         type="button"
         aria-label="Previous testimonials"
@@ -53,18 +107,19 @@ export function ProgramTestimonialCarousel({
 
       <div
         ref={scrollerRef}
-        className="-mx-4 flex snap-x snap-mandatory gap-6 overflow-x-auto px-4 pb-4 sm:mx-0 sm:px-0"
+        className="-mx-4 flex gap-6 overflow-x-auto px-4 pb-4 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden"
       >
-        {visible.map((item) => {
+        {looped.map(({ item, copy }) => {
+          const slotId = `${item.id}-${copy}`;
           const embedSrc = toYouTubeEmbedSrc(item.youtubeUrl);
           const thumb = toYouTubeThumbnail(item.youtubeUrl);
-          const playing = playingId === item.id && embedSrc;
+          const playing = playingId === slotId && embedSrc;
 
           return (
             <article
-              key={item.id}
+              key={slotId}
               data-testimonial-card
-              className="w-[85%] shrink-0 snap-center sm:w-[calc((100%-3rem)/3)]"
+              className="w-[85%] shrink-0 sm:w-[calc((100%-3rem)/3)]"
             >
               <div className="relative aspect-video overflow-hidden rounded-xl border bg-brand-navy">
                 {playing ? (
@@ -78,7 +133,7 @@ export function ProgramTestimonialCarousel({
                 ) : (
                   <button
                     type="button"
-                    onClick={() => embedSrc && setPlayingId(item.id)}
+                    onClick={() => embedSrc && setPlayingId(slotId)}
                     className="group absolute inset-0"
                     aria-label={`Play testimonial from ${item.name}`}
                   >

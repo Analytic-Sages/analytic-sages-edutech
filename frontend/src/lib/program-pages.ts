@@ -31,6 +31,7 @@ export type ProgramPageContent = {
   paymentOptions: string;
   audienceFor: string[];
   audienceNotFor: string[];
+  learnTopics: { title: string; body: string }[];
   outcomesIntro: string;
   outcomes: string[];
   outcomeBonus: string;
@@ -50,14 +51,14 @@ const cohort9: ProgramPageContent = {
   eyebrow: "Instructor-Led Training · Cohort 9",
   headline: "SQL Blockchain Data Analytics",
   support:
-    "Learn to work with real blockchain data using SQL and build practical analytics projects — live classes, recorded materials, and a learning community.",
+    "Learn to work with real blockchain data using SQL and build practical analytics projects: live classes, recorded materials, and a learning community.",
   seoTitle: "SQL Blockchain Data Analytics",
   seoDescription:
     "Learn SQL and practical blockchain data analytics through instructor-led training, real on-chain datasets, hands-on projects and expert guidance with Analytic Sages.",
   canonicalPath: `/programs/${COHORT_9_PAGE_SLUG}`,
   format: "Live weekly sessions + recorded materials + community",
-  timeCommitment: "5–8 hours per week",
-  paymentOptions: "Paystack (cards and bank transfer) or crypto via NOWPayments — one-time payment",
+  timeCommitment: "5-8 hours per week",
+  paymentOptions: "Paystack (cards and bank transfer) or crypto via NOWPayments. One-time payment.",
   audienceFor: [
     "You're curious about blockchain but don't know where to start",
     "You want a practical, skill-based path in Web3 data",
@@ -66,11 +67,37 @@ const cohort9: ProgramPageContent = {
   ],
   audienceNotFor: [
     "You're looking for a get-rich-quick scheme",
-    "You can't commit 5–8 hours per week",
+    "You can't commit 5-8 hours per week",
+  ],
+  learnTopics: [
+    {
+      title: "SQL for Blockchain Data",
+      body: "Query wallets, transactions, and protocols like an analyst.",
+    },
+    {
+      title: "Onchain Analytics",
+      body: "Track whales, analyze protocol health, spot trends.",
+    },
+    {
+      title: "Research-Driven Reports",
+      body: "Write insights that investors and DAOs actually read.",
+    },
+    {
+      title: "Real Dashboard Projects",
+      body: "Build a portfolio of work you can show employers.",
+    },
+    {
+      title: "Live Sessions & Support",
+      body: "Learn with instructors and a community of peers.",
+    },
+    {
+      title: "Career Pathways",
+      body: "Freelance, full-time, or build your own tools.",
+    },
   ],
   outcomesIntro: "By the end of this program…",
   outcomes: [
-    "Build 2–3 complete dashboards (portfolio ready)",
+    "Build 2-3 complete dashboards (portfolio ready)",
     "Write a research report from scratch",
     "Query real blockchain data independently",
     "Present your findings with confidence",
@@ -80,7 +107,7 @@ const cohort9: ProgramPageContent = {
   duneDashboards: [
     {
       id: "d1",
-      title: "Aave V3 — 365 TVL",
+      title: "Aave V3 365 TVL",
       author: "cryptopanda01",
       embedSrc: "https://dune.com/embeds/6927509/10834449",
     },
@@ -120,9 +147,21 @@ const cohort9: ProgramPageContent = {
     },
     {
       id: "c9-t3",
-      name: "Analytic Sages learner",
-      role: "Student testimonial",
+      name: "Litoshi",
+      role: "Cohort 1 · Onchain Analyst",
       youtubeUrl: "https://www.youtube.com/embed/e6Od4Jeh9nM",
+    },
+    {
+      id: "c9-t4",
+      name: "Victoria Fubara",
+      role: "Cohort 7 · Blockchain Data Analyst",
+      youtubeUrl: "https://www.youtube.com/embed/NV3e8c2llTA",
+    },
+    {
+      id: "c9-t5",
+      name: "Favour Igbise",
+      role: "Blockchain Analyst",
+      youtubeUrl: "https://www.youtube.com/embed/w3Lvh8vWz58",
     },
   ],
   moreTestimonialsUrl: siteConfig.links.youtube,

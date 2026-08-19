@@ -74,7 +74,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
     ["Start Date", startDate],
     ["Format", program.format],
     ["Time Commitment", program.timeCommitment],
-    ["Price", priceLabel ? `${priceLabel} — one time payment` : null],
+    ["Price", priceLabel ? `${priceLabel} one-time payment` : null],
     ["Payment", program.paymentOptions],
   ];
 
@@ -116,6 +116,23 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
             Register for Cohort 9
             <ArrowRight className="ml-2 size-4" />
           </ButtonLink>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+        <h2 className="text-center font-heading text-3xl font-bold sm:text-4xl">
+          What You&apos;ll Learn
+        </h2>
+        <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {program.learnTopics.map((topic) => (
+            <div
+              key={topic.title}
+              className="rounded-xl border border-brand-navy/25 px-6 py-8 text-center"
+            >
+              <h3 className="font-heading text-lg font-bold">{topic.title}</h3>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{topic.body}</p>
+            </div>
+          ))}
         </div>
       </section>
 
