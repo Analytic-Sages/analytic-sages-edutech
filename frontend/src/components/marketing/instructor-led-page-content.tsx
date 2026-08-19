@@ -8,6 +8,7 @@ import { ButtonLink } from "@/components/ui/button-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ApiError, listPublicCohorts, type PublicCohortCard } from "@/lib/api";
 import { formatPrice } from "@/lib/mock-data";
+import { getProgramPageHref } from "@/lib/program-pages";
 import { cn } from "@/lib/utils";
 
 function formatWhen(iso: string | null) {
@@ -145,6 +146,7 @@ export function InstructorLedPageContent() {
 function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
   const when = formatWhen(cohort.next_session_starts_at);
   const isLive = cohort.next_session_phase === "live";
+  const programHref = getProgramPageHref(cohort.slug);
 
   return (
     <Card className="shadow-card">
@@ -207,7 +209,15 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
           )}
         </div>
         <div className="flex flex-wrap gap-3 pt-2">
-          {cohort.price > 0 ? (
+          {programHref ? (
+            <ButtonLink
+              href={programHref}
+              className={cn("bg-brand-orange text-white hover:bg-brand-orange/90")}
+            >
+              View program
+              <ArrowRight className="ml-1 size-4" />
+            </ButtonLink>
+          ) : cohort.price > 0 ? (
             <ButtonLink
               href={`/checkout/cohort/${cohort.slug}`}
               className={cn("bg-brand-orange text-white hover:bg-brand-orange/90")}

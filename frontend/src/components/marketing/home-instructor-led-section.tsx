@@ -5,6 +5,7 @@ import { ArrowRight, Calendar, Loader2 } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatPrice } from "@/lib/mock-data";
+import { getProgramPageHref } from "@/lib/program-pages";
 import { listPublicCohorts, type PublicCohortCard } from "@/lib/api";
 
 function formatDate(iso: string | null) {
@@ -79,7 +80,9 @@ export function HomeInstructorLedSection() {
           </Card>
         ) : (
           <div className="mt-12 grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
-            {cohorts.map((cohort) => (
+            {cohorts.map((cohort) => {
+              const programHref = getProgramPageHref(cohort.slug);
+              return (
               <Card key={cohort.id} className="shadow-card">
                 <CardHeader>
                   <div className="mb-2 flex flex-wrap gap-2">
@@ -117,18 +120,16 @@ export function HomeInstructorLedSection() {
                     </p>
                   )}
                   <ButtonLink
-                    href={
-                      cohort.price > 0
-                        ? `/checkout/cohort/${cohort.slug}`
-                        : "/instructor-led"
-                    }
+                    href={programHref ?? "/instructor-led"}
                     className="mt-2 bg-brand-orange text-white hover:bg-brand-orange/90"
                   >
-                    {cohort.price > 0 ? "Register" : "View cohort"}
+                    {programHref ? "Explore Cohort 9" : "View program"}
+                    <ArrowRight className="ml-2 size-4" />
                   </ButtonLink>
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

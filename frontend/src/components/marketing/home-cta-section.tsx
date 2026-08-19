@@ -1,6 +1,8 @@
 import { ArrowRight } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button-link";
 import { SectionBackground } from "@/components/marketing/section-background";
+import { getProgramPageHref } from "@/lib/program-pages";
+import { FEATURED_COHORT_SLUG } from "@/lib/auth-redirect";
 
 export function HomeCtaSection() {
   return (
@@ -22,11 +24,11 @@ export function HomeCtaSection() {
             </p>
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <ButtonLink
-                href="/instructor-led"
+                href={getProgramPageHref(FEATURED_COHORT_SLUG) ?? "/instructor-led"}
                 size="lg"
                 className="group h-14 bg-brand-orange px-10 text-base text-white shadow-elevated transition-all hover:-translate-y-0.5 hover:bg-brand-orange/90 hover:shadow-float"
               >
-                View live training
+                Explore Cohort 9
                 <ArrowRight className="ml-2 size-4 transition-transform group-hover:translate-x-1" />
               </ButtonLink>
               <ButtonLink
