@@ -251,3 +251,26 @@ def test_admin_courses_require_admin():
     user = _make_user(f"student-admin-{uuid.uuid4()}@example.com")
     assert client.get("/api/v1/admin/courses", headers=_auth(user)).status_code == 403
     assert client.get("/api/v1/admin/courses").status_code == 401
+
+
+def test_featured_dune_course_can_be_enrolled():
+    from app.services.seed_self_paced import DUNE_SLUG, seed_dune_course
+
+    db = SessionLocal()
+    try:
+        seed_dune_course(db)
+        db.commit()
+    finally:
+        db.close()
+
+    user = _make_user(f"dune-{uuid.uuid4()}@example.com")
+    listed = client.get("/api/v1/self-paced/courses")
+    assert listed.status_code == 200
+    assert any(row["slug"] == DUNE_SLUG for row in listed.json())
+
+    enrolled = client.post(
+        f"/api/v1/self-paced/courses/{DUNE_SLUG}/enroll",
+        headers=_auth(user),
+    )
+    assert enrolled.status_code == 200
+    assert enrolled.json()["already_enrolled"] is False

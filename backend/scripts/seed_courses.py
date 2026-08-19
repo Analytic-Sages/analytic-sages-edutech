@@ -126,7 +126,7 @@ def main() -> None:
                 )
             )
             created += 1
-        from seed_self_paced import seed_dune_course
+        from app.services.seed_self_paced import seed_dune_course
 
         seed_dune_course(db)
         db.commit()
