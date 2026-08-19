@@ -155,8 +155,9 @@ export function AuthForm({ mode }: AuthFormProps) {
       return;
     }
 
-    const startUrl = `${getApiBaseUrl()}/api/v1/auth/google?next=${encodeURIComponent(nextPath)}`;
-    window.location.assign(startUrl);
+    const startUrl = new URL("/api/v1/auth/google", getApiBaseUrl());
+    startUrl.searchParams.set("next", nextPath);
+    window.location.assign(startUrl.href);
   }
 
   const googleEnabled = providers?.google.enabled !== false;

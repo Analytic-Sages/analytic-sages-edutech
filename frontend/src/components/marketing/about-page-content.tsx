@@ -6,7 +6,6 @@ import { ArrowRight } from "lucide-react";
 import { SectionBackground } from "@/components/marketing/section-background";
 import { PatternBackground } from "@/components/marketing/pattern-background";
 import { ButtonLink } from "@/components/ui/button-link";
-import { siteConfig } from "@/config/site";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { cn } from "@/lib/utils";
 

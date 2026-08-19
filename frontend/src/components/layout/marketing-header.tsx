@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, Moon, Sun } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
@@ -10,17 +9,13 @@ import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { marketingNav } from "@/config/navigation";
-import { getAccessToken } from "@/lib/api";
+import { useIsSignedIn } from "@/hooks/use-access-token";
 import { cn } from "@/lib/utils";
 
 export function MarketingHeader() {
   const pathname = usePathname();
   const { toggleTheme } = useTheme();
-  const [signedIn, setSignedIn] = useState(false);
-
-  useEffect(() => {
-    setSignedIn(Boolean(getAccessToken()));
-  }, [pathname]);
+  const signedIn = useIsSignedIn();
 
   return (
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">

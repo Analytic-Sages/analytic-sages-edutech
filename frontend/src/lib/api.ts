@@ -9,9 +9,28 @@ export function getApiBaseUrl() {
   return API_URL;
 }
 
+const accessTokenListeners = new Set<() => void>();
+
 export function getAccessToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem(ACCESS_TOKEN_KEY);
+}
+
+export function subscribeAccessToken(listener: () => void) {
+  accessTokenListeners.add(listener);
+  if (typeof window !== "undefined") {
+    window.addEventListener("storage", listener);
+  }
+  return () => {
+    accessTokenListeners.delete(listener);
+    if (typeof window !== "undefined") {
+      window.removeEventListener("storage", listener);
+    }
+  };
+}
+
+function notifyAccessTokenListeners() {
+  accessTokenListeners.forEach((listener) => listener());
 }
 
 function writeSessionCookie(loggedIn: boolean) {
@@ -27,11 +46,13 @@ function writeSessionCookie(loggedIn: boolean) {
 export function setAccessToken(token: string) {
   localStorage.setItem(ACCESS_TOKEN_KEY, token);
   writeSessionCookie(true);
+  notifyAccessTokenListeners();
 }
 
 export function clearAccessToken() {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   writeSessionCookie(false);
+  notifyAccessTokenListeners();
 }
 
 /** Keep proxy cookie aligned with localStorage token (e.g. after deploy). */

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { clearAccessToken, getAccessToken } from "@/lib/api";
+import { useAccessToken } from "@/hooks/use-access-token";
+import { clearAccessToken } from "@/lib/api";
 
 /**
  * Client-side guard for protected layouts.
@@ -12,19 +13,16 @@ import { clearAccessToken, getAccessToken } from "@/lib/api";
 export function RequireAuth({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [ready, setReady] = useState(false);
+  const token = useAccessToken();
 
   useEffect(() => {
-    if (!getAccessToken()) {
-      clearAccessToken();
-      const next = pathname || "/dashboard";
-      router.replace(`/login?next=${encodeURIComponent(next)}`);
-      return;
-    }
-    setReady(true);
-  }, [pathname, router]);
+    if (token) return;
+    clearAccessToken();
+    const next = pathname || "/dashboard";
+    router.replace(`/login?next=${encodeURIComponent(next)}`);
+  }, [token, pathname, router]);
 
-  if (!ready) {
+  if (!token) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center gap-2 text-muted-foreground">
         <Loader2 className="size-5 animate-spin" />

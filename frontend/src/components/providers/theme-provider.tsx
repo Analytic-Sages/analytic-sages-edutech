@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useSyncExternalStore } from "react";
 import { useServerInsertedHTML } from "next/navigation";
 
 type Theme = "light" | "dark";
@@ -20,15 +20,44 @@ const ThemeContext = createContext<ThemeContextValue>({
   setTheme: () => {},
 });
 
+const themeListeners = new Set<() => void>();
+
+function emitTheme() {
+  themeListeners.forEach((listener) => listener());
+}
+
+function subscribeTheme(listener: () => void) {
+  themeListeners.add(listener);
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === "theme" || event.key === null) listener();
+  };
+  window.addEventListener("storage", onStorage);
+  return () => {
+    themeListeners.delete(listener);
+    window.removeEventListener("storage", onStorage);
+  };
+}
+
+function getThemeSnapshot(): Theme {
+  return localStorage.getItem("theme") === "dark" ? "dark" : "light";
+}
+
+function getThemeServerSnapshot(): Theme {
+  return "light";
+}
+
 function applyTheme(theme: Theme) {
   document.documentElement.classList.toggle("dark", theme === "dark");
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  // Always start as "light" to match server HTML; the real preference is
-  // synced after mount. The DOM class itself is already correct pre-paint
-  // thanks to the injected init script, so there's no visual flash.
-  const [theme, setThemeState] = useState<Theme>("light");
+  // Server snapshot is always "light" so hydration matches SSR. The DOM class
+  // is already correct pre-paint from the injected init script.
+  const theme = useSyncExternalStore(
+    subscribeTheme,
+    getThemeSnapshot,
+    getThemeServerSnapshot,
+  );
 
   // Inject the init script into the SSR stream outside the React tree.
   // Rendering a <script> inside a component triggers a React 19 warning
@@ -41,25 +70,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   });
 
   useEffect(() => {
-    const stored = localStorage.getItem("theme");
-    const initial: Theme = stored === "dark" ? "dark" : "light";
-    setThemeState(initial);
-    applyTheme(initial);
-  }, []);
+    applyTheme(theme);
+  }, [theme]);
 
   const setTheme = (next: Theme) => {
-    setThemeState(next);
     localStorage.setItem("theme", next);
     applyTheme(next);
+    emitTheme();
   };
 
   const toggleTheme = () => {
-    setThemeState((prev) => {
-      const next: Theme = prev === "light" ? "dark" : "light";
-      localStorage.setItem("theme", next);
-      applyTheme(next);
-      return next;
-    });
+    setTheme(theme === "light" ? "dark" : "light");
   };
 
   return (
