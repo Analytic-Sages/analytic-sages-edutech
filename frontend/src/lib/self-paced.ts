@@ -28,6 +28,106 @@ export function mergeFreeCatalog(rows: SelfPacedCourseCard[]): SelfPacedCourseCa
   return [FEATURED_FREE_COURSE, ...free];
 }
 
+function featuredLesson(
+  slug: string,
+  title: string,
+  order_index: number,
+  duration_seconds: number | null,
+  subtitle: string | null = null,
+): SelfPacedCoursePublic["modules"][number]["lessons"][number] {
+  return {
+    id: slug,
+    slug,
+    title,
+    subtitle,
+    duration_seconds,
+    order_index,
+    video_provider: "youtube",
+    video_id: null,
+    completed: false,
+  };
+}
+
+export const FEATURED_FREE_COURSE_PUBLIC: SelfPacedCoursePublic = {
+  ...FEATURED_FREE_COURSE,
+  long_description:
+    "Learn practical techniques for building more powerful blockchain analytics dashboards with Dune, from external API calls and dashboard parameters to dynamic date filters and robust SQL.",
+  published: true,
+  enrolled: false,
+  completed: false,
+  progress_percent: 0,
+  lessons_completed: 0,
+  resume_lesson_slug: null,
+  modules: [
+    {
+      id: "m1",
+      title: "Working With External APIs in Dune",
+      description: "Call external APIs from Dune and use the results in your analytics workflow.",
+      order_index: 1,
+      lessons: [
+        featuredLesson(
+          "introduction-to-external-api-calls-in-dune",
+          "Introduction to External API Calls in Dune",
+          1,
+          69,
+        ),
+        featuredLesson(
+          "how-to-use-external-api-calls-in-dune",
+          "How to Use External API Calls in Dune",
+          2,
+          1289,
+        ),
+      ],
+    },
+    {
+      id: "m2",
+      title: "Building Interactive Dune Dashboards",
+      description: "Make dashboards interactive with parameters, images, and dynamic date filters.",
+      order_index: 2,
+      lessons: [
+        featuredLesson(
+          "how-to-add-use-dashboard-parameters-in-sql",
+          "How to Add & Use Dashboard Parameters in SQL",
+          1,
+          944,
+        ),
+        featuredLesson(
+          "how-to-add-custom-images-to-dune-analytics-dashboard",
+          "How to Add Custom Images to Your Dune Analytics Dashboard",
+          2,
+          567,
+        ),
+        featuredLesson(
+          "how-to-add-dynamic-date-presets-in-dune-analytics",
+          "How to Add Dynamic Date Presets in Dune Analytics",
+          3,
+          1250,
+          "Today / 7D / 30D",
+        ),
+      ],
+    },
+    {
+      id: "m3",
+      title: "Writing More Robust Dune SQL",
+      description: "Keep Dune SQL reliable when values are missing or undefined.",
+      order_index: 3,
+      lessons: [
+        featuredLesson(
+          "how-to-handle-null-values-in-dune-sql",
+          "How to Handle NULL Values in Dune SQL",
+          1,
+          null,
+          "COALESCE, NULLIF & Safe Divide",
+        ),
+      ],
+    },
+  ],
+};
+
+export function featuredSelfPacedCourse(slug: string): SelfPacedCoursePublic | null {
+  return slug === FEATURED_FREE_COURSE_SLUG ? FEATURED_FREE_COURSE_PUBLIC : null;
+}
+
 export function formatDurationSeconds(seconds: number | null | undefined) {
   if (!seconds || seconds <= 0) return null;
   const mins = Math.floor(seconds / 60);

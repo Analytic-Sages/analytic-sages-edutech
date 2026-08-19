@@ -24,7 +24,7 @@ export function MarketingHeader() {
           <Logo size="xl" />
         </div>
 
-        <nav className="hidden items-center gap-6 lg:gap-10 md:flex">
+        <nav className="hidden items-center gap-10 md:flex">
           {marketingNav.map((item) => {
             const active =
               pathname === item.href || pathname.startsWith(`${item.href}/`);

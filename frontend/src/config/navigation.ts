@@ -18,7 +18,6 @@ export type NavItem = {
 
 export const marketingNav = [
   { title: "Our Programs", href: "/programs" },
-  { title: "Self-Paced", href: "/courses" },
   { title: "Community", href: "/community" },
   { title: "Blog", href: "/blog" },
   { title: "About us", href: "/about" },

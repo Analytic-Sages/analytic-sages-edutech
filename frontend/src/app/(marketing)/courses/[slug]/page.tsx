@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ApiError, getSelfPacedCourse, type SelfPacedCoursePublic } from "@/lib/api";
 import { getCourseBySlug } from "@/lib/mock-data";
 import { PUBLIC_SITE_ORIGIN } from "@/lib/program-pages";
+import { featuredSelfPacedCourse } from "@/lib/self-paced";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,7 @@ async function loadSelfPaced(slug: string): Promise<SelfPacedCoursePublic | null
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const live = await loadSelfPaced(slug);
+  const live = (await loadSelfPaced(slug)) ?? featuredSelfPacedCourse(slug);
   if (live) {
     const url = `${PUBLIC_SITE_ORIGIN}/courses/${live.slug}`;
     const title = live.title;
@@ -53,7 +54,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function CourseDetailsPage({ params }: Props) {
   const { slug } = await params;
-  const live = await loadSelfPaced(slug);
+  const live = (await loadSelfPaced(slug)) ?? featuredSelfPacedCourse(slug);
   if (live) {
     return (
       <Suspense>
