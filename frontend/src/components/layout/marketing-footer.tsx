@@ -3,8 +3,6 @@ import { Logo } from "@/components/brand/logo";
 import { siteConfig } from "@/config/site";
 import { marketingNav } from "@/config/navigation";
 
-const footerPlatformNav = marketingNav.filter((item) => item.href !== "/courses");
-
 export function MarketingFooter() {
   return (
     <footer className="border-t bg-brand-surface">
@@ -40,7 +38,7 @@ export function MarketingFooter() {
           <div>
             <h4 className="font-heading text-sm font-semibold">Platform</h4>
             <ul className="mt-4 space-y-2">
-              {footerPlatformNav.map((item) => (
+              {marketingNav.map((item) => (
                 <li key={item.href}>
                   <Link
                     href={item.href}
