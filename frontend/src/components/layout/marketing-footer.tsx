@@ -3,6 +3,8 @@ import { Logo } from "@/components/brand/logo";
 import { siteConfig } from "@/config/site";
 import { marketingNav } from "@/config/navigation";
 
+const footerPlatformNav = marketingNav.filter((item) => item.href !== "/courses");
+
 export function MarketingFooter() {
   return (
     <footer className="border-t bg-brand-surface">
@@ -38,7 +40,7 @@ export function MarketingFooter() {
           <div>
             <h4 className="font-heading text-sm font-semibold">Platform</h4>
             <ul className="mt-4 space-y-2">
-              {marketingNav.map((item) => (
+              {footerPlatformNav.map((item) => (
                 <li key={item.href}>
                   <Link
                     href={item.href}
@@ -98,18 +100,15 @@ export function MarketingFooter() {
           <p className="text-sm text-muted-foreground">
             © {new Date().getFullYear()} {siteConfig.name}. All rights reserved.
           </p>
-          <div className="flex gap-6">
-            <Link href="/faq" className="text-sm text-muted-foreground hover:text-foreground">
-              FAQ
+          <div className="flex flex-wrap justify-center gap-6">
+            <Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground">
+              Privacy Policy
+            </Link>
+            <Link href="/terms" className="text-sm text-muted-foreground hover:text-foreground">
+              Terms of Use
             </Link>
             <Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground">
               Contact
-            </Link>
-            <Link href="#" className="text-sm text-muted-foreground hover:text-foreground">
-              Privacy
-            </Link>
-            <Link href="#" className="text-sm text-muted-foreground hover:text-foreground">
-              Terms
             </Link>
           </div>
         </div>

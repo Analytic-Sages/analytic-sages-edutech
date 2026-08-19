@@ -1,10 +1,9 @@
 import { PatternBackground } from "@/components/marketing/pattern-background";
-import { TestimonialPlayer } from "@/components/marketing/testimonial-player";
+import { ProgramTestimonialCarousel } from "@/components/marketing/program-testimonial-carousel";
+import { siteConfig } from "@/config/site";
 import { homeTestimonials } from "@/lib/testimonials";
 
 export function HomeTestimonialsSection() {
-  const [featured, ...rest] = homeTestimonials;
-
   return (
     <section className="relative overflow-hidden border-y bg-background py-24 sm:py-32">
       <PatternBackground />
@@ -21,11 +20,11 @@ export function HomeTestimonialsSection() {
           </p>
         </div>
 
-        <div className="mt-14 grid gap-10 lg:grid-cols-2 lg:gap-12">
-          {featured && <TestimonialPlayer item={featured} featured />}
-          {rest.map((item) => (
-            <TestimonialPlayer key={item.id} item={item} />
-          ))}
+        <div className="mt-14">
+          <ProgramTestimonialCarousel
+            items={homeTestimonials}
+            moreUrl={siteConfig.links.youtube}
+          />
         </div>
       </div>
     </section>

@@ -3,6 +3,7 @@ import { inter, manrope } from "@/lib/fonts";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthSessionSync } from "@/components/providers/auth-session-sync";
+import { TawkToChat } from "@/components/layout/tawk-to-chat";
 import { siteConfig } from "@/config/site";
 import { LOGO_SRC } from "@/components/brand/logo";
 import "./globals.css";
@@ -31,6 +32,7 @@ export default function RootLayout({
           <AuthSessionSync />
           <QueryProvider>{children}</QueryProvider>
         </ThemeProvider>
+        <TawkToChat />
       </body>
     </html>
   );
