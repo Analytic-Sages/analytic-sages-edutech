@@ -1,7 +1,6 @@
 /**
- * Homepage testimonial videos.
- * Paste a YouTube watch, youtu.be, or embed URL into `youtubeUrl`.
- * Leave empty until the video is ready: the UI shows a placeholder.
+ * Homepage testimonial videos. Cohort 9 program-page videos live in program-pages.ts.
+ * To add a homepage video: copy a block, set name/role, and paste a YouTube URL into youtubeUrl.
  */
 export type TestimonialVideo = {
   id: string;
@@ -41,8 +40,7 @@ export const homeTestimonials: TestimonialVideo[] = [
   },
 ];
 
-/** Convert a watch / share / embed URL into a privacy-friendly embed src. */
-export function toYouTubeEmbedSrc(url: string): string | null {
+export function toYouTubeVideoId(url: string): string | null {
   const trimmed = url.trim();
   if (!trimmed) return null;
 
@@ -50,23 +48,28 @@ export function toYouTubeEmbedSrc(url: string): string | null {
     const parsed = new URL(trimmed);
     const host = parsed.hostname.replace(/^www\./, "");
 
-    let videoId: string | null = null;
-
     if (host === "youtu.be") {
-      videoId = parsed.pathname.split("/").filter(Boolean)[0] ?? null;
-    } else if (host === "youtube.com" || host === "m.youtube.com" || host === "youtube-nocookie.com") {
-      if (parsed.pathname.startsWith("/embed/")) {
-        videoId = parsed.pathname.split("/")[2] ?? null;
-      } else if (parsed.pathname.startsWith("/shorts/")) {
-        videoId = parsed.pathname.split("/")[2] ?? null;
-      } else {
-        videoId = parsed.searchParams.get("v");
-      }
+      return parsed.pathname.split("/").filter(Boolean)[0] ?? null;
     }
-
-    if (!videoId) return null;
-    return `https://www.youtube-nocookie.com/embed/${videoId}`;
+    if (host === "youtube.com" || host === "m.youtube.com" || host === "youtube-nocookie.com") {
+      if (parsed.pathname.startsWith("/embed/") || parsed.pathname.startsWith("/shorts/")) {
+        return parsed.pathname.split("/")[2] ?? null;
+      }
+      return parsed.searchParams.get("v");
+    }
   } catch {
     return null;
   }
+  return null;
+}
+
+export function toYouTubeThumbnail(url: string): string | null {
+  const id = toYouTubeVideoId(url);
+  return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null;
+}
+
+/** Convert a watch / share / embed URL into a privacy-friendly embed src. */
+export function toYouTubeEmbedSrc(url: string): string | null {
+  const id = toYouTubeVideoId(url);
+  return id ? `https://www.youtube-nocookie.com/embed/${id}` : null;
 }

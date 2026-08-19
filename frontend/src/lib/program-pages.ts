@@ -1,48 +1,23 @@
 import { FEATURED_COHORT_SLUG } from "@/lib/auth-redirect";
-import { homeTestimonials, type TestimonialVideo } from "@/lib/testimonials";
+import type { TestimonialVideo } from "@/lib/testimonials";
 import { siteConfig } from "@/config/site";
-
-export type ProgramModule = {
-  id: string;
-  number: string;
-  title: string;
-  summary: string;
-  learn: string[];
-  tools: string[];
-  outcome: string;
-};
-
-export type ProgramProject = {
-  id: string;
-  title: string;
-  analyzes: string;
-  tools: string[];
-  demonstrates: string;
-};
-
-export type ProgramStudentWork = {
-  id: string;
-  title: string;
-  caption: string;
-  image: string;
-  alt: string;
-};
 
 export type ProgramFaq = {
   question: string;
   answer: string;
 };
 
-export type ProgramTool = {
+export type ProgramDuneDashboard = {
   id: string;
-  name: string;
-  detail: string;
+  title: string;
+  description?: string;
+  author: string;
+  /** Dune chart embed, e.g. https://dune.com/embeds/QUERY/VIZ */
+  embedSrc: string;
 };
 
 export type ProgramPageContent = {
-  /** Public marketing URL slug */
   pageSlug: string;
-  /** Backend / checkout cohort slug */
   cohortSlug: string;
   aliases: string[];
   eyebrow: string;
@@ -52,20 +27,17 @@ export type ProgramPageContent = {
   seoDescription: string;
   canonicalPath: string;
   format: string;
-  community: string;
-  paymentOptions: string;
-  certificate: string;
   timeCommitment: string;
-  timeCommitmentShort: string;
+  paymentOptions: string;
   audienceFor: string[];
   audienceNotFor: string[];
-  modules: ProgramModule[];
-  projects: ProgramProject[];
-  studentWork: ProgramStudentWork[];
-  testimonials: TestimonialVideo[];
+  outcomesIntro: string;
   outcomes: string[];
-  tools: ProgramTool[];
-  experience: { title: string; body: string }[];
+  outcomeBonus: string;
+  duneDashboards: ProgramDuneDashboard[];
+  /** Paste YouTube watch / youtu.be / embed URLs into `youtubeUrl`. */
+  testimonials: TestimonialVideo[];
+  moreTestimonialsUrl: string;
   faqs: ProgramFaq[];
 };
 
@@ -75,246 +47,115 @@ const cohort9: ProgramPageContent = {
   pageSlug: COHORT_9_PAGE_SLUG,
   cohortSlug: FEATURED_COHORT_SLUG,
   aliases: [FEATURED_COHORT_SLUG],
-  eyebrow: "Instructor-Led Training",
+  eyebrow: "Instructor-Led Training · Cohort 9",
   headline: "SQL Blockchain Data Analytics",
   support:
-    "Learn to query real blockchain data with SQL, work on live on-chain datasets, and finish with practical analytics projects you can show in a portfolio.",
+    "Learn to work with real blockchain data using SQL and build practical analytics projects — live classes, recorded materials, and a learning community.",
   seoTitle: "SQL Blockchain Data Analytics",
   seoDescription:
     "Learn SQL and practical blockchain data analytics through instructor-led training, real on-chain datasets, hands-on projects and expert guidance with Analytic Sages.",
   canonicalPath: `/programs/${COHORT_9_PAGE_SLUG}`,
-  format: "Live online, instructor-led",
-  community: "Analytic Sages Discord and Telegram",
-  paymentOptions: "Paystack (cards and bank transfer) or crypto via NOWPayments",
-  certificate:
-    "Certificates are not issued on the platform yet. Completing the cohort still gives you the projects, recordings, and classroom access.",
-  timeCommitment:
-    "Live sessions plus independent SQL practice and project work. Weekly load depends on the assignment.",
-  timeCommitmentShort: "Live sessions plus project work",
+  format: "Live weekly sessions + recorded materials + community",
+  timeCommitment: "5–8 hours per week",
+  paymentOptions: "Paystack (cards and bank transfer) or crypto via NOWPayments — one-time payment",
   audienceFor: [
-    "You want practical blockchain data skills, not just theory",
-    "You want to learn SQL through real on-chain data",
-    "You want to build portfolio-ready analytics projects",
-    "You are interested in blockchain, DeFi, and data",
-    "You want structured instructor-led learning",
-    "You are ready to work with real datasets",
+    "You're curious about blockchain but don't know where to start",
+    "You want a practical, skill-based path in Web3 data",
+    "You have no coding experience (we start from zero)",
+    "You're ready to stop watching and start building",
   ],
   audienceNotFor: [
-    "You are looking for a get-rich-quick scheme",
-    "You expect passive learning without doing the work",
-    "You are unwilling to commit time to projects and practice",
+    "You're looking for a get-rich-quick scheme",
+    "You can't commit 5–8 hours per week",
   ],
-  modules: [
-    {
-      id: "m1",
-      number: "01",
-      title: "Introduction to Web3 Data Analytics",
-      summary:
-        "Understand what blockchain data is, why on-chain activity matters, and how explorers fit into an analyst’s workflow.",
-      learn: [
-        "What blockchain data is and why it matters to decentralized systems",
-        "How on-chain data is used for DeFi monitoring, wallet tracking, and investigation",
-        "The roles of Etherscan, Dune Analytics, and related tools",
-        "How to navigate explorers for transactions, token flows, and contracts",
-      ],
-      tools: ["Etherscan", "Blockchain explorers"],
-      outcome:
-        "Write an Etherscan guide that analyses wallet transactions, smart contracts, and token transfers.",
-    },
-    {
-      id: "m2",
-      number: "02",
-      title: "SQL for Web3 Data Analytics",
-      summary:
-        "Build SQL foundations on blockchain examples: filters, joins, aggregations, subqueries, and CTEs.",
-      learn: [
-        "SELECT, WHERE, and ORDER BY with on-chain examples",
-        "Joins and aggregations across wallet, transaction, and token data",
-        "Subqueries and CTEs for protocol usage and more complex questions",
-        "Practice queries on balances, active users, and swap volume",
-      ],
-      tools: ["SQL"],
-      outcome:
-        "Query wallet history, identify active protocol users, and aggregate token swap volumes over time.",
-    },
-    {
-      id: "m3",
-      number: "03",
-      title: "Working with Blockchain Data",
-      summary:
-        "Move from explorers into live datasets: table schemas, smart contracts, and DEX activity on Dune.",
-      learn: [
-        "Write SQL against live blockchain datasets in Dune Analytics",
-        "Read schemas for blocks, logs, events, and traces",
-        "Analyse Uniswap liquidity, volume, swaps, and top pairs",
-      ],
-      tools: ["Dune Analytics", "SQL", "DEX data"],
-      outcome:
-        "Build a SQL dashboard for Uniswap covering volume, liquidity pools, and unique users.",
-    },
-    {
-      id: "m4",
-      number: "04",
-      title: "Building Insightful Dashboards",
-      summary:
-        "Turn queries into clear visuals and a capstone dashboard for a token or protocol.",
-      learn: [
-        "Token performance views: price, holder distribution, and transaction trends",
-        "Chart, layout, and filter choices that make a finding readable",
-        "How to present price, wallet interaction, fees, and growth in one place",
-      ],
-      tools: ["Dune Analytics", "Data visualization"],
-      outcome:
-        "Design a capstone dashboard covering trends, wallet interaction, fees, and actionable insights.",
-    },
-  ],
-  projects: [
-    {
-      id: "p1",
-      title: "Wallet and contract explorer study",
-      analyzes: "Wallet transactions, smart contracts, and token transfers on a public explorer",
-      tools: ["Etherscan"],
-      demonstrates: "You can read on-chain activity and explain what a wallet or contract is doing.",
-    },
-    {
-      id: "p2",
-      title: "Protocol user and volume queries",
-      analyzes: "Wallet balances, active users on a DeFi protocol, and token swap volumes over time",
-      tools: ["SQL"],
-      demonstrates: "You can write SQL that answers a real analytics question, not just a tutorial query.",
-    },
-    {
-      id: "p3",
-      title: "Uniswap SQL dashboard",
-      analyzes: "Daily, weekly, and monthly volume, liquidity pools, and unique users",
-      tools: ["SQL", "Dune Analytics"],
-      demonstrates: "You can turn DEX tables into a readable activity dashboard.",
-    },
-    {
-      id: "p4",
-      title: "Token or protocol capstone",
-      analyzes: "Price trends, wallet interaction, fees, retention/growth, and a short insight write-up",
-      tools: ["Dune Analytics", "Data visualization"],
-      demonstrates: "You can complete a portfolio-ready analytics piece and explain the findings.",
-    },
-  ],
-  studentWork: [
-    {
-      id: "sw1",
-      title: "Workshop collaboration",
-      caption:
-        "Analytic Sages learners working through analytics exercises together. These are real workshop photos, not simulated dashboards.",
-      image: "/2.png",
-      alt: "Analytic Sages learners collaborating with laptops during a workshop",
-    },
-    {
-      id: "sw2",
-      title: "In-person training",
-      caption:
-        "A live Analytic Sages training session. Cohort 9 is online; earlier cohorts also met in workshop settings like this.",
-      image: "/4.png",
-      alt: "Analytic Sages in-person training session",
-    },
-    {
-      id: "sw3",
-      title: "Classroom practice",
-      caption: "Hands-on practice is the core of the instructor-led format.",
-      image: "/5.webp",
-      alt: "Analytic Sages classroom practice session",
-    },
-    {
-      id: "sw4",
-      title: "Cohort working session",
-      caption: "Learners building together during an Analytic Sages session.",
-      image: "/6.webp",
-      alt: "Analytic Sages cohort working session",
-    },
-  ],
-  testimonials: homeTestimonials,
+  outcomesIntro: "By the end of this program…",
   outcomes: [
-    "Build portfolio-ready blockchain analytics dashboards",
-    "Query real blockchain data independently with SQL",
-    "Conduct on-chain research using explorers and Dune",
-    "Turn raw blockchain data into useful insights",
-    "Present and explain analytical findings",
-    "Leave with a set of practical projects, not only class notes",
-    "Join the Analytic Sages learning community",
+    "Build 2–3 complete dashboards (portfolio ready)",
+    "Write a research report from scratch",
+    "Query real blockchain data independently",
+    "Present your findings with confidence",
+    "Join a network of analysts and alumni",
   ],
-  tools: [
-    { id: "sql", name: "SQL", detail: "Query wallets, protocols, and swap activity" },
-    { id: "dune", name: "Dune Analytics", detail: "Live blockchain datasets and dashboards" },
-    { id: "etherscan", name: "Etherscan", detail: "Transactions, contracts, and token flows" },
-    { id: "defi", name: "DeFi / DEX data", detail: "Uniswap volume, liquidity, and users" },
-    { id: "viz", name: "Data visualization", detail: "Charts and dashboards that tell a story" },
-    { id: "onchain", name: "Blockchain data", detail: "Blocks, logs, events, and traces" },
-  ],
-  experience: [
+  outcomeBonus: "Bonus: Access to our alumni community.",
+  duneDashboards: [
     {
-      title: "Live instructor sessions",
-      body: "Learn directly from instructors in scheduled live classes — the core of Instructor-Led Training, not a library of videos you watch alone.",
+      id: "d1",
+      title: "Aave V3 — 365 TVL",
+      author: "cryptopanda01",
+      embedSrc: "https://dune.com/embeds/6927509/10834449",
     },
     {
-      title: "Practical projects",
-      body: "Apply each module to real blockchain data: explorer studies, SQL practice, a Uniswap dashboard, and a capstone.",
+      id: "d2",
+      title: "Aave Deposit and Withdraw Value",
+      author: "cryptopanda01",
+      embedSrc: "https://dune.com/embeds/6927509/10834492",
     },
     {
-      title: "Recorded materials",
-      body: "Revisit live sessions after class. Missing a session does not mean you lose the material.",
+      id: "d3",
+      title: "Volatility (blue) vs Range Width (green) Over Time",
+      description:
+        "This query analyzes the risk of liquidity provider (LP) positions in the Uniswap V3 WETH/USDC pool.",
+      author: "apostleoffinance123",
+      embedSrc: "https://dune.com/embeds/5911295/9547652",
     },
     {
-      title: "Community",
-      body: `Learn alongside other analysts and builders in ${siteConfig.name} Discord and Telegram.`,
-    },
-    {
-      title: "Feedback",
-      body: "Get guidance on projects and assignments from instructors during the cohort, unlike self-paced catalog browsing.",
+      id: "d4",
+      title: "Netflow",
+      author: "cryptopanda01",
+      embedSrc: "https://dune.com/embeds/6927509/10834479",
     },
   ],
+  testimonials: [
+    {
+      id: "c9-t1",
+      name: "Kelvin",
+      role: "Cohort 5",
+      youtubeUrl: "https://www.youtube.com/embed/rJyOypSDBig",
+    },
+    {
+      id: "c9-t2",
+      name: "Dandy Ogbonna",
+      role: "Cohort 7 · DeFi Research Analyst",
+      youtubeUrl: "https://www.youtube.com/embed/38c6s1JJ0QA",
+    },
+    {
+      id: "c9-t3",
+      name: "Analytic Sages learner",
+      role: "Student testimonial",
+      youtubeUrl: "https://www.youtube.com/embed/e6Od4Jeh9nM",
+    },
+  ],
+  moreTestimonialsUrl: siteConfig.links.youtube,
   faqs: [
     {
-      question: "Do I need prior blockchain experience?",
+      question: "Do I need any experience?",
       answer:
-        "No. The linked curriculum starts with blockchain data fundamentals and explorers before SQL and Dune. Curiosity about blockchain, DeFi, and data is enough to begin.",
+        "No. We start from the basics: blockchain data, explorers, then SQL and Dune. No prior coding or SQL is required.",
     },
     {
-      question: "Do I need to know SQL?",
+      question: "What if I miss a live session?",
       answer:
-        "No prior SQL is required. The program teaches SELECT, filters, joins, aggregations, and CTEs using on-chain examples.",
+        "Recordings are provided so you can catch up. You are still expected to complete the practice and projects.",
     },
     {
-      question: "What happens if I miss a live session?",
+      question: "Is the certificate recognised?",
       answer:
-        "Live sessions are the main format, and recordings are provided so you can catch up. You are still expected to complete the practice and projects.",
-    },
-    {
-      question: "How much time should I commit each week?",
-      answer:
-        "Plan time for the live session plus independent SQL practice and project work. Exact hours vary by week; the work is not designed as passive watching.",
-    },
-    {
-      question: "What tools will I need?",
-      answer:
-        "A laptop, a browser, and accounts for the analytics tools used in class (including Dune). Setup is covered in the early sessions.",
-    },
-    {
-      question: "Will I receive recordings?",
-      answer:
-        "Yes. Recorded session materials are part of the instructor-led experience so you can revisit class.",
-    },
-    {
-      question: "Will I receive a certificate?",
-      answer:
-        "Platform certificates are not live yet. Do not expect an issued Analytic Sages certificate at the end of this cohort. You will still have the projects and classroom work you complete.",
+        "Platform certificates are not issued yet. Completing Cohort 9 still gives you the dashboards, report, and classroom work you can show.",
     },
     {
       question: "Can I pay in installments?",
       answer:
-        "No installment plan is offered. Registration is paid in full at checkout via Paystack or NOWPayments.",
+        "No. Registration is a one-time payment at checkout via Paystack or NOWPayments.",
     },
     {
-      question: "How does registration work?",
+      question: "What do I need to start?",
       answer:
-        "Open Register for Cohort 9. If you are not signed in, you will create an account or log in, then complete payment on the existing checkout page. Confirmed payment unlocks the Classroom.",
+        "A laptop, a browser, and time for live class plus practice. Dune setup is covered in the early sessions.",
+    },
+    {
+      question: "Will this help me get a job?",
+      answer:
+        "The program is built around practical SQL, Dune dashboards, and a research report you can put in a portfolio. It does not guarantee a job or income.",
     },
   ],
 };
