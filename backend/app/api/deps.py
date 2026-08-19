@@ -14,6 +14,7 @@ from app.db.session import get_db
 from app.models.user import User
 from app.services.auth import AuthService
 from app.services.email import EmailService
+from app.services.events import EventService
 from app.services.google_oauth import GoogleOAuthService
 from app.services.admin import AdminService
 from app.services.classroom import ClassroomService
@@ -59,6 +60,13 @@ def get_payment_service(
 
 def get_self_paced_service(db: Session = Depends(get_db)) -> SelfPacedService:
     return SelfPacedService(db)
+
+
+def get_event_service(
+    db: Session = Depends(get_db),
+    email_service: EmailService = Depends(get_email_service),
+) -> EventService:
+    return EventService(db, email_service)
 
 
 def get_classroom_service(
@@ -140,7 +148,10 @@ def require_roles(*roles: UserRole):
 
 require_admin = require_roles(UserRole.ADMIN)
 require_instructor = require_roles(UserRole.ADMIN, UserRole.INSTRUCTOR)
-require_student = require_roles(UserRole.ADMIN, UserRole.INSTRUCTOR, UserRole.STUDENT)
+require_event_ops = require_roles(UserRole.ADMIN, UserRole.OPERATIONS)
+require_student = require_roles(
+    UserRole.ADMIN, UserRole.INSTRUCTOR, UserRole.OPERATIONS, UserRole.STUDENT
+)
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
 OptionalUser = Annotated[User | None, Depends(get_current_user_optional)]

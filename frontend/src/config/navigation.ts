@@ -2,6 +2,7 @@ export type NavItemId =
   | "dashboard"
   | "classroom"
   | "courses"
+  | "events"
   | "explore"
   | "certificates"
   | "users"
@@ -18,6 +19,7 @@ export type NavItem = {
 
 export const marketingNav = [
   { title: "Our Programs", href: "/programs" },
+  { title: "Events", href: "/events" },
   { title: "Community", href: "/community" },
   { title: "Blog", href: "/blog" },
   { title: "About us", href: "/about" },
@@ -27,6 +29,7 @@ export const studentNav: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: "dashboard" },
   { title: "Classroom", href: "/classroom", icon: "classroom" },
   { title: "My Courses", href: "/my-courses", icon: "courses" },
+  { title: "My Events", href: "/my-events", icon: "events" },
   { title: "Explore", href: "/explore", icon: "explore" },
   { title: "Certificates", href: "/certificates", icon: "certificates" },
 ];
@@ -37,9 +40,14 @@ export const adminNav: NavItem[] = [
   { title: "Users", href: "/admin/users", icon: "users" },
   { title: "Payments", href: "/admin/payments", icon: "payments" },
   { title: "Courses", href: "/admin/courses", icon: "courses" },
+  { title: "Events", href: "/admin/events", icon: "events" },
   { title: "Certificates", href: "/admin/certificates", icon: "certificates" },
   { title: "Analytics", href: "/admin/analytics", icon: "analytics" },
   { title: "Settings", href: "/admin/settings", icon: "settings" },
+];
+
+export const operationsNav: NavItem[] = [
+  { title: "Events", href: "/admin/events", icon: "events" },
 ];
 
 export const staffNav: NavItem[] = [

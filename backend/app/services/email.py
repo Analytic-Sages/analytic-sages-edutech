@@ -50,16 +50,35 @@ class EmailService:
         )
         self._send(to=email, subject=subject, html=html, dev_label="password-reset", link=link)
 
-    def send_staff_invite_email(self, *, email: str, token: str, full_name: str | None) -> None:
+    def send_staff_invite_email(
+        self,
+        *,
+        email: str,
+        token: str,
+        full_name: str | None,
+        role: str = "instructor",
+    ) -> None:
         link = f"{self.settings.frontend_url.rstrip('/')}/staff-invite?token={token}"
         greeting = f"Hi {full_name}," if full_name else "Hi,"
-        subject = "You're invited to Analytic Sages staff"
+        if role == "operations":
+            subject = "You're invited to Analytic Sages operations"
+            title = "Operations invite"
+            intro = (
+                "You've been invited to manage Analytic Sages events. "
+                "Set your password to verify your email and open the events dashboard."
+            )
+        else:
+            subject = "You're invited to Analytic Sages staff"
+            title = "Staff invite"
+            intro = (
+                "You've been invited to join Analytic Sages as an instructor. "
+                "Set your password to verify your email and open the staff classroom."
+            )
         html = self._simple_html(
-            title="Staff invite",
+            title=title,
             body=(
                 f"<p>{greeting}</p>"
-                "<p>You've been invited to join Analytic Sages as an instructor. "
-                "Set your password to verify your email and open the staff classroom.</p>"
+                f"<p>{intro}</p>"
                 f'<p><a href="{link}">Set your password and join</a></p>'
                 f"<p style=\"color:#666;font-size:12px\">Or paste this link:<br>{link}</p>"
                 "<p>This link expires in 7 days. If you were not expecting this, ignore the email.</p>"
@@ -154,6 +173,43 @@ class EmailService:
             link=f"from={reply_email} subject={subject}",
             reply_to=reply_email,
         )
+
+    def send_event_registration_email(
+        self,
+        *,
+        email: str,
+        full_name: str | None,
+        event_title: str,
+        event_slug: str,
+        starts_at,
+        timezone_name: str,
+    ) -> None:
+        from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+        greeting = f"Hi {escape(full_name.split()[0])}," if full_name else "Hi,"
+        link = f"{self.settings.frontend_url.rstrip('/')}/events/{event_slug}"
+        try:
+            zone = ZoneInfo(timezone_name)
+        except ZoneInfoNotFoundError:
+            zone = None
+        when = starts_at
+        if getattr(starts_at, "tzinfo", None) and zone is not None:
+            when = starts_at.astimezone(zone)
+        when_label = when.strftime("%A, %d %B %Y · %H:%M")
+        if timezone_name:
+            when_label = f"{when_label} ({timezone_name})"
+        html = self._simple_html(
+            title="You're registered",
+            body=(
+                f"<p>{greeting}</p>"
+                f"<p>You're registered for <strong>{escape(event_title)}</strong>.</p>"
+                f"<p>{escape(when_label)}</p>"
+                f'<p><a href="{link}">Open event page</a></p>'
+                "<p>Use the same Analytic Sages account to join when the event goes live.</p>"
+            ),
+        )
+        self._send(to=email, subject=f"You're registered · {event_title}", html=html, dev_label="event-rsvp", link=link)
+
 
     def _simple_html(self, *, title: str, body: str) -> str:
         return (

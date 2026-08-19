@@ -434,6 +434,209 @@ export function getAdminCourses() {
   return apiFetch<AdminCourseRow[]>("/api/v1/admin/courses");
 }
 
+export type EventLifecycle =
+  | "draft"
+  | "coming_soon"
+  | "upcoming"
+  | "registration_closed"
+  | "live"
+  | "completed"
+  | "cancelled";
+
+export type EventType =
+  | "workshop"
+  | "webinar"
+  | "masterclass"
+  | "ama"
+  | "community"
+  | "career"
+  | "other";
+
+export type EventCardPublic = {
+  id: string;
+  slug: string;
+  title: string;
+  event_type: EventType | string;
+  short_description: string;
+  cover_image: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  timezone: string;
+  price: number;
+  currency: string;
+  is_free: boolean;
+  host_name: string | null;
+  lifecycle: EventLifecycle | string;
+  registered: boolean;
+  can_register: boolean;
+  related_course_slug: string | null;
+};
+
+export type EventPublic = EventCardPublic & {
+  description: string;
+  learn_topics: string[];
+  audience: string[];
+  prerequisites: string;
+  registration_deadline: string | null;
+  capacity: number | null;
+  cancelled: boolean;
+  can_join: boolean;
+  can_watch_recording: boolean;
+  youtube_live_url: string | null;
+  recording_url: string | null;
+  seo_title: string | null;
+  seo_description: string | null;
+};
+
+export type EventRegistrationPublic = {
+  id: string;
+  status: string;
+  registered_at: string;
+  join_clicked_at: string | null;
+  checked_in_at: string | null;
+  event: EventCardPublic;
+};
+
+export type EventRegisterResponse = {
+  registration_id: string;
+  event_slug: string;
+  already_registered: boolean;
+  status: string;
+};
+
+export type EventJoinResponse = {
+  youtube_live_url: string;
+  join_clicked_at: string;
+};
+
+export type EventAdmin = {
+  id: string;
+  slug: string;
+  title: string;
+  event_type: EventType | string;
+  short_description: string;
+  description: string;
+  cover_image: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  timezone: string;
+  price: number;
+  currency: string;
+  registration_deadline: string | null;
+  capacity: number | null;
+  host_name: string | null;
+  youtube_live_url: string | null;
+  recording_url: string | null;
+  learn_topics: string[];
+  audience: string[];
+  prerequisites: string;
+  related_course_slug: string | null;
+  seo_title: string | null;
+  seo_description: string | null;
+  published: boolean;
+  cancelled: boolean;
+  lifecycle: EventLifecycle | string;
+  registered_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type EventWritePayload = {
+  slug: string;
+  title: string;
+  event_type: EventType | string;
+  short_description: string;
+  description: string;
+  cover_image?: string | null;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  timezone: string;
+  price?: number;
+  currency?: string;
+  registration_deadline?: string | null;
+  capacity?: number | null;
+  host_name?: string | null;
+  youtube_live_url?: string | null;
+  recording_url?: string | null;
+  learn_topics?: string[];
+  audience?: string[];
+  prerequisites?: string;
+  related_course_slug?: string | null;
+  seo_title?: string | null;
+  seo_description?: string | null;
+  published?: boolean;
+  cancelled?: boolean;
+};
+
+export function listPublicEvents(options?: { upcoming?: boolean; limit?: number }) {
+  const params = new URLSearchParams();
+  if (options?.upcoming) params.set("upcoming", "true");
+  if (options?.limit) params.set("limit", String(options.limit));
+  const query = params.toString();
+  return apiFetch<EventCardPublic[]>(`/api/v1/events${query ? `?${query}` : ""}`);
+}
+
+export function getPublicEvent(slug: string) {
+  return apiFetch<EventPublic>(`/api/v1/events/${encodeURIComponent(slug)}`);
+}
+
+export function registerForEvent(slug: string, source?: string) {
+  return apiFetch<EventRegisterResponse>(`/api/v1/events/${encodeURIComponent(slug)}/register`, {
+    method: "POST",
+    body: JSON.stringify({ source: source || null }),
+  });
+}
+
+export function cancelEventRegistration(slug: string) {
+  return apiFetch<{ message: string }>(`/api/v1/events/${encodeURIComponent(slug)}/register`, {
+    method: "DELETE",
+  });
+}
+
+export function joinEvent(slug: string) {
+  return apiFetch<EventJoinResponse>(`/api/v1/events/${encodeURIComponent(slug)}/join`, {
+    method: "POST",
+  });
+}
+
+export function checkInEvent(slug: string) {
+  return apiFetch<{ checked_in_at: string }>(`/api/v1/events/${encodeURIComponent(slug)}/check-in`, {
+    method: "POST",
+  });
+}
+
+export function getMyEvents() {
+  return apiFetch<EventRegistrationPublic[]>("/api/v1/events/me");
+}
+
+export function getAdminEvents() {
+  return apiFetch<EventAdmin[]>("/api/v1/admin/events");
+}
+
+export function getAdminEvent(id: string) {
+  return apiFetch<EventAdmin>(`/api/v1/admin/events/${encodeURIComponent(id)}`);
+}
+
+export function createAdminEvent(payload: EventWritePayload) {
+  return apiFetch<EventAdmin>("/api/v1/admin/events", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateAdminEvent(id: string, payload: Partial<EventWritePayload>) {
+  return apiFetch<EventAdmin>(`/api/v1/admin/events/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function cancelAdminEvent(id: string) {
+  return apiFetch<EventAdmin>(`/api/v1/admin/events/${encodeURIComponent(id)}/cancel`, {
+    method: "POST",
+  });
+}
+
 export function getMe() {
   return apiFetch<AuthUser>("/api/v1/auth/me");
 }
@@ -620,6 +823,16 @@ export type InviteInstructorResponse = {
 
 export function inviteInstructor(email: string, fullName?: string) {
   return apiFetch<InviteInstructorResponse>("/api/v1/admin/instructors", {
+    method: "POST",
+    body: JSON.stringify({
+      email,
+      full_name: fullName || null,
+    }),
+  });
+}
+
+export function inviteOperations(email: string, fullName?: string) {
+  return apiFetch<InviteInstructorResponse>("/api/v1/admin/operations", {
     method: "POST",
     body: JSON.stringify({
       email,

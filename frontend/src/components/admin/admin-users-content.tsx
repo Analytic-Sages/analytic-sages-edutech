@@ -19,7 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatAdminDate, initialsFor } from "@/components/admin/admin-format";
-import { ApiError, getAdminUsers, inviteInstructor, type AdminUserRow } from "@/lib/api";
+import { ApiError, getAdminUsers, inviteInstructor, inviteOperations, type AdminUserRow } from "@/lib/api";
 
 export function AdminUsersContent() {
   const [users, setUsers] = useState<AdminUserRow[]>([]);
@@ -29,6 +29,7 @@ export function AdminUsersContent() {
   const [inviteName, setInviteName] = useState("");
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
+  const [inviteRole, setInviteRole] = useState<"instructor" | "operations">("instructor");
   const [inviting, setInviting] = useState(false);
 
   function loadUsers() {
@@ -62,7 +63,10 @@ export function AdminUsersContent() {
     setInviteSuccess(null);
     setInviting(true);
     try {
-      const result = await inviteInstructor(inviteEmail.trim(), inviteName.trim() || undefined);
+      const result =
+        inviteRole === "operations"
+          ? await inviteOperations(inviteEmail.trim(), inviteName.trim() || undefined)
+          : await inviteInstructor(inviteEmail.trim(), inviteName.trim() || undefined);
       setInviteSuccess(result.message);
       setInviteEmail("");
       setInviteName("");
@@ -98,15 +102,15 @@ export function AdminUsersContent() {
     <div>
       <PageHeader
         title="Users"
-        description="Live learner accounts. Invite instructors by email — they cannot self-register as staff."
+        description="Live learner accounts. Invite instructors or an operations manager by email — they cannot self-register as staff."
       />
 
       <Card className="mb-8 shadow-card">
         <CardHeader>
-          <CardTitle>Invite instructor</CardTitle>
+          <CardTitle>Invite staff</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={onInvite} className="grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+          <form onSubmit={onInvite} className="grid gap-4 sm:grid-cols-[1fr_1fr_auto_auto] sm:items-end">
             <div className="space-y-2">
               <Label htmlFor="invite-name">Name</Label>
               <Input
@@ -124,8 +128,20 @@ export function AdminUsersContent() {
                 required
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
-                placeholder="instructor@example.com"
+                placeholder="staff@example.com"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="invite-role">Role</Label>
+              <select
+                id="invite-role"
+                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+                value={inviteRole}
+                onChange={(e) => setInviteRole(e.target.value as "instructor" | "operations")}
+              >
+                <option value="instructor">Instructor</option>
+                <option value="operations">Operations</option>
+              </select>
             </div>
             <Button
               type="submit"

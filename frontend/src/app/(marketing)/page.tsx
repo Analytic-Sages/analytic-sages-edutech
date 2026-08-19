@@ -5,6 +5,7 @@ import { FeaturesSection } from "@/components/marketing/features-section";
 import { HeroVisual } from "@/components/marketing/hero-visual";
 import { HomeCommunitySection } from "@/components/marketing/home-community-section";
 import { HomeCtaSection } from "@/components/marketing/home-cta-section";
+import { HomeEventsSection } from "@/components/marketing/home-events-section";
 import { HomeInstructorLedSection } from "@/components/marketing/home-instructor-led-section";
 import { HomeSelfPacedSection } from "@/components/marketing/home-self-paced-section";
 import { HomeTestimonialsSection } from "@/components/marketing/home-testimonials-section";
@@ -62,6 +63,8 @@ export default function HomePage() {
       <LearningPathsSection />
 
       <HomeInstructorLedSection />
+
+      <HomeEventsSection />
 
       <HomeSelfPacedSection />
 

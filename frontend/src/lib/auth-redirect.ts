@@ -7,5 +7,6 @@ export function resolvePostLoginPath(role: string | undefined, nextPath: string)
   }
   if (role === "admin") return "/admin";
   if (role === "instructor") return "/staff";
+  if (role === "operations") return "/admin/events";
   return next;
 }

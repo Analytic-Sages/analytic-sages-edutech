@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BookOpen, Loader2, Radio } from "lucide-react";
+import { BookOpen, CalendarDays, Loader2, Radio } from "lucide-react";
+import { EventCard } from "@/components/events/event-card";
 import { CourseCard } from "@/components/course/course-card";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -13,8 +14,10 @@ import {
   ApiError,
   getAccessToken,
   getMe,
+  getMyEvents,
   listClassroomSessions,
   type AuthUser,
+  type EventRegistrationPublic,
   type LiveSessionPublic,
 } from "@/lib/api";
 import { getContinueHref } from "@/lib/course-paths";
@@ -40,6 +43,7 @@ export function DashboardContent() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [items, setItems] = useState<EnrolledCourseBundle[]>([]);
   const [liveSession, setLiveSession] = useState<LiveSessionPublic | null>(null);
+  const [eventRegs, setEventRegs] = useState<EventRegistrationPublic[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [authed, setAuthed] = useState(true);
@@ -60,15 +64,17 @@ export function DashboardContent() {
       }
 
       try {
-        const [me, enrolled, sessions] = await Promise.all([
+        const [me, enrolled, sessions, myEvents] = await Promise.all([
           getMe(),
           fetchEnrolledCourses(),
           listClassroomSessions().catch(() => [] as LiveSessionPublic[]),
+          getMyEvents().catch(() => [] as EventRegistrationPublic[]),
         ]);
         if (!cancelled) {
           setAuthed(true);
           setUser(me);
           setItems(enrolled);
+          setEventRegs(myEvents);
           const next =
             sessions.find((s) => s.phase === "live") ||
             sessions.find((s) => s.phase === "upcoming") ||
@@ -259,6 +265,29 @@ export function DashboardContent() {
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {items.map(({ course }) => (
               <CourseCard key={course.id} course={course} variant="enrolled" />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="mt-10">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-heading text-lg font-semibold">My Events</h2>
+          <ButtonLink href="/my-events" variant="ghost" size="sm">
+            View all
+          </ButtonLink>
+        </div>
+        {eventRegs.length === 0 ? (
+          <EmptyState
+            icon={<CalendarDays className="size-5" />}
+            title="No event registrations yet"
+            description="Browse free workshops and register with this account."
+            action={{ label: "Browse events", href: "/events" }}
+          />
+        ) : (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {eventRegs.slice(0, 3).map((row) => (
+              <EventCard key={row.id} event={row.event} />
             ))}
           </div>
         )}

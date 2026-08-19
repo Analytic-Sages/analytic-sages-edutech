@@ -12,6 +12,8 @@ from app.models import (  # noqa: F401
     CourseModule,
     EmailVerificationToken,
     Enrollment,
+    Event,
+    EventRegistration,
     Lesson,
     LessonProgress,
     LiveSession,

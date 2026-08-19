@@ -48,6 +48,8 @@ def _post_login_path(role: UserRole, next_path: str) -> str:
         return "/admin"
     if role == UserRole.INSTRUCTOR:
         return "/staff"
+    if role == UserRole.OPERATIONS:
+        return "/admin/events"
     return next_path
 
 

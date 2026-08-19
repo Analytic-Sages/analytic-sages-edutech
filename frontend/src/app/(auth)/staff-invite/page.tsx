@@ -46,7 +46,7 @@ function StaffInviteInner() {
     try {
       const result = await acceptStaffInvite(token, data.password);
       setAccessToken(result.access_token);
-      router.replace(resolvePostLoginPath(result.user.role, "/staff"));
+      router.replace(resolvePostLoginPath(result.user.role, "/dashboard"));
     } catch (err) {
       setError(err instanceof ApiError ? err.detail : "Could not accept invite");
     }
@@ -58,7 +58,7 @@ function StaffInviteInner() {
         <Logo size="md" href="/" />
         <h1 className="font-heading text-2xl font-bold">Join Analytic Sages staff</h1>
         <p className="text-sm text-muted-foreground">
-          Set a password to verify your email and open the staff classroom. This is invite-only.
+          Set a password to verify your email and open your staff workspace. This is invite-only.
         </p>
       </div>
       {!token ? (
