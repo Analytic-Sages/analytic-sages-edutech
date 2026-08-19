@@ -198,7 +198,7 @@ const cohort9: ProgramPageContent = {
     {
       question: "Will this help me get a job?",
       answer:
-        "The program is built around practical SQL, Dune dashboards, and a research report you can put in a portfolio. It does not guarantee a job or income.",
+        "We don’t guarantee jobs, but we teach you the skills and how to showcase them. Many past students have landed freelance gigs, full-time roles, and protocol recognition.",
     },
   ],
 };
@@ -228,4 +228,4 @@ export function getProgramPostcard(cohortApiSlug: string): string | null {
   return programPages.find((item) => item.cohortSlug === cohortApiSlug)?.postcardImage ?? null;
 }
 
-export const PUBLIC_SITE_ORIGIN = "https://analyticsages.io";
+export const PUBLIC_SITE_ORIGIN = "https://www.analyticsages.io";

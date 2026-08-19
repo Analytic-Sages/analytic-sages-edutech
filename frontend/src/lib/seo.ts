@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { PUBLIC_SITE_ORIGIN } from "@/lib/program-pages";
 
-export const DEFAULT_OG_IMAGE = `${PUBLIC_SITE_ORIGIN}/cohort-9-sql-blockchain-data-analytics.png`;
-
 export function absoluteUrl(path = "/"): string {
   if (!path || path === "/") return PUBLIC_SITE_ORIGIN;
   return `${PUBLIC_SITE_ORIGIN}${path.startsWith("/") ? path : `/${path}`}`;
@@ -36,9 +34,7 @@ export function pageMetadata({
 }: PageMetadataInput): Metadata {
   const url = absoluteUrl(path);
   const ogTitle = brandedTitle(title);
-  const ogImage = image ? absoluteAssetUrl(image) : DEFAULT_OG_IMAGE;
-
-  return {
+  const metadata: Metadata = {
     title: absoluteTitle ? { absolute: title } : title,
     description,
     alternates: { canonical: url },
@@ -48,13 +44,19 @@ export function pageMetadata({
       url,
       siteName: "Analytic Sages",
       type: "website",
-      images: [{ url: ogImage, alt: ogTitle }],
     },
     twitter: {
       card: "summary_large_image",
       title: ogTitle,
       description,
-      images: [ogImage],
     },
   };
+
+  if (image) {
+    const ogImage = absoluteAssetUrl(image);
+    metadata.openGraph = { ...metadata.openGraph, images: [{ url: ogImage, alt: ogTitle }] };
+    metadata.twitter = { ...metadata.twitter, images: [ogImage] };
+  }
+
+  return metadata;
 }

@@ -31,6 +31,11 @@ const faqs = [
       "Yes. Beginner paths like SQL for Blockchain Analytics are designed for newcomers. Check each course page for difficulty and requirements. Instructor-Led cohorts include live guidance.",
   },
   {
+    question: "Will this help me get a job?",
+    answer:
+      "We don’t guarantee jobs, but we teach you the skills and how to showcase them. Many past students have landed freelance gigs, full-time roles, and protocol recognition.",
+  },
+  {
     question: "What is the duration of the courses?",
     answer:
       "Self-paced paths typically range from about 4 to 12 weeks of content. Instructor-Led cohorts follow a live schedule with multiple sessions. Check the cohort or course page for details.",

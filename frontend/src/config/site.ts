@@ -5,7 +5,7 @@ export const siteConfig = {
   description: "Learn the Technologies Shaping the Future.",
   footerTagline:
     "Building the next generation of Blockchain Data Engineers, AI Builders, and Quantitative Researchers.",
-  url: "https://analyticsages.io",
+  url: "https://www.analyticsages.io",
   emails: {
     admin: "admin@analyticsages.io",
     support: "support@analyticsages.io",

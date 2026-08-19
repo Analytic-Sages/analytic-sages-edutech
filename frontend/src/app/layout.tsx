@@ -7,7 +7,6 @@ import { TawkToChat } from "@/components/layout/tawk-to-chat";
 import { VisitorAnalytics } from "@/components/layout/visitor-analytics";
 import { siteConfig } from "@/config/site";
 import { PUBLIC_SITE_ORIGIN } from "@/lib/program-pages";
-import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -25,13 +24,11 @@ export const metadata: Metadata = {
     title: siteConfig.name,
     description: siteConfig.description,
     url: PUBLIC_SITE_ORIGIN,
-    images: [{ url: DEFAULT_OG_IMAGE, alt: siteConfig.name }],
   },
   twitter: {
     card: "summary_large_image",
     title: siteConfig.name,
     description: siteConfig.description,
-    images: [DEFAULT_OG_IMAGE],
   },
 };
 
