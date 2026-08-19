@@ -69,7 +69,7 @@ export function eventPageUrl(slug: string) {
 }
 
 function eventCalendarDetails(event: EventCardPublic | EventPublic) {
-  const summary = "short_description" in event ? event.short_description : event.title;
+  const summary = event.short_description || event.title;
   return `${summary}\n\n${eventPageUrl(event.slug)}`;
 }
 
