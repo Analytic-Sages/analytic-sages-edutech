@@ -30,15 +30,6 @@ function formatDate(iso: string | null) {
   }
 }
 
-function formatDuration(startsAt: string | null, endsAt: string | null) {
-  if (!startsAt || !endsAt) return null;
-  const start = new Date(startsAt).getTime();
-  const end = new Date(endsAt).getTime();
-  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) return null;
-  const weeks = Math.max(1, Math.round((end - start) / (7 * 24 * 60 * 60 * 1000)));
-  return `${weeks} weeks`;
-}
-
 export function ProgramLandingPage({ program }: { program: ProgramPageContent }) {
   const [cohort, setCohort] = useState<PublicCohortCard | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,10 +58,9 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
     cohort && cohort.price > 0 ? formatPrice(cohort.price, cohort.currency) : null;
   const startDate = formatDate(cohort?.starts_at ?? null);
   const deadline = formatDate(cohort?.registration_deadline ?? null);
-  const duration = formatDuration(cohort?.starts_at ?? null, cohort?.ends_at ?? null);
 
   const details: [string, string | null][] = [
-    ["Duration", duration],
+    ["Duration", program.duration],
     ["Registration Deadline", deadline],
     ["Start Date", startDate],
     ["Format", program.format],

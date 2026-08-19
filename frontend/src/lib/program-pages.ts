@@ -27,6 +27,7 @@ export type ProgramPageContent = {
   seoDescription: string;
   canonicalPath: string;
   format: string;
+  duration: string;
   timeCommitment: string;
   paymentOptions: string;
   audienceFor: string[];
@@ -59,6 +60,7 @@ const cohort9: ProgramPageContent = {
   canonicalPath: `/programs/${COHORT_9_PAGE_SLUG}`,
   postcardImage: "/cohort-9-sql-blockchain-data-analytics.png",
   format: "Live weekly sessions + recorded materials + community",
+  duration: "4 weeks",
   timeCommitment: "5-8 hours per week",
   paymentOptions: "Paystack (cards and bank transfer) or crypto via NOWPayments. One-time payment.",
   audienceFor: [

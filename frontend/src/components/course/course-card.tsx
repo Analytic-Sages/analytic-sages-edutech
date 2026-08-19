@@ -78,11 +78,15 @@ export function CourseCard({ course, variant = "catalog", className }: CourseCar
         <Badge className="absolute top-3 left-3 bg-background/90 text-foreground backdrop-blur-sm">
           {course.category}
         </Badge>
-        {course.comingSoon && (
+        {course.comingSoon ? (
           <Badge className="absolute top-3 right-3 bg-brand-orange text-white shadow-sm">
             Launching soon
           </Badge>
-        )}
+        ) : course.isFree ? (
+          <Badge className="absolute top-3 right-3 bg-brand-orange text-white shadow-sm">
+            FREE
+          </Badge>
+        ) : null}
       </div>
       <CardHeader>
         <div className="flex items-center gap-2">

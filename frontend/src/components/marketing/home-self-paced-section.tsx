@@ -1,30 +1,16 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { CourseCard } from "@/components/course/course-card";
-import { SelfPacedCatalogCard } from "@/components/course/self-paced-catalog-card";
 import { ButtonLink } from "@/components/ui/button-link";
-import { listSelfPacedCourses, type SelfPacedCourseCard } from "@/lib/api";
 import { getSelfPacedCourses } from "@/lib/mock-data";
+import { catalogCardFromApi, FEATURED_FREE_COURSE } from "@/lib/self-paced";
+
+const freeCourse = {
+  ...catalogCardFromApi(FEATURED_FREE_COURSE),
+  skills: ["Dune SQL", "Dashboard parameters", "On-chain analytics"],
+};
 
 export function HomeSelfPacedSection() {
   const comingSoon = getSelfPacedCourses().slice(0, 2);
-  const [freeCourses, setFreeCourses] = useState<SelfPacedCourseCard[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    listSelfPacedCourses()
-      .then((rows) => {
-        if (!cancelled) setFreeCourses(rows.filter((course) => course.is_free));
-      })
-      .catch(() => {
-        if (!cancelled) setFreeCourses([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   return (
     <section className="relative py-20 sm:py-28">
@@ -48,9 +34,7 @@ export function HomeSelfPacedSection() {
           </ButtonLink>
         </div>
         <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {freeCourses.map((course) => (
-            <SelfPacedCatalogCard key={course.id} course={course} />
-          ))}
+          <CourseCard course={freeCourse} />
           {comingSoon.map((course) => (
             <CourseCard key={course.id} course={course} />
           ))}

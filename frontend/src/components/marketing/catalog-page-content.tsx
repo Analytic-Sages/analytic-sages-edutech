@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { courses } from "@/lib/mock-data";
 import { listSelfPacedCourses, type SelfPacedCourseCard } from "@/lib/api";
+import { mergeFreeCatalog } from "@/lib/self-paced";
 
 const eyebrowClass =
   "text-lg font-bold uppercase tracking-[0.12em] text-brand-orange sm:text-xl";
@@ -26,16 +27,16 @@ export function CatalogPageContent() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [level, setLevel] = useState("all");
-  const [freeCourses, setFreeCourses] = useState<SelfPacedCourseCard[]>([]);
+  const [freeCourses, setFreeCourses] = useState<SelfPacedCourseCard[]>(() => mergeFreeCatalog([]));
 
   useEffect(() => {
     let cancelled = false;
     listSelfPacedCourses()
       .then((rows) => {
-        if (!cancelled) setFreeCourses(rows.filter((course) => course.is_free));
+        if (!cancelled) setFreeCourses(mergeFreeCatalog(rows));
       })
       .catch(() => {
-        if (!cancelled) setFreeCourses([]);
+        if (!cancelled) setFreeCourses(mergeFreeCatalog([]));
       });
     return () => {
       cancelled = true;
@@ -152,19 +153,17 @@ export function CatalogPageContent() {
           </div>
         </div>
 
-        {freeCourses.length > 0 && (
-          <section className="mb-12">
-            <h2 className="font-heading text-2xl font-bold tracking-tight">Free courses</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Enroll at no cost. Watch lessons on Analytic Sages and track your progress.
-            </p>
-            <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {freeCourses.map((course) => (
-                <SelfPacedCatalogCard key={course.id} course={course} />
-              ))}
-            </div>
-          </section>
-        )}
+        <section className="mb-12">
+          <h2 className="font-heading text-2xl font-bold tracking-tight">Free courses</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Enroll at no cost. Watch lessons on Analytic Sages and track your progress.
+          </p>
+          <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {freeCourses.map((course) => (
+              <SelfPacedCatalogCard key={course.id} course={course} />
+            ))}
+          </div>
+        </section>
 
         <h2 className="mb-4 font-heading text-2xl font-bold tracking-tight">Coming soon</h2>
         {filteredCourses.length === 0 ? (

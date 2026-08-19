@@ -1,6 +1,33 @@
 import type { SelfPacedCourseCard, SelfPacedCoursePublic, SelfPacedEnrollment } from "@/lib/api";
 import type { Course } from "@/types/course";
 
+export const FEATURED_FREE_COURSE_SLUG = "dune-analytics-practical-sql-dashboard-techniques";
+
+export const FEATURED_FREE_COURSE: SelfPacedCourseCard = {
+  id: "featured-dune-analytics",
+  slug: FEATURED_FREE_COURSE_SLUG,
+  title: "Dune Analytics: Practical SQL & Dashboard Techniques",
+  description:
+    "Learn practical techniques for building more powerful blockchain analytics dashboards with Dune. This free self-paced course covers external API calls, dashboard parameters, dynamic date filters, custom dashboard images, and handling NULL values in Dune SQL.",
+  thumbnail: "/dune-analytics-practical-sql-dashboard-techniques.png",
+  category: "Blockchain",
+  difficulty: "Beginner to Intermediate",
+  duration: "~70 minutes",
+  estimated_minutes: 70,
+  lessons_count: 6,
+  price: 0,
+  currency: "USD",
+  is_free: true,
+  delivery_type: "self_paced",
+  certificate_enabled: false,
+};
+
+export function mergeFreeCatalog(rows: SelfPacedCourseCard[]): SelfPacedCourseCard[] {
+  const free = rows.filter((course) => course.is_free);
+  if (free.some((course) => course.slug === FEATURED_FREE_COURSE_SLUG)) return free;
+  return [FEATURED_FREE_COURSE, ...free];
+}
+
 export function formatDurationSeconds(seconds: number | null | undefined) {
   if (!seconds || seconds <= 0) return null;
   const mins = Math.floor(seconds / 60);
