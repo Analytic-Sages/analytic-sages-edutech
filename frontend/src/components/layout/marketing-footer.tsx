@@ -19,10 +19,10 @@ export function MarketingFooter() {
             <div className="mt-4 space-y-1 text-sm">
               <p>
                 <a
-                  href={`mailto:${siteConfig.emails.hello}`}
+                  href={`mailto:${siteConfig.emails.admin}`}
                   className="text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  {siteConfig.emails.hello}
+                  {siteConfig.emails.admin}
                 </a>
               </p>
               <p>

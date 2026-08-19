@@ -92,8 +92,8 @@ export function CourseEnrollCta({ slug, price, currency, comingSoon }: Props) {
         <p className="max-w-md text-sm text-muted-foreground">
           Self-paced enrollment is launching soon. For live expert-led training, see our
           Instructor-Led cohorts, or email{" "}
-          <a href={`mailto:${siteConfig.emails.hello}`} className="text-brand-orange hover:underline">
-            {siteConfig.emails.hello}
+          <a href={`mailto:${siteConfig.emails.admin}`} className="text-brand-orange hover:underline">
+            {siteConfig.emails.admin}
           </a>{" "}
           to get notified.
         </p>

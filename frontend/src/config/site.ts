@@ -8,7 +8,7 @@ export const siteConfig = {
     "Building the next generation of Blockchain Data Engineers, AI Builders, and Quantitative Researchers.",
   url: "https://analyticsages.com",
   emails: {
-    hello: "hello@analyticsages.io",
+    admin: "admin@analyticsages.io",
     support: "support@analyticsages.io",
   },
   links: {

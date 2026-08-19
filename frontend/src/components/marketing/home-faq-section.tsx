@@ -71,7 +71,7 @@ const faqs = [
   },
   {
     question: "Do you offer group discounts?",
-    answer: `For teams, cohorts, or organizational training, contact us at ${siteConfig.emails.hello} and our team will discuss available options.`,
+    answer: `For teams, cohorts, or organizational training, contact us at ${siteConfig.emails.admin} and our team will discuss available options.`,
   },
   {
     question: "Can I retake a course if I don't pass the first time?",
@@ -122,10 +122,10 @@ export function HomeFaqSection() {
           </a>{" "}
           or{" "}
           <a
-            href={`mailto:${siteConfig.emails.hello}`}
+            href={`mailto:${siteConfig.emails.admin}`}
             className="font-medium text-brand-orange hover:underline"
           >
-            {siteConfig.emails.hello}
+            {siteConfig.emails.admin}
           </a>
           .
         </p>

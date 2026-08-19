@@ -18,7 +18,7 @@ export default function ContactPage() {
       />
       <div className="mb-6 grid gap-4 sm:grid-cols-2">
         <a
-          href={`mailto:${siteConfig.emails.hello}`}
+          href={`mailto:${siteConfig.emails.admin}`}
           className="group flex items-center gap-3 rounded-xl border bg-brand-surface/50 p-4 transition-colors hover:bg-brand-surface"
         >
           <div className="flex size-10 items-center justify-center rounded-lg bg-brand-orange/10 text-brand-orange">
@@ -27,7 +27,7 @@ export default function ContactPage() {
           <div>
             <p className="text-sm font-semibold">General inquiries</p>
             <p className="text-sm text-muted-foreground group-hover:text-foreground">
-              {siteConfig.emails.hello}
+              {siteConfig.emails.admin}
             </p>
           </div>
         </a>
