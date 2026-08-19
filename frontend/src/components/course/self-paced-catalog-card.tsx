@@ -39,10 +39,10 @@ export function SelfPacedCatalogCard({ course }: { course: SelfPacedCourseCardTy
             {course.duration || `~${course.estimated_minutes} minutes`}
           </span>
         </div>
-        <p className="text-sm font-medium text-brand-navy">{course.difficulty}</p>
+        <p className="text-sm font-medium text-brand-navy dark:text-brand-orange">{course.difficulty}</p>
       </CardContent>
       <CardFooter className="justify-between border-t">
-        <span className="font-heading text-lg font-bold text-brand-navy">Free</span>
+        <span className="font-heading text-lg font-bold text-brand-navy dark:text-brand-orange">Free</span>
         <ButtonLink href={href} size="sm" className="bg-brand-orange text-white hover:bg-brand-orange/90">
           View Course
         </ButtonLink>

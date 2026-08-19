@@ -215,6 +215,10 @@ export function listProgramPageSlugs(): string[] {
   return programPages.flatMap((page) => [page.pageSlug, ...page.aliases]);
 }
 
+export function listPublicProgramPaths(): string[] {
+  return [...new Set(programPages.map((page) => page.canonicalPath))];
+}
+
 export function getProgramPageHref(cohortApiSlug: string): string | null {
   const page = programPages.find((item) => item.cohortSlug === cohortApiSlug);
   return page ? `/programs/${page.pageSlug}` : null;

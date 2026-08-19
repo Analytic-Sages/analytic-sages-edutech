@@ -58,7 +58,7 @@ export function BlogCard({ post, className }: BlogCardProps) {
             {post.readTime}
           </span>
         </div>
-        <CardTitle className="line-clamp-2 text-xl leading-snug group-hover:text-brand-navy">
+        <CardTitle className="line-clamp-2 text-xl leading-snug group-hover:text-brand-navy dark:group-hover:text-brand-orange">
           <Link href={`/blog/${post.slug}`}>{post.title}</Link>
         </CardTitle>
       </CardHeader>

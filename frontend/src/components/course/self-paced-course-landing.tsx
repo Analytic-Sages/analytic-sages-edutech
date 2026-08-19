@@ -189,7 +189,7 @@ export function SelfPacedCourseLanding({ initialCourse }: Props) {
             <p className="text-sm font-semibold uppercase tracking-[0.14em] text-brand-orange">
               Free self-paced course
             </p>
-            <h1 className="mt-4 font-heading text-4xl font-bold tracking-tight text-brand-navy sm:text-5xl">
+            <h1 className="mt-4 font-heading text-4xl font-bold tracking-tight text-brand-navy sm:text-5xl dark:text-foreground">
               {course.title}
             </h1>
             <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground">

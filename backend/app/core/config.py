@@ -42,6 +42,7 @@ class Settings(BaseSettings):
 
     email_from: str = "noreply@analyticsages.com"
     email_api_key: str | None = None
+    contact_email: str = "support@analyticsages.io"
 
     # Google OAuth — leave empty to use mock Google login in development
     google_client_id: str | None = None

@@ -136,7 +136,7 @@ export default function CheckoutPage() {
         </CardHeader>
         <CardContent className="flex items-center justify-between">
           <p className="text-muted-foreground">Amount due</p>
-          <p className="font-heading text-2xl font-bold text-brand-navy">
+          <p className="font-heading text-2xl font-bold text-brand-navy dark:text-foreground">
             {formatPrice(price, currency)}
           </p>
         </CardContent>
@@ -170,7 +170,7 @@ export default function CheckoutPage() {
             onClick={() => handleCheckout(provider.id)}
             className="flex items-center gap-4 rounded-2xl border bg-card p-5 text-left shadow-card transition hover:-translate-y-0.5 hover:shadow-elevated disabled:opacity-60"
           >
-            <div className="flex size-12 items-center justify-center rounded-xl bg-brand-navy/10 text-brand-navy">
+            <div className="flex size-12 items-center justify-center rounded-xl bg-brand-navy/10 text-brand-navy dark:text-brand-orange">
               {loadingProvider === provider.id ? (
                 <Loader2 className="size-5 animate-spin" />
               ) : (

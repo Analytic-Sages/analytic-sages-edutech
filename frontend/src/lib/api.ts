@@ -89,8 +89,13 @@ export class ApiError extends Error {
   }
 }
 
+const PUBLIC_LOAD_ERROR = "We're having trouble loading this information. Please try again.";
+
 function networkErrorMessage() {
-  return `Can't reach the API at ${API_URL}. Start Docker, copy frontend/.env.example to frontend/.env.local, then run the backend on port 8000.`;
+  if (process.env.NODE_ENV !== "production") {
+    console.warn(`API unreachable at ${API_URL}`);
+  }
+  return PUBLIC_LOAD_ERROR;
 }
 
 export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promise<T> {
@@ -126,8 +131,7 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promi
       detail = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
     } catch {
       if (response.status >= 500) {
-        detail =
-          "Server error while processing your request. Check the backend terminal for details.";
+        detail = PUBLIC_LOAD_ERROR;
       }
     }
     throw new ApiError(response.status, detail);
@@ -331,6 +335,19 @@ export type AuthProviders = {
   };
   email_password: boolean;
 };
+
+export function sendContactMessage(payload: {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+}) {
+  return apiFetch<{ message: string }>("/api/v1/contact", {
+    method: "POST",
+    auth: false,
+    body: JSON.stringify(payload),
+  });
+}
 
 export function getAuthProviders() {
   return apiFetch<AuthProviders>("/api/v1/auth/providers", { auth: false });

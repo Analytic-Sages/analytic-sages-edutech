@@ -92,7 +92,7 @@ export function ProgramTestimonialCarousel({
         type="button"
         aria-label="Previous testimonials"
         onClick={() => scrollByCard(-1)}
-        className="absolute top-1/3 left-0 z-10 hidden size-10 -translate-x-1/2 items-center justify-center rounded-full border bg-white shadow-card sm:flex"
+        className="absolute top-1/3 left-0 z-10 hidden size-10 -translate-x-1/2 items-center justify-center rounded-full border bg-background shadow-card sm:flex"
       >
         <ChevronLeft className="size-5" />
       </button>
@@ -100,7 +100,7 @@ export function ProgramTestimonialCarousel({
         type="button"
         aria-label="Next testimonials"
         onClick={() => scrollByCard(1)}
-        className="absolute top-1/3 right-0 z-10 hidden size-10 translate-x-1/2 items-center justify-center rounded-full border bg-white shadow-card sm:flex"
+        className="absolute top-1/3 right-0 z-10 hidden size-10 translate-x-1/2 items-center justify-center rounded-full border bg-background shadow-card sm:flex"
       >
         <ChevronRight className="size-5" />
       </button>

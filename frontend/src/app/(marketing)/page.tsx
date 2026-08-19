@@ -1,3 +1,5 @@
+import { siteConfig } from "@/config/site";
+import { pageMetadata } from "@/lib/seo";
 import { ArrowRight } from "lucide-react";
 import { FeaturesSection } from "@/components/marketing/features-section";
 import { HeroVisual } from "@/components/marketing/hero-visual";
@@ -12,6 +14,13 @@ import { SectionBackground } from "@/components/marketing/section-background";
 import { TrustStats } from "@/components/marketing/trust-stats";
 import { WhySection } from "@/components/marketing/why-section";
 import { ButtonLink } from "@/components/ui/button-link";
+
+export const metadata = pageMetadata({
+  title: siteConfig.name,
+  description: siteConfig.description,
+  path: "/",
+  absoluteTitle: true,
+});
 
 export default function HomePage() {
   return (

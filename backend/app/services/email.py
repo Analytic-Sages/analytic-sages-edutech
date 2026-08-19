@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from html import escape
 
 import httpx
 
@@ -121,6 +122,39 @@ class EmailService:
         )
         self._send(to=email, subject=subject, html=html, dev_label="enrollment", link=link)
 
+    def send_contact_message(
+        self,
+        *,
+        name: str,
+        reply_email: str,
+        subject: str,
+        message: str,
+    ) -> bool:
+        if self.settings.is_production and not self.is_live:
+            logger.error("Contact email skipped: EMAIL_API_KEY is not configured")
+            return False
+        inbox = self.settings.contact_email
+        safe_name = escape(name)
+        safe_email = escape(reply_email)
+        safe_subject = escape(" ".join(subject.split()))
+        safe_body = escape(message).replace("\n", "<br>")
+        html = self._simple_html(
+            title="Website contact",
+            body=(
+                f"<p><strong>From:</strong> {safe_name} &lt;{safe_email}&gt;</p>"
+                f"<p><strong>Subject:</strong> {safe_subject}</p>"
+                f"<p>{safe_body}</p>"
+            ),
+        )
+        return self._send(
+            to=inbox,
+            subject=f"[Contact] {safe_subject}",
+            html=html,
+            dev_label="contact",
+            link=f"from={reply_email} subject={subject}",
+            reply_to=reply_email,
+        )
+
     def _simple_html(self, *, title: str, body: str) -> str:
         return (
             '<div style="font-family:system-ui,-apple-system,sans-serif;line-height:1.5;'
@@ -139,17 +173,20 @@ class EmailService:
         html: str,
         dev_label: str,
         link: str,
-    ) -> None:
+        reply_to: str | None = None,
+    ) -> bool:
         if not self.is_live:
             logger.info("[dev-email] %s for %s: %s", dev_label, to, link)
-            return
+            return True
 
-        payload = {
+        payload: dict[str, object] = {
             "from": self.settings.email_from,
             "to": [to],
             "subject": subject,
             "html": html,
         }
+        if reply_to:
+            payload["reply_to"] = [reply_to]
         try:
             with httpx.Client(timeout=20.0) as client:
                 response = client.post(
@@ -162,7 +199,7 @@ class EmailService:
                 )
         except httpx.HTTPError:
             logger.exception("Failed to send %s email to %s", dev_label, to)
-            return
+            return False
 
         if response.status_code >= 400:
             logger.error(
@@ -172,6 +209,7 @@ class EmailService:
                 dev_label,
                 to,
             )
-            return
+            return False
 
         logger.info("Sent %s email to %s", dev_label, to)
+        return True

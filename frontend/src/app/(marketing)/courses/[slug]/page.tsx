@@ -10,8 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ApiError, getSelfPacedCourse, type SelfPacedCoursePublic } from "@/lib/api";
 import { getCourseBySlug } from "@/lib/mock-data";
-import { PUBLIC_SITE_ORIGIN } from "@/lib/program-pages";
 import { featuredSelfPacedCourse } from "@/lib/self-paced";
+import { pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -30,23 +30,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const live = (await loadSelfPaced(slug)) ?? featuredSelfPacedCourse(slug);
   if (live) {
-    const url = `${PUBLIC_SITE_ORIGIN}/courses/${live.slug}`;
-    const title = live.title;
     const description =
       live.description ||
       "Learn practical Dune SQL and dashboard techniques through this free self-paced course from Analytic Sages.";
-    return {
-      title,
+    return pageMetadata({
+      title: live.title,
       description,
-      alternates: { canonical: url },
-      openGraph: {
-        title: `${live.title} | Analytic Sages`,
-        description,
-        url,
-        siteName: "Analytic Sages",
-        type: "website",
-      },
-    };
+      path: `/courses/${live.slug}`,
+      image: live.thumbnail || "/dune-analytics-practical-sql-dashboard-techniques.png",
+    });
   }
   const course = getCourseBySlug(slug);
   return { title: course?.title ?? "Course" };

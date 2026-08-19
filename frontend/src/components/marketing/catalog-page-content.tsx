@@ -119,7 +119,7 @@ export function CatalogPageContent() {
             <Select value={level} onValueChange={(v) => v && setLevel(v)}>
               <SelectTrigger className="bg-background/90">
                 <div className="flex items-center gap-2">
-                  <Filter className="size-3.5 text-brand-navy" />
+                  <Filter className="size-3.5 text-brand-navy dark:text-brand-orange" />
                   <SelectValue placeholder="Difficulty Level" />
                 </div>
               </SelectTrigger>

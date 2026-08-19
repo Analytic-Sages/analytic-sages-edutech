@@ -61,6 +61,7 @@
 }
 
 :root {
+  color-scheme: light;
   --brand-surface: #f8fafc;
   --brand-warm: #fff8f2;
   --brand-navy-text: #101a8a;
@@ -101,6 +102,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --brand-surface: #141b2d;
   --brand-warm: #1a1612;
   --brand-navy-text: #a5b8ff;

@@ -70,7 +70,7 @@ function AnimatedNumericStat({ value, suffix, label }: NumericStat) {
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       className="flex flex-col items-center justify-center bg-brand-surface px-4 py-10 text-center sm:px-6 sm:py-14 md:py-16"
     >
-      <p className="font-heading text-3xl font-bold tracking-tight text-brand-navy sm:text-4xl lg:text-5xl">
+      <p className="font-heading text-3xl font-bold tracking-tight text-brand-navy sm:text-4xl lg:text-5xl dark:text-brand-orange">
         {formatted}
       </p>
       <p className="mt-2 text-sm font-medium text-muted-foreground sm:text-base">{label}</p>

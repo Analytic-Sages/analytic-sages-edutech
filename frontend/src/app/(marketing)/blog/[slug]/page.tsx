@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
 import { formatBlogDate, getBlogPostBySlug } from "@/lib/mock-blog-data";
+import { pageMetadata } from "@/lib/seo";
 
 type BlogPostPageProps = {
   params: Promise<{ slug: string }>;
@@ -15,10 +16,12 @@ export async function generateMetadata({ params }: BlogPostPageProps) {
   const { slug } = await params;
   const post = getBlogPostBySlug(slug);
   if (!post) return { title: "Article Not Found" };
-  return {
+  return pageMetadata({
     title: post.title,
     description: post.excerpt,
-  };
+    path: `/blog/${post.slug}`,
+    image: post.coverImage,
+  });
 }
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {

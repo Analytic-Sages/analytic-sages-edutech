@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { ButtonAnchor } from "@/components/ui/button-anchor";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { siteConfig } from "@/config/site";
+import { pageMetadata } from "@/lib/seo";
 
 const channels = [
   {
@@ -28,7 +29,12 @@ const channels = [
   },
 ];
 
-export const metadata = { title: "Community" };
+export const metadata = pageMetadata({
+  title: "Community",
+  description:
+    "Join the Analytic Sages community on YouTube, Telegram, and Discord for tutorials, study groups, and cohort updates.",
+  path: "/community",
+});
 
 export default function CommunityPage() {
   return (

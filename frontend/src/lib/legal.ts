@@ -236,6 +236,10 @@ export const privacyPolicy: LegalDocumentContent = {
         },
         {
           type: "p",
+          text: "Website traffic measurement on analyticsages.io uses Plausible Analytics, which is designed not to use advertising cookies or collect personal information for ads. Sign-in, payments, classroom, and chat features may still use cookies or similar technologies that those services need in order to work.",
+        },
+        {
+          type: "p",
           text: "Some cookies may be provided by third-party services integrated into our platform. You may control cookies through your browser settings. Some essential functionality may not work properly if certain cookies are disabled.",
         },
         {
@@ -266,7 +270,7 @@ export const privacyPolicy: LegalDocumentContent = {
         },
         {
           type: "p",
-          text: "Examples may include Google, Vercel, Render, RealtimeKit, Bunny Stream, Paystack, NOWPayments, YouTube, and other service providers used by the platform.",
+          text: "Examples may include Google, Vercel, Render, RealtimeKit, Bunny Stream, Paystack, NOWPayments, YouTube, Plausible Analytics, and other service providers used by the platform.",
         },
         {
           type: "p",

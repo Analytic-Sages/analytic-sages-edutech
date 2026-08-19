@@ -10,7 +10,7 @@ export function ProgramDuneGrid({ items }: { items: ProgramDuneDashboard[] }) {
   return (
     <div className="grid gap-6 sm:grid-cols-2">
       {items.map((item) => (
-        <article key={item.id} className="flex flex-col overflow-hidden rounded-xl border bg-white shadow-sm">
+        <article key={item.id} className="flex flex-col overflow-hidden rounded-xl border bg-card shadow-sm">
           <div className="space-y-1 px-5 pt-5">
             <h3 className="font-heading text-base font-bold leading-snug text-foreground sm:text-lg">
               {item.title}
@@ -36,7 +36,7 @@ export function ProgramDuneGrid({ items }: { items: ProgramDuneDashboard[] }) {
               href={duneQueryUrl(item.embedSrc)}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-semibold text-blue-600 underline underline-offset-2"
+              className="font-semibold text-blue-600 underline underline-offset-2 dark:text-blue-400"
             >
               View on Dune
             </a>

@@ -4,8 +4,8 @@ import { ProgramLandingPage } from "@/components/marketing/program-landing-page"
 import {
   getProgramPage,
   listProgramPageSlugs,
-  PUBLIC_SITE_ORIGIN,
 } from "@/lib/program-pages";
+import { pageMetadata } from "@/lib/seo";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -18,20 +18,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const program = getProgramPage(slug);
   if (!program) return { title: "Program" };
 
-  const url = `${PUBLIC_SITE_ORIGIN}${program.canonicalPath}`;
-  return {
+  return pageMetadata({
     title: program.seoTitle,
     description: program.seoDescription,
-    alternates: { canonical: url },
-    openGraph: {
-      title: `${program.seoTitle} | Analytic Sages`,
-      description: program.seoDescription,
-      url,
-      siteName: "Analytic Sages",
-      type: "website",
-      images: [{ url: `${PUBLIC_SITE_ORIGIN}${program.postcardImage}` }],
-    },
-  };
+    path: program.canonicalPath,
+    image: program.postcardImage,
+  });
 }
 
 export default async function CohortProgramPage({ params }: Props) {

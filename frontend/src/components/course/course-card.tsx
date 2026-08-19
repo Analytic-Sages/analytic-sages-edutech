@@ -98,7 +98,7 @@ export function CourseCard({ course, variant = "catalog", className }: CourseCar
             {course.duration}
           </span>
         </div>
-        <CardTitle className="line-clamp-2 text-xl leading-snug group-hover:text-brand-navy">
+        <CardTitle className="line-clamp-2 text-xl leading-snug group-hover:text-brand-navy dark:group-hover:text-brand-orange">
           <Link href={href}>{course.title}</Link>
         </CardTitle>
       </CardHeader>

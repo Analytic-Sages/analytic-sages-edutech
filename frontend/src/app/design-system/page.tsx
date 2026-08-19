@@ -31,9 +31,23 @@ export default function DesignSystemPage() {
 
         <section>
           <h2 className="font-heading mb-6 text-xl font-semibold">Brand</h2>
-          <Logo size="lg" href={null} />
+          <div className="flex flex-wrap items-end gap-10">
+            <div>
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Light · colored
+              </p>
+              <Logo size="lg" href={null} />
+            </div>
+            <div>
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Light · black
+              </p>
+              <Logo size="lg" href={null} tone="mono" />
+            </div>
+          </div>
           <p className="mt-4 text-muted-foreground">
-            Manrope for headings · Inter for body · Navy + Orange palette
+            Dark mode uses the white mark automatically. Manrope for headings · Inter for body ·
+            Navy + Orange palette
           </p>
         </section>
 
