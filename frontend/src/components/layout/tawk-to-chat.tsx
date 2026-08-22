@@ -54,6 +54,55 @@ function setTawkVisible(visible: boolean) {
   document.body.classList.toggle("as-tawk-open", visible);
 }
 
+/** Tawk rewrites the tab to "1 new message" and blinks it. Keep the real page title. */
+function isTawkTabAlert(title: string) {
+  const value = title.trim();
+  if (!value) return false;
+  if (/^(?:\(?\d+\)?\s*)?new messages?$/i.test(value)) return true;
+  if (/^\(\d+\)\s+/.test(value)) return true;
+  return false;
+}
+
+function guardDocumentTitle() {
+  const descriptor = Object.getOwnPropertyDescriptor(Document.prototype, "title");
+  if (!descriptor?.get || !descriptor?.set) return () => undefined;
+
+  const read = descriptor.get;
+  const write = descriptor.set;
+  let lastGood = read.call(document) as string;
+
+  Object.defineProperty(document, "title", {
+    configurable: true,
+    enumerable: descriptor.enumerable ?? true,
+    get() {
+      return read.call(this);
+    },
+    set(value: string) {
+      if (typeof value === "string" && isTawkTabAlert(value)) return;
+      lastGood = value;
+      write.call(this, value);
+    },
+  });
+
+  const titleEl = document.querySelector("title");
+  const observer = titleEl
+    ? new MutationObserver(() => {
+        const current = read.call(document) as string;
+        if (isTawkTabAlert(current)) {
+          write.call(document, lastGood);
+          return;
+        }
+        lastGood = current;
+      })
+    : null;
+  observer?.observe(titleEl, { childList: true, characterData: true, subtree: true });
+
+  return () => {
+    observer?.disconnect();
+    delete (document as { title?: string }).title;
+  };
+}
+
 function replyFor(question: string): Pick<ChatMessage, "text" | "links"> {
   if (question === SUGGESTIONS[0]) {
     return {
@@ -116,6 +165,8 @@ export function TawkToChat() {
     setTawkVisible(false);
     setTawkOpen(false);
   }
+
+  useEffect(() => guardDocumentTitle(), []);
 
   useEffect(() => {
     const api = tawk();
