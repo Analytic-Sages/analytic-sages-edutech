@@ -95,7 +95,9 @@ function guardDocumentTitle() {
         lastGood = current;
       })
     : null;
-  observer?.observe(titleEl, { childList: true, characterData: true, subtree: true });
+  if (titleEl) {
+    observer?.observe(titleEl, { childList: true, characterData: true, subtree: true });
+  }
 
   return () => {
     observer?.disconnect();
