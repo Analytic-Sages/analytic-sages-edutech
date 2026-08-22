@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
-import { adminNav, operationsNav } from "@/config/navigation";
+import { adminNav, editorNav, operationsNav } from "@/config/navigation";
 import { ApiError, getMe } from "@/lib/api";
 
 export function AdminPortal({ children }: { children: React.ReactNode }) {
@@ -24,6 +24,15 @@ export function AdminPortal({ children }: { children: React.ReactNode }) {
           setReady(true);
           return;
         }
+        if (user.role === "editor") {
+          if (!pathname.startsWith("/admin/insights")) {
+            router.replace("/admin/insights");
+            return;
+          }
+          setNav(editorNav);
+          setReady(true);
+          return;
+        }
         if (user.role === "operations") {
           const allowed =
             pathname.startsWith("/admin/events") ||
@@ -37,7 +46,9 @@ export function AdminPortal({ children }: { children: React.ReactNode }) {
           setReady(true);
           return;
         }
-        router.replace(user.role === "instructor" ? "/staff" : "/dashboard");
+        router.replace(
+          user.role === "instructor" ? "/staff" : user.role === "author" ? "/studio" : "/dashboard"
+        );
       })
       .catch((err) => {
         if (cancelled) return;

@@ -23,6 +23,8 @@ export default function robots(): MetadataRoute.Robots {
         "/my-events",
         "/explore",
         "/certificates",
+        "/studio",
+        "/studio/",
         "/verify-email",
         "/reset-password",
         "/staff-invite",

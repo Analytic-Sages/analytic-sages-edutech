@@ -1059,6 +1059,26 @@ export function inviteOperations(email: string, fullName?: string) {
   });
 }
 
+export function inviteEditor(email: string, fullName?: string) {
+  return apiFetch<InviteInstructorResponse>("/api/v1/admin/editors", {
+    method: "POST",
+    body: JSON.stringify({
+      email,
+      full_name: fullName || null,
+    }),
+  });
+}
+
+export function inviteAuthor(email: string, fullName?: string) {
+  return apiFetch<InviteInstructorResponse>("/api/v1/admin/authors", {
+    method: "POST",
+    body: JSON.stringify({
+      email,
+      full_name: fullName || null,
+    }),
+  });
+}
+
 export function acceptStaffInvite(token: string, password: string) {
   return apiFetch<{ access_token: string; user: AuthUser }>("/api/v1/auth/accept-invite", {
     method: "POST",

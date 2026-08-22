@@ -19,7 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatAdminDate, initialsFor } from "@/components/admin/admin-format";
-import { ApiError, getAdminUsers, inviteInstructor, inviteOperations, type AdminUserRow } from "@/lib/api";
+import { ApiError, getAdminUsers, inviteAuthor, inviteEditor, inviteInstructor, inviteOperations, type AdminUserRow } from "@/lib/api";
 
 export function AdminUsersContent() {
   const [users, setUsers] = useState<AdminUserRow[]>([]);
@@ -29,7 +29,9 @@ export function AdminUsersContent() {
   const [inviteName, setInviteName] = useState("");
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
-  const [inviteRole, setInviteRole] = useState<"instructor" | "operations">("instructor");
+  const [inviteRole, setInviteRole] = useState<"instructor" | "operations" | "editor" | "author">(
+    "instructor"
+  );
   const [inviting, setInviting] = useState(false);
 
   function loadUsers() {
@@ -66,7 +68,11 @@ export function AdminUsersContent() {
       const result =
         inviteRole === "operations"
           ? await inviteOperations(inviteEmail.trim(), inviteName.trim() || undefined)
-          : await inviteInstructor(inviteEmail.trim(), inviteName.trim() || undefined);
+          : inviteRole === "editor"
+            ? await inviteEditor(inviteEmail.trim(), inviteName.trim() || undefined)
+            : inviteRole === "author"
+              ? await inviteAuthor(inviteEmail.trim(), inviteName.trim() || undefined)
+              : await inviteInstructor(inviteEmail.trim(), inviteName.trim() || undefined);
       setInviteSuccess(result.message);
       setInviteEmail("");
       setInviteName("");
@@ -102,7 +108,7 @@ export function AdminUsersContent() {
     <div>
       <PageHeader
         title="Users"
-        description="Live learner accounts. Invite instructors or an operations manager by email - they cannot self-register as staff."
+        description="Live learner accounts. Invite instructors, operations, Insights editors, or authors. Authors cannot publish."
       />
 
       <Card className="mb-8 shadow-card">
@@ -137,10 +143,14 @@ export function AdminUsersContent() {
                 id="invite-role"
                 className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
                 value={inviteRole}
-                onChange={(e) => setInviteRole(e.target.value as "instructor" | "operations")}
+                onChange={(e) =>
+                  setInviteRole(e.target.value as "instructor" | "operations" | "editor" | "author")
+                }
               >
-                <option value="instructor">Instructor</option>
+                <option value="instructor">Instructor (classroom)</option>
                 <option value="operations">Operations</option>
+                <option value="editor">Editor (publishes Insights)</option>
+                <option value="author">Author (drafts only)</option>
               </select>
             </div>
             <Button
@@ -198,7 +208,10 @@ export function AdminUsersContent() {
                   <TableCell>
                     {user.email_verified ? (
                       <span className="text-success">Yes</span>
-                    ) : user.role === "instructor" ? (
+                    ) : user.role === "instructor" ||
+                      user.role === "operations" ||
+                      user.role === "editor" ||
+                      user.role === "author" ? (
                       <span className="text-brand-orange">Invite sent</span>
                     ) : (
                       <span className="text-muted-foreground">No</span>

@@ -19,7 +19,7 @@ function contentFromPath(path: string): { name: string; category: string } | nul
   if (path === "/courses") return { name: "Self-paced courses", category: "catalog" };
   if (path === "/programs") return { name: "Programs", category: "program" };
   if (path === "/events") return { name: "Events", category: "event" };
-  if (path === "/blog") return { name: "Blog", category: "blog" };
+  if (path === "/insights" || path === "/blog") return { name: "Insights", category: "blog" };
 
   const course = path.match(/^\/courses\/([^/]+)$/);
   if (course) return { name: course[1], category: "course" };
@@ -27,7 +27,7 @@ function contentFromPath(path: string): { name: string; category: string } | nul
   if (program) return { name: program[1], category: "program" };
   const event = path.match(/^\/events\/([^/]+)$/);
   if (event) return { name: event[1], category: "event" };
-  const post = path.match(/^\/blog\/([^/]+)$/);
+  const post = path.match(/^\/(?:insights|blog)\/([^/]+)$/);
   if (post) return { name: post[1], category: "blog" };
   return null;
 }

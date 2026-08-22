@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from html import escape
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 import httpx
 
@@ -13,6 +13,16 @@ from app.core.config import Settings
 logger = logging.getLogger(__name__)
 
 RESEND_API_URL = "https://api.resend.com/emails"
+RESEND_API_BASE = "https://api.resend.com"
+
+
+def _resend_already_exists(status_code: int, body: str) -> bool:
+    if status_code == 409:
+        return True
+    if status_code in {400, 422}:
+        lowered = body.lower()
+        return "already" in lowered or "exist" in lowered or "duplicate" in lowered
+    return False
 
 
 class EmailService:
@@ -22,6 +32,10 @@ class EmailService:
     @property
     def is_live(self) -> bool:
         return bool(self.settings.email_api_key)
+
+    @property
+    def newsletter_ready(self) -> bool:
+        return bool(self.settings.email_api_key and self.settings.resend_audience_id)
 
     def send_verification_email(self, *, email: str, token: str, next_path: str | None = None) -> None:
         params = {"token": token}
@@ -70,6 +84,21 @@ class EmailService:
             intro = (
                 "You've been invited to manage Analytic Sages events. "
                 "Set your password to verify your email and open the events dashboard."
+            )
+        elif role == "editor":
+            subject = "You're invited to edit Analytic Sages Insights"
+            title = "Editor invite"
+            intro = (
+                "You've been invited as an Insights editor. "
+                "Set your password to review author drafts and publish articles."
+            )
+        elif role == "author":
+            subject = "You're invited to write for Analytic Sages Insights"
+            title = "Author invite"
+            intro = (
+                "You've been invited as an Insights author. "
+                "Set your password to write drafts and submit them for editorial review. "
+                "Editors publish — authors cannot publish directly."
             )
         else:
             subject = "You're invited to Analytic Sages staff"
@@ -214,6 +243,143 @@ class EmailService:
         )
         self._send(to=email, subject=f"You're registered · {event_title}", html=html, dev_label="event-rsvp", link=link)
 
+    def add_subscriber(self, email: str) -> bool:
+        """Add a guest email to the Insights Resend Audience / Segment. Idempotent."""
+        address = email.strip().lower()
+        if not self.newsletter_ready:
+            if not self.settings.is_production:
+                logger.info("[dev-email] insights-subscribe %s (list not configured)", address)
+                return True
+            logger.error("Insights subscribe failed: EMAIL_API_KEY or RESEND_AUDIENCE_ID missing")
+            return False
+
+        segment_id = self.settings.resend_audience_id
+        created = self._resend(
+            "POST",
+            "/contacts",
+            json={"email": address, "unsubscribed": False},
+        )
+        if created is None:
+            return False
+        status, body = created
+        if status >= 400 and not _resend_already_exists(status, body):
+            logger.error("Resend create contact failed status=%s body=%s", status, body[:400])
+            return False
+
+        encoded = quote(address, safe="")
+        added = self._resend("POST", f"/contacts/{encoded}/segments/{segment_id}")
+        if added is None:
+            return False
+        add_status, add_body = added
+        if add_status >= 400 and not _resend_already_exists(add_status, add_body):
+            logger.error(
+                "Resend add contact to audience failed status=%s body=%s",
+                add_status,
+                add_body[:400],
+            )
+            return False
+
+        self._resend("PATCH", f"/contacts/{encoded}", json={"unsubscribed": False})
+        logger.info("Insights subscriber added: %s", address)
+        return True
+
+    def send_insight_newsletter(
+        self,
+        *,
+        title: str,
+        excerpt: str,
+        byline: str,
+        slug: str,
+    ) -> bool:
+        """Email the Insights list once per article. Custom mail stays in Resend Broadcasts."""
+        url = f"{self.settings.frontend_url.rstrip('/')}/insights/{slug}"
+        if not self.newsletter_ready:
+            if self.settings.is_production:
+                logger.error(
+                    "Cannot send Insights newsletter for %s; EMAIL_API_KEY or RESEND_AUDIENCE_ID missing",
+                    slug,
+                )
+                return False
+            logger.info("[dev-email] insight-newsletter %s %s", title, url)
+            return True
+
+        html = self._insight_newsletter_html(
+            title=title, excerpt=excerpt, byline=byline, url=url
+        )
+        created = self._resend(
+            "POST",
+            "/broadcasts",
+            json={
+                "segment_id": self.settings.resend_audience_id,
+                "from": self.settings.email_from,
+                "subject": title,
+                "name": f"Insights · {slug}",
+                "html": html,
+                "send": True,
+            },
+        )
+        if created is None:
+            return False
+        status, body = created
+        if status >= 400:
+            logger.error(
+                "Resend insight broadcast failed status=%s body=%s slug=%s",
+                status,
+                body[:400],
+                slug,
+            )
+            return False
+        logger.info("Sent Insights newsletter for %s", slug)
+        return True
+
+    def _insight_newsletter_html(
+        self, *, title: str, excerpt: str, byline: str, url: str
+    ) -> str:
+        safe_title = escape(title)
+        safe_excerpt = escape(excerpt) if excerpt else "A new Analytic Sages Insight is live."
+        byline_html = (
+            f'<p style="margin:0 0 16px;font-size:13px;color:#5a6a7a">By {escape(byline)}</p>'
+            if byline
+            else ""
+        )
+        return (
+            '<div style="font-family:system-ui,-apple-system,sans-serif;line-height:1.5;'
+            'max-width:560px;margin:0 auto;padding:24px;color:#0b1f33">'
+            '<p style="margin:0 0 8px;font-size:12px;letter-spacing:0.04em;color:#c45c26;'
+            'text-transform:uppercase">Analytic Sages Insights</p>'
+            f'<h1 style="font-size:22px;line-height:1.3;margin:0 0 12px">{safe_title}</h1>'
+            f"{byline_html}"
+            f'<p style="margin:0 0 20px">{safe_excerpt}</p>'
+            f'<p style="margin:0 0 24px"><a href="{escape(url)}" '
+            'style="display:inline-block;background:#0b1f33;color:#fff;text-decoration:none;'
+            'padding:10px 16px;border-radius:8px">Read the article</a></p>'
+            '<p style="margin:0;font-size:12px;color:#666">'
+            '<a href="{{{RESEND_UNSUBSCRIBE_URL}}}" style="color:#666">Unsubscribe</a>'
+            "</p>"
+            "</div>"
+        )
+
+    def _resend(
+        self,
+        method: str,
+        path: str,
+        json: dict[str, object] | None = None,
+    ) -> tuple[int, str] | None:
+        try:
+            with httpx.Client(timeout=20.0) as client:
+                kwargs: dict[str, object] = {
+                    "headers": {
+                        "Authorization": f"Bearer {self.settings.email_api_key}",
+                        "Content-Type": "application/json",
+                    },
+                }
+                if json is not None:
+                    kwargs["json"] = json
+                response = client.request(method, f"{RESEND_API_BASE}{path}", **kwargs)
+        except httpx.HTTPError:
+            logger.exception("Resend request failed %s %s", method, path)
+            return None
+        return response.status_code, response.text
 
     def _simple_html(self, *, title: str, body: str) -> str:
         return (

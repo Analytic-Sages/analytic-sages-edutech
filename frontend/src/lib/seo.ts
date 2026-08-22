@@ -112,7 +112,7 @@ export function blogPostingJsonLd(post: {
     headline: post.title,
     description: post.excerpt,
     datePublished: post.publishedAt,
-    mainEntityOfPage: absoluteUrl(`/blog/${post.slug}`),
+    mainEntityOfPage: absoluteUrl(`/insights/${post.slug}`),
     image: absoluteAssetUrl(post.coverImage || DEFAULT_OG_IMAGE),
     author: {
       "@type": "Person",

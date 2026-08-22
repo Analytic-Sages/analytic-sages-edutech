@@ -112,3 +112,45 @@ def invite_operations(
         resent=resent,
         message=message,
     )
+
+
+@router.post("/editors", response_model=InviteInstructorResponse)
+def invite_editor(
+    payload: InviteInstructorRequest,
+    _: User = Depends(require_admin),
+    auth: AuthService = Depends(get_auth_service),
+) -> InviteInstructorResponse:
+    user, resent = auth.invite_editor(email=payload.email, full_name=payload.full_name)
+    message = (
+        f"Invite resent to {user.email}."
+        if resent
+        else f"Invite sent to {user.email}. They have 7 days to set a password."
+    )
+    return InviteInstructorResponse(
+        email=user.email,
+        full_name=user.full_name,
+        role=user.role.value,
+        resent=resent,
+        message=message,
+    )
+
+
+@router.post("/authors", response_model=InviteInstructorResponse)
+def invite_author(
+    payload: InviteInstructorRequest,
+    _: User = Depends(require_admin),
+    auth: AuthService = Depends(get_auth_service),
+) -> InviteInstructorResponse:
+    user, resent = auth.invite_author(email=payload.email, full_name=payload.full_name)
+    message = (
+        f"Invite resent to {user.email}."
+        if resent
+        else f"Invite sent to {user.email}. They have 7 days to set a password."
+    )
+    return InviteInstructorResponse(
+        email=user.email,
+        full_name=user.full_name,
+        role=user.role.value,
+        resent=resent,
+        message=message,
+    )

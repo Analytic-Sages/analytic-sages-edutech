@@ -21,6 +21,8 @@ from app.services.classroom import ClassroomService
 from app.services.instructors import InstructorService
 from app.services.payments import PaymentService
 from app.services.self_paced import SelfPacedService
+from app.services.insights import InsightService
+from app.services.storage import StorageService
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -61,6 +63,17 @@ def get_payment_service(
 
 def get_self_paced_service(db: Session = Depends(get_db)) -> SelfPacedService:
     return SelfPacedService(db)
+
+
+def get_insight_service(
+    db: Session = Depends(get_db),
+    email_service: EmailService = Depends(get_email_service),
+) -> InsightService:
+    return InsightService(db, email_service)
+
+
+def get_storage_service(settings: Settings = Depends(get_settings)) -> StorageService:
+    return StorageService(settings)
 
 
 def get_event_service(
@@ -155,6 +168,8 @@ require_admin = require_roles(UserRole.ADMIN)
 require_instructor = require_roles(UserRole.ADMIN, UserRole.INSTRUCTOR)
 require_event_ops = require_roles(UserRole.ADMIN, UserRole.OPERATIONS)
 require_catalog_ops = require_roles(UserRole.ADMIN, UserRole.OPERATIONS)
+require_publisher = require_roles(UserRole.ADMIN, UserRole.EDITOR)
+require_writer = require_roles(UserRole.ADMIN, UserRole.EDITOR, UserRole.AUTHOR)
 require_student = require_roles(
     UserRole.ADMIN, UserRole.INSTRUCTOR, UserRole.OPERATIONS, UserRole.STUDENT
 )

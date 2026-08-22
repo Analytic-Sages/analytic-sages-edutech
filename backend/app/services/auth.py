@@ -205,6 +205,12 @@ class AuthService:
     def invite_operations(self, *, email: str, full_name: str | None) -> tuple[User, bool]:
         return self.invite_staff(email=email, full_name=full_name, role=UserRole.OPERATIONS)
 
+    def invite_editor(self, *, email: str, full_name: str | None) -> tuple[User, bool]:
+        return self.invite_staff(email=email, full_name=full_name, role=UserRole.EDITOR)
+
+    def invite_author(self, *, email: str, full_name: str | None) -> tuple[User, bool]:
+        return self.invite_staff(email=email, full_name=full_name, role=UserRole.AUTHOR)
+
     def invite_staff(
         self,
         *,
@@ -212,14 +218,20 @@ class AuthService:
         full_name: str | None,
         role: UserRole,
     ) -> tuple[User, bool]:
-        if role not in {UserRole.INSTRUCTOR, UserRole.OPERATIONS}:
+        if role not in {UserRole.INSTRUCTOR, UserRole.OPERATIONS, UserRole.EDITOR, UserRole.AUTHOR}:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="That staff role cannot be invited",
             )
         email_normalized = email.lower()
         user = self.db.scalar(select(User).where(User.email == email_normalized))
-        role_label = "operations manager" if role == UserRole.OPERATIONS else "instructor"
+        role_labels = {
+            UserRole.OPERATIONS: "operations manager",
+            UserRole.EDITOR: "editor",
+            UserRole.AUTHOR: "author",
+            UserRole.INSTRUCTOR: "instructor",
+        }
+        role_label = role_labels[role]
 
         if user:
             if user.role == UserRole.STUDENT:
@@ -288,7 +300,12 @@ class AuthService:
             )
 
         user = self.db.get(User, record.user_id)
-        if not user or user.role not in {UserRole.INSTRUCTOR, UserRole.OPERATIONS}:
+        if not user or user.role not in {
+            UserRole.INSTRUCTOR,
+            UserRole.OPERATIONS,
+            UserRole.EDITOR,
+            UserRole.AUTHOR,
+        }:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid or expired invite link. Ask an admin to send a new invite.",

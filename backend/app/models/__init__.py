@@ -1,3 +1,4 @@
+from app.models.article import Article, AuthorProfile
 from app.models.classroom import Cohort, CohortMember, LiveSession
 from app.models.course import Course
 from app.models.enrollment import Enrollment
@@ -31,4 +32,6 @@ __all__ = [
     "Cohort",
     "CohortMember",
     "LiveSession",
+    "Article",
+    "AuthorProfile",
 ]

@@ -14,6 +14,7 @@ import {
   type PublicCohortCard,
   type SelfPacedCourseCard,
 } from "@/lib/api";
+import { listInsights, type InsightCard } from "@/lib/insights";
 import { searchCatalog, searchKindLabel, type SearchHit } from "@/lib/site-search";
 import { cn } from "@/lib/utils";
 
@@ -21,16 +22,18 @@ function useSearchIndex() {
   const [courses, setCourses] = useState<SelfPacedCourseCard[]>([]);
   const [cohorts, setCohorts] = useState<PublicCohortCard[]>([]);
   const [events, setEvents] = useState<EventCardPublic[]>([]);
+  const [insights, setInsights] = useState<InsightCard[]>([]);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.allSettled([listSelfPacedCourses(), listPublicCohorts(), listPublicEvents()])
-      .then(([courseResult, cohortResult, eventResult]) => {
+    Promise.allSettled([listSelfPacedCourses(), listPublicCohorts(), listPublicEvents(), listInsights()])
+      .then(([courseResult, cohortResult, eventResult, insightResult]) => {
         if (cancelled) return;
         if (courseResult.status === "fulfilled") setCourses(courseResult.value);
         if (cohortResult.status === "fulfilled") setCohorts(cohortResult.value);
         if (eventResult.status === "fulfilled") setEvents(eventResult.value);
+        if (insightResult.status === "fulfilled") setInsights(insightResult.value);
         setReady(true);
       });
     return () => {
@@ -38,7 +41,7 @@ function useSearchIndex() {
     };
   }, []);
 
-  return { courses, cohorts, events, ready };
+  return { courses, cohorts, events, insights, ready };
 }
 
 function SearchResults({
@@ -66,7 +69,7 @@ function SearchResults({
   if (hits.length === 0) {
     return (
       <p className="px-3 py-4 text-sm text-muted-foreground">
-        No matches. Try a course, program, event, or blog topic.
+        No matches. Try a course, program, event, or Insights topic.
       </p>
     );
   }
@@ -99,14 +102,14 @@ function SearchField({
   className?: string;
 }) {
   const router = useRouter();
-  const { courses, cohorts, events, ready } = useSearchIndex();
+  const { courses, cohorts, events, insights, ready } = useSearchIndex();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const hits = useMemo(
-    () => searchCatalog(query, { courses, cohorts, events }),
-    [query, courses, cohorts, events]
+    () => searchCatalog(query, { courses, cohorts, events, insights }),
+    [query, courses, cohorts, events, insights]
   );
 
   useEffect(() => {

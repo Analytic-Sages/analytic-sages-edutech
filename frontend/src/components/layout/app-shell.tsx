@@ -17,6 +17,7 @@ import {
   Settings,
   Sun,
   Users,
+  PenLine,
   type LucideIcon,
 } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
@@ -48,6 +49,7 @@ const navIcons: Record<NavItemId, LucideIcon> = {
   payments: CreditCard,
   analytics: BarChart3,
   settings: Settings,
+  insights: PenLine,
 };
 
 type AppSidebarProps = {

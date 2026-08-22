@@ -1,6 +1,6 @@
 import { siteConfig } from "@/config/site";
 import type { EventCardPublic, PublicCohortCard, SelfPacedCourseCard } from "@/lib/api";
-import { blogPosts } from "@/lib/mock-blog-data";
+import type { InsightCard } from "@/lib/insights";
 import { courses } from "@/lib/mock-data";
 import {
   FEATURED_FREE_COURSE_PUBLIC,
@@ -24,7 +24,7 @@ const KIND_LABEL: Record<SearchKind, string> = {
   program: "Program",
   event: "Event",
   lesson: "Lesson",
-  blog: "Blog",
+  blog: "Insights",
   community: "Community",
 };
 
@@ -54,6 +54,7 @@ export function searchCatalog(query: string, sources: {
   courses: SelfPacedCourseCard[];
   cohorts: PublicCohortCard[];
   events: EventCardPublic[];
+  insights?: InsightCard[];
 }): SearchHit[] {
   const q = query.trim();
   if (q.length < 2) return [];
@@ -168,14 +169,14 @@ export function searchCatalog(query: string, sources: {
     }
   }
 
-  for (const post of blogPosts) {
+  for (const post of sources.insights || []) {
     push({
       id: `blog:${post.slug}`,
       kind: "blog",
       title: post.title,
       description: post.excerpt,
-      href: `/blog/${post.slug}`,
-      fields: [post.title, post.excerpt, post.category, ...post.content.slice(0, 3)],
+      href: `/insights/${post.slug}`,
+      fields: [post.title, post.excerpt, post.category],
     });
   }
 

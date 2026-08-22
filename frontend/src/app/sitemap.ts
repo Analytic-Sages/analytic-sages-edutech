@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
-import { blogPosts } from "@/lib/mock-blog-data";
 import { FEATURED_EVENT_SLUG } from "@/lib/events";
+import { SEEDED_INSIGHT_SLUGS } from "@/lib/insight-slugs";
 import { listPublicProgramPaths, PUBLIC_SITE_ORIGIN } from "@/lib/program-pages";
 import { FEATURED_FREE_COURSE_SLUG } from "@/lib/self-paced";
 
@@ -25,14 +25,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/events",
     `/events/${FEATURED_EVENT_SLUG}`,
     "/about",
-    "/blog",
+    "/insights",
     "/faq",
     "/community",
     "/contact",
     "/privacy",
     "/terms",
     ...listPublicProgramPaths(),
-    ...blogPosts.map((post) => `/blog/${post.slug}`),
+    ...SEEDED_INSIGHT_SLUGS.map((slug) => `/insights/${slug}`),
   ];
 
   const unique = [...new Set(paths)];

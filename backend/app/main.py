@@ -10,6 +10,7 @@ from app.core.config import configure_logging, get_settings
 from app.db.session import SessionLocal
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.services.seed_events import seed_featured_event
+from app.services.seed_insights import seed_insights_articles
 from app.services.seed_self_paced import seed_dune_course
 
 logger = logging.getLogger(__name__)
@@ -21,8 +22,9 @@ async def lifespan(_app: FastAPI):
     try:
         seed_dune_course(db)
         seed_featured_event(db)
+        seed_insights_articles(db)
         db.commit()
-        logger.info("Featured self-paced course and event are ready.")
+        logger.info("Featured catalog content and Insights articles are ready.")
     except Exception:
         db.rollback()
         logger.exception("Could not seed featured catalog content")

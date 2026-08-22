@@ -8,7 +8,8 @@ export type NavItemId =
   | "users"
   | "payments"
   | "analytics"
-  | "settings";
+  | "settings"
+  | "insights";
 
 export type NavItem = {
   title: string;
@@ -21,7 +22,7 @@ export const marketingNav = [
   { title: "Our Programs", href: "/programs" },
   { title: "Events", href: "/events" },
   { title: "Community", href: "/community" },
-  { title: "Blog", href: "/blog" },
+  { title: "Insights", href: "/insights" },
   { title: "About us", href: "/about" },
 ] as const;
 
@@ -41,6 +42,7 @@ export const adminNav: NavItem[] = [
   { title: "Payments", href: "/admin/payments", icon: "payments" },
   { title: "Courses", href: "/admin/courses", icon: "courses" },
   { title: "Events", href: "/admin/events", icon: "events" },
+  { title: "Insights", href: "/admin/insights", icon: "insights" },
   { title: "Certificates", href: "/admin/certificates", icon: "certificates" },
   { title: "Analytics", href: "/admin/analytics", icon: "analytics" },
   { title: "Settings", href: "/admin/settings", icon: "settings" },
@@ -49,6 +51,14 @@ export const adminNav: NavItem[] = [
 export const operationsNav: NavItem[] = [
   { title: "Events", href: "/admin/events", icon: "events" },
   { title: "Courses", href: "/admin/courses", icon: "courses" },
+];
+
+export const editorNav: NavItem[] = [
+  { title: "Insights", href: "/admin/insights", icon: "insights" },
+];
+
+export const studioNav: NavItem[] = [
+  { title: "My articles", href: "/studio", icon: "insights" },
 ];
 
 export const staffNav: NavItem[] = [

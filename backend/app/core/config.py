@@ -45,6 +45,8 @@ class Settings(BaseSettings):
     email_from: str = "noreply@analyticsages.com"
     email_api_key: str | None = None
     contact_email: str = "support@analyticsages.io"
+    # Resend Audience ID (dashboard may label this Segment). Used for Insights subscribe + issue sends.
+    resend_audience_id: str | None = None
 
     # Google OAuth — leave empty to use mock Google login in development.
     # Redirect URI should be the public site origin (same-origin API rewrite), not the API host.
@@ -71,6 +73,9 @@ class Settings(BaseSettings):
     realtimekit_app_id: str | None = None
     realtimekit_host_preset: str = "group_call_host"
     realtimekit_participant_preset: str = "group_call_participant"
+
+    # Local article image uploads (dev / API disk). Not Postgres.
+    storage_dir: str = "var/uploads"
 
     @property
     def is_production(self) -> bool:

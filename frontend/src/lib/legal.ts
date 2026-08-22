@@ -105,6 +105,11 @@ export const privacyPolicy: LegalDocumentContent = {
           type: "p",
           text: "If you contact us, we may collect information contained in your communication, including your name, email address, and the contents of your message.",
         },
+        { type: "h3", text: "Insights newsletter" },
+        {
+          type: "p",
+          text: "If you subscribe on Insights, we collect your email address and store it with our email provider (Resend) so we can send you new published articles and occasional Analytic Sages updates. You do not need an account. You can unsubscribe using the link in those emails.",
+        },
       ],
     },
     {
@@ -153,6 +158,7 @@ export const privacyPolicy: LegalDocumentContent = {
             "Provide feedback and support",
             "Communicate with you about your account or enrollment",
             "Send important service notifications",
+            "Send Insights newsletters and occasional Analytic Sages updates when you subscribe with your email",
             "Improve our courses and platform",
             "Understand platform usage and learning engagement",
             "Measure advertising campaigns, where you have accepted marketing cookies",
@@ -270,7 +276,7 @@ export const privacyPolicy: LegalDocumentContent = {
             "Video delivery",
             "Live classrooms",
             "Payment processing",
-            "Email delivery",
+            "Email delivery, including Insights newsletters",
             "Analytics",
             "Advertising and retargeting, if you accept marketing cookies",
             "Database and application infrastructure",
@@ -278,7 +284,7 @@ export const privacyPolicy: LegalDocumentContent = {
         },
         {
           type: "p",
-          text: "Examples may include Google (including Google Ads), Meta Platforms (Meta Pixel), Vercel, Render, RealtimeKit, Bunny Stream, Paystack, NOWPayments, YouTube, Plausible Analytics, and other service providers used by the platform.",
+          text: "Examples may include Google (including Google Ads), Meta Platforms (Meta Pixel), Vercel, Render, RealtimeKit, Bunny Stream, Paystack, NOWPayments, YouTube, Plausible Analytics, Resend, and other service providers used by the platform.",
         },
         {
           type: "p",
