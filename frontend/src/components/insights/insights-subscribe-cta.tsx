@@ -39,7 +39,7 @@ export function InsightsSubscribeCta() {
   if (subscribed) {
     return (
       <aside className="rounded-2xl border bg-card p-6 sm:p-8">
-        <p className="font-heading text-xl font-bold">You're on the list</p>
+        <p className="font-heading text-xl font-bold">You are on the list</p>
         <p className="mt-2 max-w-xl text-sm text-muted-foreground">
           We will email new Insights to <span className="font-medium text-foreground">{subscribed}</span>{" "}
           when they are published. Custom updates may also come from Analytic Sages. You can
