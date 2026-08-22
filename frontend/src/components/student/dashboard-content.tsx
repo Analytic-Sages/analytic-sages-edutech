@@ -9,7 +9,6 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { StatsCard } from "@/components/shared/stats-card";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import {
   ApiError,
   getAccessToken,
@@ -20,10 +19,9 @@ import {
   type EventRegistrationPublic,
   type LiveSessionPublic,
 } from "@/lib/api";
-import { getContinueHref } from "@/lib/course-paths";
 import { fetchEnrolledCourses, type EnrolledCourseBundle } from "@/lib/enrollments";
 
-import { LearningHeatmap } from "@/components/student/learning-heatmap";
+import { LearningProgress } from "@/components/student/learning-progress";
 
 function formatWhen(iso: string) {
   try {
@@ -97,7 +95,6 @@ export function DashboardContent() {
   }, []);
 
   const firstName = user?.full_name?.split(" ")[0] || user?.email?.split("@")[0] || "there";
-  const continueCourse = items[0]?.course;
   const courseCount = items.length;
   const avgProgress =
     courseCount > 0
@@ -150,7 +147,7 @@ export function DashboardContent() {
           icon="trending"
           description="courses in progress"
         />
-        <StatsCard title="Certificates" value="—" icon="award" description="Coming soon" />
+        <StatsCard title="Certificates" value="-" icon="award" description="Coming soon" />
         <StatsCard
           title="Avg. progress"
           value={`${avgProgress}%`}
@@ -185,39 +182,10 @@ export function DashboardContent() {
         </Card>
       )}
 
-      <div className="mb-8">
-        <LearningHeatmap />
-      </div>
-
-      {continueCourse ? (
-        <Card className="mb-8 border-brand-navy/20 bg-gradient-to-r from-brand-navy/5 to-brand-orange/5 shadow-card">
-          <CardHeader>
-            <CardTitle className="text-lg">Continue Learning</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h3 className="font-heading font-semibold">{continueCourse.title}</h3>
-                <p className="text-sm text-muted-foreground">
-                  Jump back into your next lesson
-                </p>
-              </div>
-              <ButtonLink
-                href={getContinueHref(continueCourse)}
-                className="bg-brand-orange text-white hover:bg-brand-orange/90"
-              >
-                Continue learning
-              </ButtonLink>
-            </div>
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Course progress</span>
-                <span className="font-medium">{continueCourse.progress ?? 0}%</span>
-              </div>
-              <Progress value={continueCourse.progress ?? 0} className="h-2" />
-            </div>
-          </CardContent>
-        </Card>
+      {items.length > 0 ? (
+        <div className="mb-8">
+          <LearningProgress items={items} />
+        </div>
       ) : (
         <Card className="mb-8 shadow-card">
           <CardContent className="flex flex-col gap-4 py-8 sm:flex-row sm:items-center sm:justify-between">
@@ -227,7 +195,7 @@ export function DashboardContent() {
                 You haven&apos;t enrolled in any courses yet.
               </p>
             </div>
-            <ButtonLink href="/courses" className="bg-brand-orange text-white hover:bg-brand-orange/90">
+            <ButtonLink href="/courses?price=free" className="bg-brand-orange text-white hover:bg-brand-orange/90">
               Explore Free Courses
             </ButtonLink>
           </CardContent>
@@ -259,7 +227,7 @@ export function DashboardContent() {
             icon={<BookOpen className="size-5" />}
             title="You haven't enrolled in any courses yet."
             description="Explore a free self-paced course to start learning."
-            action={{ label: "Explore Free Courses", href: "/courses" }}
+            action={{ label: "Explore Free Courses", href: "/courses?price=free" }}
           />
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

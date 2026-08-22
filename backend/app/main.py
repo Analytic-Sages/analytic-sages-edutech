@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 import logging
+from urllib.parse import urlparse
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -46,13 +47,24 @@ def create_app() -> FastAPI:
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[settings.frontend_url],
+        allow_origins=settings.cors_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type"],
     )
 
     app.include_router(api_router)
+
+    redirect_host = urlparse(settings.resolved_google_redirect_uri).hostname
+    frontend_host = urlparse(settings.frontend_url).hostname
+    if settings.google_oauth_configured and redirect_host != frontend_host:
+        logger.warning(
+            "GOOGLE_REDIRECT_URI host %s does not match FRONTEND_URL host %s. "
+            "Use the site origin so the refresh cookie is first-party.",
+            redirect_host,
+            frontend_host,
+        )
+
     return app
 
 

@@ -25,6 +25,7 @@ from app.schemas.classroom import (
     PublicCohortCard,
     SessionResource,
 )
+from app.services.instructors import InstructorService
 from app.services.realtimekit import RealtimeKitError, RealtimeKitService
 
 logger = logging.getLogger(__name__)
@@ -100,6 +101,7 @@ class ClassroomService:
             .all()
         )
         cards: list[PublicCohortCard] = []
+        instructors = InstructorService(self.db)
         for cohort in cohorts:
             sessions = sorted(
                 [s for s in (cohort.sessions or []) if s.status != LiveSessionStatus.CANCELLED],
@@ -131,6 +133,7 @@ class ClassroomService:
                         self._effective_phase(next_session) if next_session else None  # type: ignore[arg-type]
                     ),
                     sessions_count=len(sessions),
+                    instructors=instructors.list_for_cohort(cohort),
                 )
             )
         return cards

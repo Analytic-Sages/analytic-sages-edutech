@@ -102,7 +102,7 @@ export function AdminUsersContent() {
     <div>
       <PageHeader
         title="Users"
-        description="Live learner accounts. Invite instructors or an operations manager by email — they cannot self-register as staff."
+        description="Live learner accounts. Invite instructors or an operations manager by email - they cannot self-register as staff."
       />
 
       <Card className="mb-8 shadow-card">
@@ -185,7 +185,7 @@ export function AdminUsersContent() {
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <p className="font-medium">{user.full_name || "—"}</p>
+                        <p className="font-medium">{user.full_name || "-"}</p>
                         <p className="text-xs text-muted-foreground">{user.email}</p>
                       </div>
                     </div>
@@ -210,7 +210,7 @@ export function AdminUsersContent() {
                     ) : user.in_featured_cohort ? (
                       <span className="font-medium text-brand-orange">Seat</span>
                     ) : (
-                      <span className="text-muted-foreground">—</span>
+                      <span className="text-muted-foreground">-</span>
                     )}
                   </TableCell>
                   <TableCell className="text-muted-foreground">

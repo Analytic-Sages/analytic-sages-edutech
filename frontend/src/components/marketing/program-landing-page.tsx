@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { ArrowRight, Check, ChevronUp, Database, Loader2, X } from "lucide-react";
 import { ProgramDuneGrid } from "@/components/marketing/program-dune-grid";
+import { InstructorRoster } from "@/components/marketing/instructor-roster";
 import { ProgramTestimonialCarousel } from "@/components/marketing/program-testimonial-carousel";
 import {
   Accordion,
@@ -123,6 +124,8 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
           </div>
         </div>
       </section>
+
+      <InstructorRoster instructors={cohort?.instructors} />
 
       <section className="mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
         <h2 className="text-center font-heading text-3xl font-bold sm:text-4xl">
@@ -279,7 +282,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
         type="button"
         aria-label="Back to top"
         onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-        className="fixed right-5 bottom-20 z-40 flex size-11 items-center justify-center rounded-full bg-brand-navy text-white shadow-elevated md:bottom-8"
+        className="fixed right-5 bottom-24 z-40 flex size-11 items-center justify-center rounded-full bg-brand-navy text-white shadow-elevated md:bottom-24"
       >
         <ChevronUp className="size-5" />
       </button>

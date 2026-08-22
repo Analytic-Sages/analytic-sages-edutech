@@ -22,7 +22,7 @@ export function LearningPathsSection() {
 
         <div className="mt-12 grid gap-6 lg:grid-cols-2 lg:gap-8">
           <PathCard
-            eyebrow="01 — Instructor-Led"
+            eyebrow="01. Instructor-Led"
             title="Learn live with experts"
             body="Scheduled cohorts, live classroom sessions, projects, and mentorship with your peer group."
             points={["Live classes", "Cohort community", "Mentorship"]}
@@ -32,10 +32,10 @@ export function LearningPathsSection() {
             accent
           />
           <PathCard
-            eyebrow="02 — Self-Paced"
-            title="Learn on your schedule"
-            body="On-demand lessons and projects you can complete anytime. Catalog is open; playback is launching soon."
-            points={["On-demand lessons", "Hands-on projects", "Learn anytime"]}
+            eyebrow="02. Self-Paced"
+            title="Learn at your own pace"
+            body="On-demand lessons and projects you can complete anytime. Free courses are live. Paid self-paced courses list their price and launch when the player is ready."
+            points={["Free courses to start", "Paid on-demand library", "Learn anytime"]}
             href="/courses"
             cta="Explore self-paced courses"
             icon={BookOpen}

@@ -2,19 +2,23 @@
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, Loader2, Mail } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
-import { ButtonLink } from "@/components/ui/button-link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ApiError, apiFetch } from "@/lib/api";
+import { ApiError, apiFetch, persistSession, setAccessToken, type AuthResponse } from "@/lib/api";
+import { resolvePostLoginPath } from "@/lib/auth-redirect";
 
 function VerifyEmailInner() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const emailFromQuery = searchParams.get("email") || "";
+  const rawNext = searchParams.get("next") || "/dashboard";
+  const nextPath =
+    rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/dashboard";
 
   const [status, setStatus] = useState<"idle" | "verifying" | "success" | "error">(
     token ? "verifying" : "idle"
@@ -28,15 +32,18 @@ function VerifyEmailInner() {
     let cancelled = false;
     (async () => {
       try {
-        await apiFetch<{ message: string }>("/api/v1/auth/verify-email", {
+        const result = await apiFetch<AuthResponse>("/api/v1/auth/verify-email", {
           method: "POST",
           auth: false,
           body: JSON.stringify({ token }),
         });
-        if (!cancelled) {
-          setStatus("success");
-          setMessage("Email verified. You can sign in now.");
-        }
+        if (cancelled) return;
+        setAccessToken(result.access_token);
+        await persistSession();
+        if (cancelled) return;
+        setStatus("success");
+        setMessage("Email verified. Continuing…");
+        router.replace(resolvePostLoginPath(result.user.role, nextPath));
       } catch (err) {
         if (!cancelled) {
           setStatus("error");
@@ -47,7 +54,7 @@ function VerifyEmailInner() {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, nextPath, router]);
 
   async function handleResend() {
     setResending(true);
@@ -56,7 +63,10 @@ function VerifyEmailInner() {
       const result = await apiFetch<{ message: string }>("/api/v1/auth/resend-verification", {
         method: "POST",
         auth: false,
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({
+          email,
+          next: nextPath !== "/dashboard" ? nextPath : null,
+        }),
       });
       setMessage(result.message);
     } catch (err) {
@@ -70,10 +80,12 @@ function VerifyEmailInner() {
     <div className="mx-auto w-full max-w-sm space-y-8 text-center">
       <Logo size="md" href="/" className="mx-auto" />
       <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-brand-navy/10">
-        {status === "verifying" ? (
-          <Loader2 className="size-8 animate-spin text-brand-navy" />
-        ) : status === "success" ? (
-          <CheckCircle2 className="size-8 text-success" />
+        {status === "verifying" || status === "success" ? (
+          status === "success" ? (
+            <CheckCircle2 className="size-8 text-success" />
+          ) : (
+            <Loader2 className="size-8 animate-spin text-brand-navy" />
+          )
         ) : (
           <Mail className="size-8 text-brand-navy" />
         )}
@@ -88,10 +100,10 @@ function VerifyEmailInner() {
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           {status === "success"
-            ? "Your account is ready. Sign in to continue."
+            ? "You're signed in. Taking you to your dashboard."
             : status === "verifying"
               ? "Confirming your verification link."
-              : "We sent a verification link to your inbox. Open it to activate your account, then sign in."}
+              : "We sent a verification link to your inbox. Open it in this browser to activate your account."}
         </p>
       </div>
 
@@ -106,12 +118,7 @@ function VerifyEmailInner() {
       )}
 
       {status === "success" ? (
-        <ButtonLink
-          href={`/login${searchParams.get("next") ? `?next=${encodeURIComponent(searchParams.get("next")!)}` : ""}`}
-          className="bg-brand-navy text-white hover:bg-brand-navy/90"
-        >
-          Sign in
-        </ButtonLink>
+        <p className="text-sm text-muted-foreground">Redirecting…</p>
       ) : (
         <div className="space-y-4 text-left">
           <div className="space-y-2">

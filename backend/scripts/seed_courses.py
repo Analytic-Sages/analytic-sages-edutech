@@ -46,7 +46,7 @@ COURSES = [
     {
         "slug": "tableau-for-web3-business-intelligence",
         "title": "Tableau for Web3 Business Intelligence",
-        "description": "Turn on-chain data into clear dashboards and business insights with Tableau — built for Web3 teams and analysts.",
+        "description": "Turn on-chain data into clear dashboards and business insights with Tableau, built for Web3 teams and analysts.",
         "thumbnail": "/1.png",
         "category": "Blockchain",
         "difficulty": "Beginner",

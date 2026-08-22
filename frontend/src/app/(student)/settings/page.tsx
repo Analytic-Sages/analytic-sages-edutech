@@ -1,3 +1,4 @@
+import { CookiePreferencesCard } from "@/components/account/cookie-preferences-card";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -11,6 +12,7 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <PageHeader title="Settings" description="Manage your account preferences" />
+      <CookiePreferencesCard />
       <Card className="shadow-card">
         <CardHeader>
           <CardTitle>Notifications</CardTitle>

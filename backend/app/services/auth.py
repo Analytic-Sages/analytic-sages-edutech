@@ -46,8 +46,6 @@ class AuthService:
         raw_token = self._issue_email_verification_token(user.id)
         self.db.commit()
         self.db.refresh(user)
-
-        self.email_service.send_verification_email(email=user.email, token=raw_token)
         return user, raw_token
 
     def login(self, *, email: str, password: str) -> tuple[User, str, str]:
@@ -76,12 +74,7 @@ class AuthService:
                 ),
             )
 
-        access_token = self.security.create_access_token(
-            user_id=str(user.id),
-            role=user.role.value,
-        )
-        refresh_token = self._issue_refresh_token(user.id)
-        self.db.commit()
+        access_token, refresh_token = self.issue_session(user)
         return user, access_token, refresh_token
 
     def refresh_session(self, refresh_token: str) -> tuple[User, str, str]:
@@ -138,26 +131,27 @@ class AuthService:
         )
         now = datetime.now(UTC)
 
-        if not record or record.verified_at is not None or record.expires_at <= now:
+        if not record or record.expires_at <= now:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid or expired verification token",
             )
 
         user = self.db.get(User, record.user_id)
-        if not user:
+        if not user or not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid or expired verification token",
             )
 
-        user.email_verified = True
-        record.verified_at = now
-        self.db.commit()
-        self.db.refresh(user)
+        if record.verified_at is None:
+            user.email_verified = True
+            record.verified_at = now
+            self.db.commit()
+            self.db.refresh(user)
         return user
 
-    def resend_verification(self, email: str) -> None:
+    def resend_verification(self, email: str, next_path: str | None = None) -> None:
         user = self.db.scalar(select(User).where(User.email == email.lower()))
         if not user or user.email_verified:
             # Generic response prevents email enumeration.
@@ -165,7 +159,11 @@ class AuthService:
 
         raw_token = self._issue_email_verification_token(user.id)
         self.db.commit()
-        self.email_service.send_verification_email(email=user.email, token=raw_token)
+        self.email_service.send_verification_email(
+            email=user.email,
+            token=raw_token,
+            next_path=next_path,
+        )
 
     def forgot_password(self, email: str) -> None:
         user = self.db.scalar(select(User).where(User.email == email.lower()))
@@ -362,6 +360,15 @@ class AuthService:
         self.db.commit()
         self.db.refresh(user)
         return user, access_token, refresh_token
+
+    def issue_session(self, user: User) -> tuple[str, str]:
+        access_token = self.security.create_access_token(
+            user_id=str(user.id),
+            role=user.role.value,
+        )
+        refresh_token = self._issue_refresh_token(user.id)
+        self.db.commit()
+        return access_token, refresh_token
 
     def build_auth_response(self, user: User, access_token: str) -> AuthResponse:
         return AuthResponse(

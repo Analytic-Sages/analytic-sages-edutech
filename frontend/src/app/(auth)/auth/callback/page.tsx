@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { getMe, setAccessToken } from "@/lib/api";
+import { getMe, persistSession, setAccessToken } from "@/lib/api";
 import { setLastAuthMethod } from "@/lib/auth-method";
 import { resolvePostLoginPath } from "@/lib/auth-redirect";
 
@@ -27,7 +27,8 @@ function AuthCallbackInner() {
       setLastAuthMethod("google");
     }
     const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
-    getMe()
+    persistSession()
+      .then(() => getMe())
       .then((me) => router.replace(resolvePostLoginPath(me.role, safeNext)))
       .catch(() => router.replace(safeNext));
   }, [router, searchParams]);

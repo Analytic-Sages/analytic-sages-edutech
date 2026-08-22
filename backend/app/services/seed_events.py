@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.models.event import Event, EventType
@@ -10,9 +10,33 @@ from app.services.seed_self_paced import DUNE_SLUG
 
 FEATURED_EVENT_SLUG = "dune-analytics-building-your-first-defi-dashboard"
 TEST_EVENT_SLUG = "test-dune-workshop"
+QA_EVENT_TITLES = (
+    "Ops Updated Event",
+    "Coming Soon Workshop",
+    "Ops Coming Soon",
+    "Admin Created Workshop",
+    "Test Dune Workshop",
+)
+
+
+def unpublish_pytest_events(db: Session) -> None:
+    leftovers = db.scalars(
+        select(Event).where(
+            Event.published.is_(True),
+            Event.slug != FEATURED_EVENT_SLUG,
+            or_(
+                Event.slug.like("test-%"),
+                Event.slug.like("ops-event-%"),
+                Event.title.in_(QA_EVENT_TITLES),
+            ),
+        )
+    ).all()
+    for event in leftovers:
+        event.published = False
 
 
 def seed_featured_event(db: Session) -> Event | None:
+    unpublish_pytest_events(db)
     leftover = db.scalar(select(Event).where(Event.slug == TEST_EVENT_SLUG))
     if leftover:
         db.delete(leftover)

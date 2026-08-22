@@ -33,6 +33,17 @@ export function SelfPacedLearnPage({ slug, lessonSlug }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [forbidden, setForbidden] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [videoOpened, setVideoOpened] = useState(false);
+
+  useEffect(() => {
+    const key = `as_lesson_opened:${slug}:${lessonSlug}`;
+    setVideoOpened(sessionStorage.getItem(key) === "1");
+  }, [slug, lessonSlug]);
+
+  function handleVideoOpened() {
+    setVideoOpened(true);
+    sessionStorage.setItem(`as_lesson_opened:${slug}:${lessonSlug}`, "1");
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -49,6 +60,7 @@ export function SelfPacedLearnPage({ slug, lessonSlug }: Props) {
         if (!cancelled) {
           setCourse(learn);
           setLesson(detail);
+          if (!detail.video_id) setVideoOpened(true);
         }
       } catch (err) {
         if (cancelled) return;
@@ -71,7 +83,7 @@ export function SelfPacedLearnPage({ slug, lessonSlug }: Props) {
   }, [slug, lessonSlug]);
 
   async function markComplete() {
-    if (!lesson || lesson.completed) return;
+    if (!lesson || lesson.completed || !videoOpened) return;
     setCompleting(true);
     try {
       const result = await completeSelfPacedLesson(slug, lessonSlug);
@@ -185,6 +197,9 @@ export function SelfPacedLearnPage({ slug, lessonSlug }: Props) {
             videoId={lesson.video_id}
             provider={lesson.video_provider}
             title={lesson.title}
+            requireOpen
+            opened={videoOpened}
+            onOpened={handleVideoOpened}
           />
         </div>
 
@@ -261,14 +276,20 @@ export function SelfPacedLearnPage({ slug, lessonSlug }: Props) {
             )}
             <Button
               onClick={markComplete}
-              disabled={completing || lesson.completed}
+              disabled={completing || lesson.completed || !videoOpened}
               className={
                 lesson.completed
                   ? "bg-emerald-600 text-white hover:bg-emerald-600"
                   : "bg-brand-navy text-white hover:bg-brand-navy/90"
               }
             >
-              {lesson.completed ? "Lesson complete" : completing ? "Saving…" : "Mark lesson complete"}
+              {lesson.completed
+                ? "Lesson complete"
+                : completing
+                  ? "Saving…"
+                  : videoOpened
+                    ? "Mark lesson complete"
+                    : "Open the video to continue"}
             </Button>
             {lesson.next_slug ? (
               <ButtonLink

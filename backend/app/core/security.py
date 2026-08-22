@@ -58,23 +58,33 @@ class SecurityService:
 
     def set_refresh_cookie(self, response: Response, refresh_token: str) -> None:
         max_age = self.settings.refresh_token_expire_days * 24 * 60 * 60
+        cookie_kwargs = {
+            "key": self.settings.refresh_cookie_name,
+            "httponly": True,
+            "secure": self.settings.cookie_secure,
+            "samesite": self.settings.refresh_cookie_samesite,
+            "domain": self.settings.cookie_domain,
+        }
+        # Drop the legacy path-scoped cookie from the cross-origin setup.
+        response.delete_cookie(**cookie_kwargs, path="/api/v1/auth")
         response.set_cookie(
-            key=self.settings.refresh_cookie_name,
+            **cookie_kwargs,
             value=refresh_token,
-            httponly=True,
-            secure=self.settings.cookie_secure,
-            samesite=self.settings.cookie_samesite,
             max_age=max_age,
-            domain=self.settings.cookie_domain,
-            path="/api/v1/auth",
+            path=self.settings.refresh_cookie_path,
         )
 
     def clear_refresh_cookie(self, response: Response) -> None:
-        response.delete_cookie(
-            key=self.settings.refresh_cookie_name,
-            path="/api/v1/auth",
-            domain=self.settings.cookie_domain,
-        )
+        cookie_kwargs = {
+            "key": self.settings.refresh_cookie_name,
+            "path": self.settings.refresh_cookie_path,
+            "domain": self.settings.cookie_domain,
+            "secure": self.settings.cookie_secure,
+            "httponly": True,
+            "samesite": self.settings.refresh_cookie_samesite,
+        }
+        response.delete_cookie(**cookie_kwargs)
+        response.delete_cookie(**{**cookie_kwargs, "path": "/api/v1/auth"})
 
     def refresh_token_expires_at(self) -> datetime:
         return datetime.now(UTC) + timedelta(days=self.settings.refresh_token_expire_days)

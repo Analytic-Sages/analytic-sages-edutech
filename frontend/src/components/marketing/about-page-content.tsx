@@ -19,12 +19,12 @@ const timeline = [
     body: "Two data enthusiasts saw an opportunity at the intersection of blockchain technology and data analytics. Analytic Sages began as a community created to help people understand and work with blockchain data.",
   },
   {
-    year: "2023–24",
+    year: "2023-24",
     title: "Early cohorts",
     body: "We started with cohort-based learning. Students learned blockchain analytics through practical exercises, real datasets, and hands-on projects.",
   },
   {
-    year: "2024–25",
+    year: "2024-25",
     title: "Growth",
     body: "Interest grew. More learners joined from different backgrounds and countries, creating a community around blockchain data, analytics, and technical learning.",
   },

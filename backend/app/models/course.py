@@ -12,6 +12,7 @@ from app.db.session import Base
 
 if TYPE_CHECKING:
     from app.models.enrollment import Enrollment
+    from app.models.instructor import CourseInstructor
     from app.models.lms import CourseModule
     from app.models.payment import Payment
 
@@ -55,4 +56,9 @@ class Course(Base):
         back_populates="course",
         cascade="all, delete-orphan",
         order_by="CourseModule.order_index",
+    )
+    instructor_links: Mapped[list[CourseInstructor]] = relationship(
+        back_populates="course",
+        cascade="all, delete-orphan",
+        order_by="CourseInstructor.sort_order",
     )

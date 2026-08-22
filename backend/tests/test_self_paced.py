@@ -55,6 +55,9 @@ def _seed_course() -> None:
     try:
         existing = db.scalar(select(Course).where(Course.slug == COURSE_SLUG))
         if existing:
+            existing.published = True
+            existing.is_free = True
+            db.commit()
             return
         course = Course(
             id=uuid.uuid4(),
@@ -226,6 +229,11 @@ def test_progress_is_isolated_and_completing_all_marks_course_done():
     row = next(item for item in mine.json() if item["course"]["slug"] == COURSE_SLUG)
     assert row["status"] == "completed"
     assert row["progress_percent"] == 100
+    assert row["lessons_completed"] == 2
+    assert row["lessons_total"] == 2
+    assert row["last_completed_lesson_title"] == "Lesson Two"
+    assert row["last_completed_at"] is not None
+    assert row["last_activity_at"] is not None
 
     db = SessionLocal()
     try:

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
+import { CookieSettingsButton } from "@/components/layout/cookie-settings-button";
 import { siteConfig } from "@/config/site";
 import { marketingNav } from "@/config/navigation";
 
@@ -108,6 +109,7 @@ export function MarketingFooter() {
             <Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground">
               Contact
             </Link>
+            <CookieSettingsButton />
           </div>
         </div>
       </div>

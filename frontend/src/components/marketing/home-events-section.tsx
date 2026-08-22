@@ -11,9 +11,9 @@ export function HomeEventsSection() {
 
   useEffect(() => {
     let cancelled = false;
-    listPublicEvents({ upcoming: true, limit: 3 })
+    listPublicEvents({ upcoming: true, limit: 12 })
       .then((data) => {
-        if (!cancelled) setEvents(data);
+        if (!cancelled) setEvents(data.slice(0, 3));
       })
       .catch(() => {
         if (!cancelled) setEvents([]);
@@ -37,8 +37,7 @@ export function HomeEventsSection() {
               Upcoming workshops
             </h2>
             <p className="mt-3 max-w-xl text-lg text-muted-foreground">
-              Free live sessions on YouTube. Register with your Analytic Sages account to get the
-              join link.
+              Register with your Analytic Sages account to get the join link.
             </p>
           </div>
           <ButtonLink href="/events" variant="outline" className="shrink-0">

@@ -43,7 +43,7 @@ npm install
 npm run dev
 ```
 
-Next.js only reads env files from `frontend/` (not the repo-root `.env`). `NEXT_PUBLIC_API_URL` defaults to `http://localhost:8000` if unset.
+Next.js only reads env files from `frontend/` (not the repo-root `.env`). `NEXT_PUBLIC_API_URL` is the backend origin used as the `/api` rewrite destination. The browser always calls same-origin `/api`.
 
 Open [http://localhost:3000](http://localhost:3000) — marketing site, student dashboard, course player, admin portal (mock data).
 

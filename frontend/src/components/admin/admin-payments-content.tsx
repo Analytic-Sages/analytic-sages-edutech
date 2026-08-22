@@ -93,11 +93,11 @@ export function AdminPaymentsContent() {
                   <TableCell className="font-mono text-xs">{payment.order_id}</TableCell>
                   <TableCell>
                     <div>
-                      <p className="font-medium">{payment.user_name || "—"}</p>
+                      <p className="font-medium">{payment.user_name || "-"}</p>
                       <p className="text-xs text-muted-foreground">{payment.user_email}</p>
                     </div>
                   </TableCell>
-                  <TableCell>{payment.cohort_name || payment.course_title || "—"}</TableCell>
+                  <TableCell>{payment.cohort_name || payment.course_title || "-"}</TableCell>
                   <TableCell className="font-medium">
                     {formatPrice(payment.amount, payment.currency)}
                   </TableCell>

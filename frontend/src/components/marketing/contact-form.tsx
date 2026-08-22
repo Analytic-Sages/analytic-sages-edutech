@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { siteConfig } from "@/config/site";
 import { ApiError, sendContactMessage } from "@/lib/api";
+import { trackContact } from "@/lib/marketing-pixels";
 
 const contactSchema = z.object({
   name: z.string().trim().min(2, "Enter your name").max(120),
@@ -37,6 +38,7 @@ export function ContactForm() {
     setFormError(null);
     try {
       await sendContactMessage(data);
+      trackContact();
       setSentTo(data.email);
     } catch (err) {
       const detail =

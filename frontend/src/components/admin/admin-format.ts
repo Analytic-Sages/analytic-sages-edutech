@@ -4,7 +4,7 @@ import { initialsFor } from "@/lib/user-display";
 export { initialsFor };
 
 export function formatAdminDate(iso: string | null | undefined) {
-  if (!iso) return "—";
+  if (!iso) return "-";
   try {
     return new Intl.DateTimeFormat(undefined, {
       month: "short",

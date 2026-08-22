@@ -13,19 +13,29 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ApiError, getAdminCourses, type AdminCourseRow } from "@/lib/api";
+import {
+  ApiError,
+  getAdminCourses,
+  listAdminCatalogCohorts,
+  type AdminCohortInstructorRow,
+  type AdminCourseRow,
+} from "@/lib/api";
 import { ButtonLink } from "@/components/ui/button-link";
 
 export function AdminCoursesContent() {
   const [rows, setRows] = useState<AdminCourseRow[]>([]);
+  const [cohorts, setCohorts] = useState<AdminCohortInstructorRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    getAdminCourses()
-      .then((data) => {
-        if (!cancelled) setRows(data);
+    Promise.all([getAdminCourses(), listAdminCatalogCohorts()])
+      .then(([courses, liveCohorts]) => {
+        if (!cancelled) {
+          setRows(courses);
+          setCohorts(liveCohorts);
+        }
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof ApiError ? err.detail : "Failed to load courses");
@@ -53,7 +63,7 @@ export function AdminCoursesContent() {
           icon={<BookOpen className="size-5" />}
           title="Couldn't load courses"
           description={error}
-          action={{ label: "Back to admin", href: "/admin" }}
+          action={{ label: "Back to courses", href: "/admin/courses" }}
         />
     );
   }
@@ -62,7 +72,7 @@ export function AdminCoursesContent() {
     <div>
       <PageHeader
         title="Courses"
-        description="Catalog, enrollments, and completion. Lesson authoring is still seed-based."
+        description="Assign instructors to catalog courses and live cohorts. Lesson authoring is still seed-based."
       />
       {rows.length === 0 ? (
         <EmptyState
@@ -82,6 +92,7 @@ export function AdminCoursesContent() {
                 <TableHead>Enrollments</TableHead>
                 <TableHead>Completions</TableHead>
                 <TableHead>Avg progress</TableHead>
+                <TableHead>Instructors</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -106,12 +117,56 @@ export function AdminCoursesContent() {
                   <TableCell>{row.enrollments_count}</TableCell>
                   <TableCell>{row.completions_count}</TableCell>
                   <TableCell>{row.avg_progress_percent}%</TableCell>
+                  <TableCell>
+                    <ButtonLink href={`/admin/courses/${row.slug}/instructors`} variant="outline" size="sm">
+                      {row.instructor_count ?? 0} assigned
+                    </ButtonLink>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
       )}
+
+      <h2 className="mt-12 font-heading text-xl font-semibold">Live cohorts</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Cohort pages show these instructors. If a cohort has none, it falls back to its linked course.
+      </p>
+      {cohorts.length === 0 ? (
+        <p className="mt-4 text-sm text-muted-foreground">No cohorts seeded yet.</p>
+      ) : (
+        <div className="mt-4 overflow-x-auto rounded-xl border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Cohort</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Instructors</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {cohorts.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell>
+                    <div className="font-medium">{row.name}</div>
+                    <div className="text-xs text-muted-foreground">{row.slug}</div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{row.status}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <ButtonLink href={`/admin/cohorts/${row.slug}/instructors`} variant="outline" size="sm">
+                      {row.instructor_count} assigned
+                    </ButtonLink>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
       <p className="mt-4 text-sm text-muted-foreground">
         Full create/edit/publish tools are not live yet. Public course pages render from this data
         model, so a new seeded course appears without a new frontend.

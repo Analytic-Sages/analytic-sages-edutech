@@ -1,12 +1,28 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import { isQaCatalogCourse, isQaPublicEvent } from "@/lib/qa-fixtures";
+
+const BACKEND_ORIGIN = (
+  process.env.API_INTERNAL_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://localhost:8000"
+).replace(/\/$/, "");
 
 export const ACCESS_TOKEN_KEY = "as_access_token";
 /** Readable session flag for Next.js proxy (not the JWT). */
 export const SESSION_COOKIE = "as_logged_in";
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
+/**
+ * Browser uses same-origin `/api` so the refresh cookie is first-party.
+ * Server-side fetches talk to the backend origin directly.
+ */
 export function getApiBaseUrl() {
-  return API_URL;
+  if (typeof window !== "undefined") return "";
+  return BACKEND_ORIGIN;
+}
+
+function resolveApiUrl(path: string) {
+  const base = getApiBaseUrl();
+  return base ? `${base}${path}` : path;
 }
 
 const accessTokenListeners = new Set<() => void>();
@@ -61,9 +77,61 @@ export function syncAuthSession() {
   writeSessionCookie(Boolean(getAccessToken()));
 }
 
+function isAccessTokenFresh(token: string) {
+  try {
+    const payload = JSON.parse(
+      atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))
+    ) as { exp?: number };
+    return typeof payload.exp === "number" && payload.exp * 1000 > Date.now() + 15_000;
+  } catch {
+    return false;
+  }
+}
+
+let refreshInFlight: Promise<string | null> | null = null;
+
+export async function refreshSession(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+  if (refreshInFlight) return refreshInFlight;
+
+  refreshInFlight = (async () => {
+    try {
+      const response = await fetch(resolveApiUrl("/api/v1/auth/refresh"), {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) return null;
+      const data = (await response.json()) as AuthResponse;
+      if (!data.access_token) return null;
+      setAccessToken(data.access_token);
+      return data.access_token;
+    } catch {
+      return null;
+    }
+  })().finally(() => {
+    refreshInFlight = null;
+  });
+
+  return refreshInFlight;
+}
+
+export async function ensureSession(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+  const existing = getAccessToken();
+  if (existing && isAccessTokenFresh(existing)) {
+    writeSessionCookie(true);
+    return existing;
+  }
+  const refreshed = await refreshSession();
+  if (refreshed) return refreshed;
+  if (existing) clearAccessToken();
+  else writeSessionCookie(false);
+  return null;
+}
+
 export async function logout() {
   try {
-    await fetch(`${API_URL}/api/v1/auth/logout`, {
+    await fetch(resolveApiUrl("/api/v1/auth/logout"), {
       method: "POST",
       credentials: "include",
     });
@@ -76,6 +144,7 @@ export async function logout() {
 
 type ApiOptions = RequestInit & {
   auth?: boolean;
+  _retried?: boolean;
 };
 
 export class ApiError extends Error {
@@ -93,7 +162,7 @@ const PUBLIC_LOAD_ERROR = "We're having trouble loading this information. Please
 
 function networkErrorMessage() {
   if (process.env.NODE_ENV !== "production") {
-    console.warn(`API unreachable at ${API_URL}`);
+    console.warn(`API unreachable at ${getApiBaseUrl() || "same-origin /api"}`);
   }
   return PUBLIC_LOAD_ERROR;
 }
@@ -111,7 +180,7 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promi
 
   let response: Response;
   try {
-    response = await fetch(`${API_URL}${path}`, {
+    response = await fetch(resolveApiUrl(path), {
       ...options,
       headers,
       credentials: "include",
@@ -125,6 +194,18 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promi
   }
 
   if (!response.ok) {
+    if (
+      response.status === 401 &&
+      options.auth !== false &&
+      !options._retried &&
+      path !== "/api/v1/auth/refresh"
+    ) {
+      const token = await refreshSession();
+      if (token) {
+        return apiFetch<T>(path, { ...options, _retried: true });
+      }
+      if (getAccessToken()) clearAccessToken();
+    }
     let detail = "Request failed";
     try {
       const data = await response.json();
@@ -139,6 +220,20 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promi
 
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
+}
+
+/** Set a first-party refresh cookie from the current access token. */
+export async function persistSession(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+  const existing = getAccessToken();
+  if (!existing) return null;
+  try {
+    const data = await apiFetch<AuthResponse>("/api/v1/auth/session", { method: "POST" });
+    if (data.access_token) setAccessToken(data.access_token);
+    return data.access_token ?? existing;
+  } catch {
+    return existing;
+  }
 }
 
 export type PaymentProvider = "paystack" | "nowpayments" | "mock";
@@ -240,6 +335,7 @@ export type SelfPacedCoursePublic = SelfPacedCourseCard & {
   lessons_completed: number;
   resume_lesson_slug: string | null;
   modules: SelfPacedModuleOutline[];
+  instructors?: InstructorPublic[];
 };
 
 export type SelfPacedLessonDetail = {
@@ -279,6 +375,8 @@ export type SelfPacedEnrollment = {
   lessons_completed: number;
   lessons_total: number;
   resume_lesson_slug: string | null;
+  last_completed_lesson_title: string | null;
+  last_completed_at: string | null;
   course: SelfPacedCourseCard;
 };
 
@@ -314,7 +412,43 @@ export type AdminCourseRow = {
   enrollments_count: number;
   completions_count: number;
   avg_progress_percent: number;
+  instructor_count?: number;
   last_activity_at: string | null;
+};
+
+export type InstructorPublic = {
+  id: string;
+  name: string;
+  title: string;
+  photo_url: string | null;
+  bullets: string[];
+  role_label: string;
+  sort_order: number;
+};
+
+export type InstructorProfileAdmin = {
+  id: string;
+  name: string;
+  title: string;
+  photo_url: string | null;
+  bullets: string[];
+  course_count: number;
+  cohort_count: number;
+};
+
+export type InstructorProfileWrite = {
+  name: string;
+  title?: string;
+  photo_url?: string | null;
+  bullets?: string[];
+};
+
+export type AdminCohortInstructorRow = {
+  id: string;
+  slug: string;
+  name: string;
+  status: string;
+  instructor_count: number;
 };
 
 export type AuthUser = {
@@ -325,6 +459,12 @@ export type AuthUser = {
   email_verified: boolean;
   is_active: boolean;
   created_at: string;
+};
+
+export type AuthResponse = {
+  access_token: string;
+  token_type?: string;
+  user: AuthUser;
 };
 
 export type AuthProviders = {
@@ -391,7 +531,9 @@ export function getMyEnrollments() {
 }
 
 export function listSelfPacedCourses() {
-  return apiFetch<SelfPacedCourseCard[]>("/api/v1/self-paced/courses", { auth: false });
+  return apiFetch<SelfPacedCourseCard[]>("/api/v1/self-paced/courses", { auth: false }).then(
+    (rows) => rows.filter((course) => !isQaCatalogCourse(course)),
+  );
 }
 
 export function getSelfPacedCourse(slug: string) {
@@ -432,6 +574,79 @@ export function getMySelfPacedEnrollments() {
 
 export function getAdminCourses() {
   return apiFetch<AdminCourseRow[]>("/api/v1/admin/courses");
+}
+
+export function listAdminInstructorProfiles() {
+  return apiFetch<InstructorProfileAdmin[]>("/api/v1/admin/instructor-profiles");
+}
+
+export function createAdminInstructorProfile(payload: InstructorProfileWrite) {
+  return apiFetch<InstructorProfileAdmin>("/api/v1/admin/instructor-profiles", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateAdminInstructorProfile(id: string, payload: InstructorProfileWrite) {
+  return apiFetch<InstructorProfileAdmin>(
+    `/api/v1/admin/instructor-profiles/${encodeURIComponent(id)}`,
+    { method: "PATCH", body: JSON.stringify(payload) }
+  );
+}
+
+export function deleteAdminInstructorProfile(id: string) {
+  return apiFetch<{ message: string }>(
+    `/api/v1/admin/instructor-profiles/${encodeURIComponent(id)}`,
+    { method: "DELETE" }
+  );
+}
+
+export function listAdminCatalogCohorts() {
+  return apiFetch<AdminCohortInstructorRow[]>("/api/v1/admin/catalog/cohorts");
+}
+
+export function getAdminCourseInstructors(slug: string) {
+  return apiFetch<InstructorPublic[]>(
+    `/api/v1/admin/courses/${encodeURIComponent(slug)}/instructors`
+  );
+}
+
+export function putAdminCourseInstructors(slug: string, items: InstructorPublic[]) {
+  return apiFetch<InstructorPublic[]>(
+    `/api/v1/admin/courses/${encodeURIComponent(slug)}/instructors`,
+    {
+      method: "PUT",
+      body: JSON.stringify({
+        items: items.map((item, index) => ({
+          instructor_id: item.id,
+          role_label: item.role_label,
+          sort_order: index,
+        })),
+      }),
+    }
+  );
+}
+
+export function getAdminCohortInstructors(slug: string) {
+  return apiFetch<InstructorPublic[]>(
+    `/api/v1/admin/cohorts/${encodeURIComponent(slug)}/instructors`
+  );
+}
+
+export function putAdminCohortInstructors(slug: string, items: InstructorPublic[]) {
+  return apiFetch<InstructorPublic[]>(
+    `/api/v1/admin/cohorts/${encodeURIComponent(slug)}/instructors`,
+    {
+      method: "PUT",
+      body: JSON.stringify({
+        items: items.map((item, index) => ({
+          instructor_id: item.id,
+          role_label: item.role_label,
+          sort_order: index,
+        })),
+      }),
+    }
+  );
 }
 
 export type EventLifecycle =
@@ -573,7 +788,9 @@ export function listPublicEvents(options?: { upcoming?: boolean; limit?: number 
   if (options?.upcoming) params.set("upcoming", "true");
   if (options?.limit) params.set("limit", String(options.limit));
   const query = params.toString();
-  return apiFetch<EventCardPublic[]>(`/api/v1/events${query ? `?${query}` : ""}`);
+  return apiFetch<EventCardPublic[]>(`/api/v1/events${query ? `?${query}` : ""}`).then((rows) =>
+    rows.filter((event) => !isQaPublicEvent(event)),
+  );
 }
 
 export function getPublicEvent(slug: string) {
@@ -702,6 +919,7 @@ export type PublicCohortCard = {
   next_session_starts_at: string | null;
   next_session_phase: "upcoming" | "live" | "ended" | "cancelled" | null;
   sessions_count: number;
+  instructors?: InstructorPublic[];
 };
 
 export function listPublicCohorts() {

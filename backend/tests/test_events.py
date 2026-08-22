@@ -255,6 +255,7 @@ def test_coming_soon_event_is_visible_but_not_registerable():
     user = _make_user(f"soon-{uuid.uuid4()}@example.com")
     blocked = client.post(f"/api/v1/events/{SLUG}/register", headers=_auth(user), json={})
     assert blocked.status_code == 400
+    _cleanup_slug(SLUG)
 
 
 def test_operations_can_manage_events_but_not_users():
@@ -287,3 +288,4 @@ def test_operations_can_manage_events_but_not_users():
 
     assert client.get("/api/v1/admin/users", headers=_auth(ops)).status_code == 403
     assert client.get("/api/v1/admin/overview", headers=_auth(ops)).status_code == 403
+    _cleanup_slug(created.json()["slug"])

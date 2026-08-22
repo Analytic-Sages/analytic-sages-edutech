@@ -16,17 +16,17 @@ import { siteConfig } from "@/config/site";
 import {
   ApiError,
   apiFetch,
-  getAccessToken,
-  getApiBaseUrl,
+  ensureSession,
   getAuthProviders,
   getMe,
+  persistSession,
   setAccessToken,
-  syncAuthSession,
   type AuthProviders,
-  type AuthUser,
+  type AuthResponse,
 } from "@/lib/api";
 import { getLastAuthMethod, setLastAuthMethod, type AuthMethod } from "@/lib/auth-method";
 import { resolvePostLoginPath } from "@/lib/auth-redirect";
+import { trackCompleteRegistration } from "@/lib/marketing-pixels";
 import { cn } from "@/lib/utils";
 
 const authSchema = z.object({
@@ -39,11 +39,6 @@ type AuthFormData = z.infer<typeof authSchema>;
 
 type AuthFormProps = {
   mode: "login" | "register";
-};
-
-type AuthResponse = {
-  access_token: string;
-  user: AuthUser;
 };
 
 function RecentlyUsedBadge() {
@@ -64,9 +59,7 @@ export function AuthForm({ mode }: AuthFormProps) {
 
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
-  const [lastMethod, setLastMethod] = useState<AuthMethod | null>(() =>
-    typeof window !== "undefined" ? getLastAuthMethod() : null
-  );
+  const [lastMethod, setLastMethod] = useState<AuthMethod | null>(null);
   const [providers, setProviders] = useState<AuthProviders | null>(null);
   const [googleLoading, setGoogleLoading] = useState(false);
 
@@ -79,6 +72,10 @@ export function AuthForm({ mode }: AuthFormProps) {
   });
 
   useEffect(() => {
+    queueMicrotask(() => setLastMethod(getLastAuthMethod()));
+  }, []);
+
+  useEffect(() => {
     getAuthProviders()
       .then(setProviders)
       .catch(() => {
@@ -89,14 +86,23 @@ export function AuthForm({ mode }: AuthFormProps) {
       });
   }, []);
 
-  // Restore session cookie for users who already have a token in localStorage.
+  // Restore an existing session instead of sending the user through login again.
   useEffect(() => {
     if (mode !== "login") return;
-    if (!getAccessToken()) return;
-    syncAuthSession();
-    getMe()
-      .then((me) => router.replace(resolvePostLoginPath(me.role, nextPath)))
-      .catch(() => router.replace(nextPath));
+    let cancelled = false;
+    ensureSession()
+      .then(async (session) => {
+        if (!session || cancelled) return;
+        const me = await getMe();
+        if (cancelled) return;
+        router.replace(resolvePostLoginPath(me.role, nextPath));
+      })
+      .catch(() => {
+        // Stay on login if the stored session is no longer valid.
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [mode, nextPath, router]);
 
   useEffect(() => {
@@ -117,10 +123,12 @@ export function AuthForm({ mode }: AuthFormProps) {
             email: data.email,
             password: data.password,
             full_name: data.full_name || null,
+            next: nextPath !== "/dashboard" ? nextPath : null,
           }),
         });
         setLastAuthMethod("email");
         setLastMethod("email");
+        trackCompleteRegistration();
         const q = new URLSearchParams({ email: data.email });
         if (nextPath && nextPath !== "/dashboard") {
           q.set("next", nextPath);
@@ -139,6 +147,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       });
       setAccessToken(result.access_token);
       setLastAuthMethod("email");
+      await persistSession();
       router.push(resolvePostLoginPath(result.user.role, nextPath));
     } catch (err) {
       setFormError(err instanceof ApiError ? err.detail : "Authentication failed");
@@ -155,9 +164,11 @@ export function AuthForm({ mode }: AuthFormProps) {
       return;
     }
 
-    const startUrl = new URL("/api/v1/auth/google", getApiBaseUrl());
-    startUrl.searchParams.set("next", nextPath);
-    window.location.assign(startUrl.href);
+    // Full document navigation so the backend 302 to Google is not intercepted by App Router.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.assign(
+      `${window.location.origin}/api/v1/auth/google?next=${encodeURIComponent(nextPath)}`,
+    );
   }
 
   const googleEnabled = providers?.google.enabled !== false;

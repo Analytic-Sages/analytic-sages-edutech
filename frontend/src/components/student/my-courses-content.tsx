@@ -86,7 +86,7 @@ export function MyCoursesContent() {
           icon={<BookOpen className="size-5" />}
           title="You haven't enrolled in any courses yet."
           description="Explore a free self-paced course to start learning."
-          action={{ label: "Explore Free Courses", href: "/courses" }}
+          action={{ label: "Explore Free Courses", href: "/courses?price=free" }}
         />
       )}
 

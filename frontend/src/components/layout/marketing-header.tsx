@@ -24,7 +24,7 @@ export function MarketingHeader() {
           <Logo size="xl" />
         </div>
 
-        <nav className="hidden items-center gap-10 md:flex">
+        <nav className="hidden items-center gap-10 lg:pointer-fine:flex">
           {marketingNav.map((item) => {
             const active =
               pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -59,7 +59,7 @@ export function MarketingHeader() {
             <Sun className="hidden size-4 dark:block" />
           </Button>
 
-          <div className="hidden items-center gap-4 md:flex">
+          <div className="hidden items-center gap-4 lg:pointer-fine:flex">
             {signedIn ? (
               <>
                 <ButtonLink
@@ -98,7 +98,7 @@ export function MarketingHeader() {
           <Sheet>
             <SheetTrigger
               className={cn(
-                "inline-flex size-10 items-center justify-center rounded-lg md:hidden",
+                "inline-flex size-10 items-center justify-center rounded-lg lg:pointer-fine:hidden",
                 "hover:bg-muted hover:text-foreground"
               )}
             >

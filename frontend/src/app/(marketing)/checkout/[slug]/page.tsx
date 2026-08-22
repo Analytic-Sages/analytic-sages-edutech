@@ -14,6 +14,7 @@ import {
   type PaymentProvider,
 } from "@/lib/api";
 import { formatPrice, getCourseBySlug, isCourseLive } from "@/lib/mock-data";
+import { trackInitiateCheckout } from "@/lib/marketing-pixels";
 
 const providers: {
   id: PaymentProvider;
@@ -85,6 +86,7 @@ export default function CheckoutPage() {
     setLoadingProvider(provider);
     try {
       const session = await createCheckout(courseId, provider);
+      trackInitiateCheckout(title, price, currency);
       window.location.assign(session.checkout_url);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Checkout failed");

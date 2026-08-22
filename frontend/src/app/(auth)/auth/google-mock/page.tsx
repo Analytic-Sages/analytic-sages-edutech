@@ -6,7 +6,7 @@ import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ApiError, mockGoogleLogin, setAccessToken } from "@/lib/api";
+import { ApiError, mockGoogleLogin, persistSession, setAccessToken } from "@/lib/api";
 import { setLastAuthMethod } from "@/lib/auth-method";
 import { resolvePostLoginPath } from "@/lib/auth-redirect";
 
@@ -27,6 +27,7 @@ function GoogleMockInner() {
     try {
       const result = await mockGoogleLogin(email, fullName);
       setAccessToken(result.access_token);
+      await persistSession();
       setLastAuthMethod("google");
       const safeNext = nextPath.startsWith("/") ? nextPath : "/dashboard";
       router.replace(resolvePostLoginPath(result.user.role, safeNext));

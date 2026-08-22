@@ -17,10 +17,11 @@ import { WhySection } from "@/components/marketing/why-section";
 import { ButtonLink } from "@/components/ui/button-link";
 
 export const metadata = pageMetadata({
-  title: siteConfig.name,
+  title: siteConfig.seoTitle,
   description: siteConfig.description,
   path: "/",
   absoluteTitle: true,
+  image: "/4.png",
 });
 
 export default function HomePage() {

@@ -5,6 +5,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.instructors import InstructorPublic
+
 
 class LessonResourcePublic(BaseModel):
     label: str
@@ -62,6 +64,7 @@ class SelfPacedCoursePublic(SelfPacedCourseCard):
     lessons_completed: int = 0
     resume_lesson_slug: str | None = None
     modules: list[ModuleOutlinePublic] = Field(default_factory=list)
+    instructors: list[InstructorPublic] = Field(default_factory=list)
 
 
 class LessonDetailPublic(BaseModel):
@@ -116,6 +119,8 @@ class EnrollmentWithProgress(BaseModel):
     lessons_completed: int
     lessons_total: int
     resume_lesson_slug: str | None = None
+    last_completed_lesson_title: str | None = None
+    last_completed_at: datetime | None = None
     course: SelfPacedCourseCard
 
 
@@ -151,6 +156,7 @@ class AdminCourseRow(BaseModel):
     enrollments_count: int
     completions_count: int
     avg_progress_percent: int
+    instructor_count: int = 0
     last_activity_at: datetime | None = None
 
 

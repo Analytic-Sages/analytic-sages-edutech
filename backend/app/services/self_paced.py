@@ -13,6 +13,7 @@ from app.models.course import Course
 from app.models.enrollment import Enrollment
 from app.models.lms import CourseModule, Lesson, LessonProgress
 from app.models.user import User
+from app.schemas.instructors import InstructorPublic
 from app.schemas.self_paced import (
     AdminCourseAnalytics,
     AdminCourseRow,
@@ -122,6 +123,23 @@ class SelfPacedService:
             [lesson.slug for lesson in completed_lessons],
         )
 
+    def _last_completed_lesson(
+        self, course: Course, enrollment: Enrollment | None
+    ) -> tuple[str | None, datetime | None]:
+        if not enrollment:
+            return None, None
+        progress = self._progress_map(enrollment)
+        lessons = {lesson.id: lesson for lesson in self._published_lessons(course)}
+        finished = [
+            (lessons[row.lesson_id], row.completed_at)
+            for row in progress.values()
+            if row.completed and row.completed_at is not None and row.lesson_id in lessons
+        ]
+        if not finished:
+            return None, None
+        lesson, when = max(finished, key=lambda item: item[1] or datetime.min.replace(tzinfo=UTC))
+        return lesson.title, when
+
     def _card(self, course: Course) -> SelfPacedCourseCard:
         return SelfPacedCourseCard(
             id=course.id,
@@ -199,6 +217,7 @@ class SelfPacedService:
             lessons_completed=completed_count,
             resume_lesson_slug=resume_slug,
             modules=self._outline(course, enrollment, include_video_ids=include_video_ids),
+            instructors=self._instructors(course.id),
         )
 
     def list_catalog(self) -> list[SelfPacedCourseCard]:
@@ -466,6 +485,7 @@ class SelfPacedService:
         for enrollment in enrollments:
             course = enrollment.course
             completed_count, total, percent, resume_slug, _ = self._progress_stats(course, enrollment)
+            last_title, last_completed_at = self._last_completed_lesson(course, enrollment)
             results.append(
                 EnrollmentWithProgress(
                     id=enrollment.id,
@@ -478,6 +498,8 @@ class SelfPacedService:
                     lessons_completed=completed_count,
                     lessons_total=total,
                     resume_lesson_slug=resume_slug,
+                    last_completed_lesson_title=last_title,
+                    last_completed_at=last_completed_at,
                     course=self._card(course),
                 )
             )
@@ -571,5 +593,16 @@ class SelfPacedService:
             enrollments_count=len(counted),
             completions_count=sum(1 for item in counted if item.completed_at),
             avg_progress_percent=avg,
+            instructor_count=self._instructor_count(course.id),
             last_activity_at=last_activity,
         )
+
+    def _instructors(self, course_id: UUID) -> list[InstructorPublic]:
+        from app.services.instructors import InstructorService
+
+        return InstructorService(self.db).list_for_course(course_id)
+
+    def _instructor_count(self, course_id: UUID) -> int:
+        from app.services.instructors import InstructorService
+
+        return InstructorService(self.db).course_instructor_count(course_id)

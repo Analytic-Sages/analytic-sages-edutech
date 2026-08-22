@@ -4,7 +4,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata({
   title: "Events",
   description:
-    "Free Analytic Sages workshops and live sessions. Browse upcoming events and register with your account to join on YouTube Live.",
+    "Free Analytic Sages workshops and live sessions. Browse upcoming events and register with your account to join.",
   path: "/events",
 });
 

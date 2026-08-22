@@ -58,11 +58,11 @@ Or: `bash scripts/dev.sh`
 ### Go-live checklist (real users)
 
 1. Set a strong `SECRET_KEY` (32+ chars) and `ENVIRONMENT=production`
-2. Set backend `FRONTEND_URL` to the HTTPS site origin. Set `NEXT_PUBLIC_API_URL` in `frontend/.env.local` (or the host's frontend env) to the HTTPS API origin — Next.js does not read the repo-root `.env`
+2. Set backend `FRONTEND_URL` to the HTTPS site origin (`https://www.analyticsages.io`). Set `NEXT_PUBLIC_API_URL` in `frontend/.env.local` (or Vercel) to the HTTPS **API** origin — that value is the rewrite destination. The browser calls same-origin `/api` so the refresh cookie stays first-party.
 3. Set `EMAIL_API_KEY` (Resend) + verified `EMAIL_FROM` domain so verification/reset emails send
-4. Optional Google: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`
-5. `COOKIE_SECURE` is forced on in production
-6. Smoke test: register → email link → sign in → cohort checkout
+4. Optional Google: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`. Add `https://www.analyticsages.io/api/v1/auth/google/callback` in Google Cloud (not the Render URL). Leave `GOOGLE_REDIRECT_URI` unset to derive it from `FRONTEND_URL`.
+5. `COOKIE_SECURE` is forced on in production. Refresh cookies use `SameSite=Lax` on the site origin.
+6. Smoke test: register → email link → enter dashboard → **refresh the page** → still signed in → close the tab → return still signed in
 
 Without `EMAIL_API_KEY`, links are printed in API logs as `[dev-email]`.
 

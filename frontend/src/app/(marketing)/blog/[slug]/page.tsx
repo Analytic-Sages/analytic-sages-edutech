@@ -1,12 +1,12 @@
-import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Clock } from "lucide-react";
+import { BlogLearnCta } from "@/components/blog/blog-learn-cta";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
 import { formatBlogDate, getBlogPostBySlug } from "@/lib/mock-blog-data";
-import { pageMetadata } from "@/lib/seo";
+import { blogPostingJsonLd, pageMetadata } from "@/lib/seo";
 
 type BlogPostPageProps = {
   params: Promise<{ slug: string }>;
@@ -21,6 +21,7 @@ export async function generateMetadata({ params }: BlogPostPageProps) {
     description: post.excerpt,
     path: `/blog/${post.slug}`,
     image: post.coverImage,
+    type: "article",
   });
 }
 
@@ -32,6 +33,10 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   return (
     <article className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogPostingJsonLd(post)) }}
+      />
       <PageHeader
         breadcrumbs={[
           { label: "Blog", href: "/blog" },
@@ -45,7 +50,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         <div className="relative mb-8 aspect-[16/9] overflow-hidden rounded-[20px] shadow-elevated">
           <Image
             src={post.coverImage}
-            alt=""
+            alt={post.title}
             fill
             className="object-cover"
             sizes="(max-width: 768px) 100vw, 768px"
@@ -82,17 +87,12 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         ))}
       </div>
 
-      <div className="mt-12 flex flex-col gap-4 border-t pt-8 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-12 space-y-8 border-t pt-8">
+        <BlogLearnCta />
         <ButtonLink href="/blog" variant="outline" className="gap-2">
           <ArrowLeft className="size-4" />
           Back to blog
         </ButtonLink>
-        <p className="text-sm text-muted-foreground">
-          Ready to go deeper?{" "}
-          <Link href="/courses" className="font-medium text-brand-orange hover:underline">
-            Explore our courses
-          </Link>
-        </p>
       </div>
     </article>
   );

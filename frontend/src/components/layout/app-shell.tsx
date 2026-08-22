@@ -6,7 +6,6 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Award,
   BarChart3,
-  Bell,
   BookOpen,
   CalendarDays,
   CreditCard,
@@ -15,13 +14,13 @@ import {
   Menu,
   Moon,
   Radio,
-  Search,
   Settings,
   Sun,
   Users,
   type LucideIcon,
 } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
+import { AppSearch } from "@/components/layout/app-search";
 import { useTheme } from "@/components/providers/theme-provider";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -32,7 +31,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import type { NavItem, NavItemId } from "@/config/navigation";
 import { getMe, logout, type AuthUser } from "@/lib/api";
@@ -129,7 +127,7 @@ export function MobileNav({ nav }: AppSidebarProps) {
   );
 }
 
-export function AppTopbar() {
+export function AppTopbar({ nav }: { nav: NavItem[] }) {
   const { toggleTheme } = useTheme();
   const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -154,24 +152,15 @@ export function AppTopbar() {
     router.refresh();
   }
 
-  const initials = user ? initialsFor(user.full_name, user.email) : "—";
+  const initials = user ? initialsFor(user.full_name, user.email) : "-";
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background/95 px-4 backdrop-blur sm:px-6">
-      <div className="relative hidden max-w-md flex-1 md:block">
-        <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search courses, lessons, topics..."
-          className="h-9 pl-9"
-        />
-      </div>
-      <div className="ml-auto flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="size-4" />
-          <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-brand-orange" />
-        </Button>
+    <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b bg-background/95 px-4 backdrop-blur sm:px-6">
+      <MobileNav nav={nav} />
+      <Logo size="sm" className="lg:hidden" />
+      <AppSearch />
+      <div className="ml-auto flex items-center gap-1 sm:gap-2">
         <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
-          {/* CSS-driven so SSR output matches the client regardless of stored theme */}
           <Moon className="size-4 dark:hidden" />
           <Sun className="hidden size-4 dark:block" />
         </Button>
@@ -231,11 +220,7 @@ export function AppShell({
     <div className="flex min-h-screen">
       <AppSidebar nav={nav} />
       <div className="flex flex-1 flex-col">
-        <div className="flex h-16 items-center border-b px-4 lg:hidden">
-          <MobileNav nav={nav} />
-          <Logo size="sm" className="mx-auto" />
-        </div>
-        <AppTopbar />
+        <AppTopbar nav={nav} />
         <main className="flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>

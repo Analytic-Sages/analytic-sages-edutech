@@ -7,13 +7,16 @@ from app.core.config import get_settings
 from app.db.session import Base
 from app.models import (  # noqa: F401
     Cohort,
+    CohortInstructor,
     CohortMember,
     Course,
+    CourseInstructor,
     CourseModule,
     EmailVerificationToken,
     Enrollment,
     Event,
     EventRegistration,
+    InstructorProfile,
     Lesson,
     LessonProgress,
     LiveSession,

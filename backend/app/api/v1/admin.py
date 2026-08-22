@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 
-from app.api.deps import get_admin_service, get_auth_service, get_self_paced_service, require_admin
+from app.api.deps import get_admin_service, get_auth_service, get_self_paced_service, require_admin, require_catalog_ops
 from app.models.user import User
 from app.schemas.admin import (
     AdminCohortDetail,
@@ -46,7 +46,7 @@ def admin_payments(
 
 @router.get("/courses", response_model=list[AdminCourseRow])
 def admin_courses(
-    _: User = Depends(require_admin),
+    _: User = Depends(require_catalog_ops),
     lms: SelfPacedService = Depends(get_self_paced_service),
 ) -> list[AdminCourseRow]:
     return lms.list_admin_courses()

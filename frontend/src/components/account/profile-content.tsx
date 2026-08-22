@@ -94,7 +94,7 @@ export function ProfileContent() {
               <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Name
               </dt>
-              <dd className="mt-1 font-medium">{user.full_name || "—"}</dd>
+              <dd className="mt-1 font-medium">{user.full_name || "-"}</dd>
             </div>
             <div>
               <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">

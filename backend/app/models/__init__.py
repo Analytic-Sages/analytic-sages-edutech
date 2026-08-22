@@ -2,6 +2,7 @@ from app.models.classroom import Cohort, CohortMember, LiveSession
 from app.models.course import Course
 from app.models.enrollment import Enrollment
 from app.models.event import Event, EventRegistration
+from app.models.instructor import CohortInstructor, CourseInstructor, InstructorProfile
 from app.models.lms import CourseModule, Lesson, LessonProgress
 from app.models.payment import Payment
 from app.models.user import (
@@ -24,6 +25,9 @@ __all__ = [
     "Enrollment",
     "Event",
     "EventRegistration",
+    "InstructorProfile",
+    "CourseInstructor",
+    "CohortInstructor",
     "Cohort",
     "CohortMember",
     "LiveSession",

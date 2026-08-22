@@ -1,14 +1,19 @@
+import { Suspense } from "react";
 import { CatalogPageContent } from "@/components/marketing/catalog-page-content";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
   title: "Self-Paced Courses",
   description:
-    "Free and upcoming self-paced blockchain analytics courses from Analytic Sages, including Dune SQL and dashboard techniques.",
+    "Free courses to get started. Paid courses for deeper, structured learning. Every card shows FREE, the price, or Coming soon.",
   path: "/courses",
   image: "/dune-analytics-practical-sql-dashboard-techniques.png",
 });
 
 export default function CoursesPage() {
-  return <CatalogPageContent />;
+  return (
+    <Suspense fallback={<div className="p-12 text-center text-muted-foreground">Loading courses…</div>}>
+      <CatalogPageContent />
+    </Suspense>
+  );
 }

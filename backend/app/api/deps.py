@@ -18,6 +18,7 @@ from app.services.events import EventService
 from app.services.google_oauth import GoogleOAuthService
 from app.services.admin import AdminService
 from app.services.classroom import ClassroomService
+from app.services.instructors import InstructorService
 from app.services.payments import PaymentService
 from app.services.self_paced import SelfPacedService
 
@@ -74,6 +75,10 @@ def get_classroom_service(
     settings: Settings = Depends(get_settings),
 ) -> ClassroomService:
     return ClassroomService(db, settings)
+
+
+def get_instructor_service(db: Session = Depends(get_db)) -> InstructorService:
+    return InstructorService(db)
 
 
 def get_admin_service(db: Session = Depends(get_db)) -> AdminService:
@@ -149,6 +154,7 @@ def require_roles(*roles: UserRole):
 require_admin = require_roles(UserRole.ADMIN)
 require_instructor = require_roles(UserRole.ADMIN, UserRole.INSTRUCTOR)
 require_event_ops = require_roles(UserRole.ADMIN, UserRole.OPERATIONS)
+require_catalog_ops = require_roles(UserRole.ADMIN, UserRole.OPERATIONS)
 require_student = require_roles(
     UserRole.ADMIN, UserRole.INSTRUCTOR, UserRole.OPERATIONS, UserRole.STUDENT
 )

@@ -53,7 +53,7 @@ class GoogleOAuthService:
             )
         params = {
             "client_id": self.settings.google_client_id,
-            "redirect_uri": self.settings.google_redirect_uri,
+            "redirect_uri": self.settings.resolved_google_redirect_uri,
             "response_type": "code",
             "scope": "openid email profile",
             "access_type": "online",
@@ -73,7 +73,7 @@ class GoogleOAuthService:
             "code": code,
             "client_id": self.settings.google_client_id,
             "client_secret": self.settings.google_client_secret,
-            "redirect_uri": self.settings.google_redirect_uri,
+            "redirect_uri": self.settings.resolved_google_redirect_uri,
             "grant_type": "authorization_code",
         }
         with httpx.Client(timeout=15.0) as client:

@@ -63,7 +63,7 @@ export function AdminEventsContent() {
     <div>
       <PageHeader
         title="Events"
-        description="Create, publish, and cancel free public events. Join tracking records when a registered student clicks Join — not YouTube attendance."
+        description="Create, publish, and cancel free public events. Join tracking records when a registered student clicks Join - not YouTube attendance."
         action={
           <ButtonLink href="/admin/events/new" className="bg-brand-orange text-white hover:bg-brand-orange/90">
             New event

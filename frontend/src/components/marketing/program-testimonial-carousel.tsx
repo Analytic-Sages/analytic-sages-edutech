@@ -140,7 +140,7 @@ export function ProgramTestimonialCarousel({
                     {thumb ? (
                       <Image
                         src={thumb}
-                        alt=""
+                        alt={`${item.name} speaking about Analytic Sages`}
                         fill
                         className="object-cover"
                         sizes="(max-width: 640px) 85vw, 33vw"

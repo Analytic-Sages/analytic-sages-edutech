@@ -22,6 +22,7 @@ from app.db.session import Base
 
 if TYPE_CHECKING:
     from app.models.course import Course
+    from app.models.instructor import CohortInstructor
     from app.models.user import User
 
 
@@ -78,6 +79,11 @@ class Cohort(Base):
     )
 
     course: Mapped[Course | None] = relationship()
+    instructor_links: Mapped[list[CohortInstructor]] = relationship(
+        back_populates="cohort",
+        cascade="all, delete-orphan",
+        order_by="CohortInstructor.sort_order",
+    )
     members: Mapped[list[CohortMember]] = relationship(
         back_populates="cohort", cascade="all, delete-orphan"
     )

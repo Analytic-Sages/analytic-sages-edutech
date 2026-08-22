@@ -148,7 +148,7 @@ export function AdminCohortContent() {
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-medium">{member.full_name || "—"}</p>
+                          <p className="font-medium">{member.full_name || "-"}</p>
                           <p className="text-xs text-muted-foreground">{member.email}</p>
                         </div>
                       </div>
@@ -187,7 +187,7 @@ export function AdminCohortContent() {
                   <TableRow key={payment.id}>
                     <TableCell className="font-mono text-xs">{payment.order_id}</TableCell>
                     <TableCell>
-                      <p className="font-medium">{payment.user_name || "—"}</p>
+                      <p className="font-medium">{payment.user_name || "-"}</p>
                       <p className="text-xs text-muted-foreground">{payment.user_email}</p>
                     </TableCell>
                     <TableCell>{formatPrice(payment.amount, payment.currency)}</TableCell>

@@ -53,7 +53,7 @@ export function HomeInstructorLedSection() {
               Instructor-Led Training
             </p>
             <h2 className="mt-3 font-heading text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-              Upcoming live cohorts
+              Learn live with experts
             </h2>
             <p className="mt-3 max-w-xl text-lg text-muted-foreground">
               Learn live. Build together. Join the classroom when your session starts.

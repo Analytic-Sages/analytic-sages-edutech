@@ -17,7 +17,7 @@ export type LegalDocumentContent = {
   sections: LegalSection[];
 };
 
-export const LEGAL_UPDATED = "19 August 2026";
+export const LEGAL_UPDATED = "22 August 2026";
 
 export const privacyPolicy: LegalDocumentContent = {
   title: "Privacy Policy",
@@ -127,11 +127,12 @@ export const privacyPolicy: LegalDocumentContent = {
             "Date and time of visits",
             "Platform interactions",
             "General usage and performance information",
+            "If you accept marketing cookies: pages viewed, events such as viewing a course or contacting us, and advertising identifiers used by Meta Pixel and Google Ads",
           ],
         },
         {
           type: "p",
-          text: "We may use this information to understand how people use our platform, improve performance, maintain security, and measure the effectiveness of our services. We aim to collect only information that is reasonably necessary for these purposes.",
+          text: "We may use this information to understand how people use our platform, improve performance, maintain security, and measure the effectiveness of our services. Advertising measurement and retargeting run only after you accept marketing cookies. We aim to collect only information that is reasonably necessary for these purposes.",
         },
       ],
     },
@@ -154,6 +155,8 @@ export const privacyPolicy: LegalDocumentContent = {
             "Send important service notifications",
             "Improve our courses and platform",
             "Understand platform usage and learning engagement",
+            "Measure advertising campaigns, where you have accepted marketing cookies",
+            "Show Analytic Sages ads to people who previously visited this site (retargeting), where you have accepted marketing cookies",
             "Maintain security and prevent fraud or abuse",
             "Manage instructors, staff, authors, and other platform users",
             "Publish approved research or educational content where you have provided the necessary information or permission",
@@ -215,36 +218,40 @@ export const privacyPolicy: LegalDocumentContent = {
         },
         {
           type: "p",
-          text: "Where possible, analytics are presented in aggregate and are not intended to expose unnecessary personal information.",
+          text: "Where possible, analytics are presented in aggregate and are not intended to expose unnecessary personal information. Advertising pixels (Meta Pixel and Google Ads) are separate from this platform analytics and are described in the cookies section below.",
         },
       ],
     },
     {
       heading: "6. Cookies and Similar Technologies",
       blocks: [
-        { type: "p", text: "We may use cookies and similar technologies to:" },
+        { type: "p", text: "We use cookies and similar technologies in two groups:" },
+        { type: "h3", text: "Necessary" },
         {
-          type: "ul",
-          items: [
-            "Keep you signed in",
-            "Maintain essential platform functionality",
-            "Remember preferences",
-            "Improve website performance",
-            "Understand how visitors use the website",
-            "Support analytics and security",
-          ],
+          type: "p",
+          text: "These keep you signed in and support security, payments, classroom, and chat. They are required for the platform to work. You cannot turn them off from our cookie banner.",
+        },
+        { type: "h3", text: "Marketing" },
+        {
+          type: "p",
+          text: "If you choose Accept marketing cookies, we load Meta Pixel (Meta Platforms) and Google Ads. These tools help us measure whether ads led people to this site and show Analytic Sages ads to visitors who have used the site (retargeting). They may collect pages you view, device and browser information, and advertising identifiers. We do not send your email address or name to Meta or Google as hashed customer data for these ads.",
         },
         {
           type: "p",
-          text: "Website traffic measurement on analyticsages.io uses Plausible Analytics, which is designed not to use advertising cookies or collect personal information for ads. Sign-in, payments, classroom, and chat features may still use cookies or similar technologies that those services need in order to work.",
+          text: "Marketing cookies are off until you opt in. If you choose Necessary only, we do not load Meta Pixel or Google Ads.",
         },
         {
           type: "p",
-          text: "Some cookies may be provided by third-party services integrated into our platform. You may control cookies through your browser settings. Some essential functionality may not work properly if certain cookies are disabled.",
+          text: "You can change this choice at any time using Cookie settings in the website footer, Cookie preferences in account Settings when you are signed in, or the cookie banner. You can also control cookies in your browser. Meta and Google provide their own ad controls, including Meta Ad Preferences and Google Ads Settings.",
+        },
+        { type: "h3", text: "Website analytics" },
+        {
+          type: "p",
+          text: "Website traffic measurement on analyticsages.io uses Plausible Analytics, which is designed not to use advertising cookies or collect personal information for ads. Plausible is separate from Meta Pixel and Google Ads.",
         },
         {
           type: "p",
-          text: "Where required by applicable law, we will provide appropriate cookie choices or consent mechanisms.",
+          text: "Sign-in, payments, classroom, and chat features may still use cookies or similar technologies that those services need in order to work. Some essential functionality may not work properly if certain necessary cookies are disabled in your browser.",
         },
       ],
     },
@@ -265,12 +272,13 @@ export const privacyPolicy: LegalDocumentContent = {
             "Payment processing",
             "Email delivery",
             "Analytics",
+            "Advertising and retargeting, if you accept marketing cookies",
             "Database and application infrastructure",
           ],
         },
         {
           type: "p",
-          text: "Examples may include Google, Vercel, Render, RealtimeKit, Bunny Stream, Paystack, NOWPayments, YouTube, Plausible Analytics, and other service providers used by the platform.",
+          text: "Examples may include Google (including Google Ads), Meta Platforms (Meta Pixel), Vercel, Render, RealtimeKit, Bunny Stream, Paystack, NOWPayments, YouTube, Plausible Analytics, and other service providers used by the platform.",
         },
         {
           type: "p",
@@ -364,6 +372,11 @@ export const privacyPolicy: LegalDocumentContent = {
           type: "p",
           text: "Companies that help us operate our platform, including hosting, authentication, payment, email, video, analytics, and infrastructure providers.",
         },
+        { type: "h3", text: "Advertising partners" },
+        {
+          type: "p",
+          text: "If you accept marketing cookies, Meta Platforms and Google may receive limited technical information (such as pages viewed and device or browser data) so we can measure campaigns and retarget visitors. We do not sell your personal information, and we do not send your email address to these advertising tools.",
+        },
         { type: "h3", text: "Instructors and authorized staff" },
         {
           type: "p",
@@ -447,6 +460,10 @@ export const privacyPolicy: LegalDocumentContent = {
         {
           type: "p",
           text: "If you are in Nigeria, you may also lodge a complaint with the Nigeria Data Protection Commission (NDPC) where you believe your data protection rights have been infringed.",
+        },
+        {
+          type: "p",
+          text: "You can withdraw marketing-cookie consent at any time using Cookie settings in the footer or Cookie preferences in Settings. Withdrawing consent does not affect necessary cookies needed to run the platform.",
         },
       ],
     },
@@ -779,7 +796,7 @@ export const termsOfUse: LegalDocumentContent = {
       blocks: [
         {
           type: "p",
-          text: "The platform may integrate with third-party services including payment providers, authentication providers, video platforms, cloud infrastructure providers, analytics services, and other technology providers. We are not responsible for services that are independently operated by third parties.",
+          text: "The platform may integrate with third-party services including payment providers, authentication providers, video platforms, cloud infrastructure providers, analytics services, advertising pixels (Meta Pixel and Google Ads) where you have accepted marketing cookies, and other technology providers. We are not responsible for services that are independently operated by third parties.",
         },
       ],
     },

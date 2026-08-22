@@ -69,7 +69,7 @@ function ContinueLearningState() {
         <div className="relative aspect-video w-28 shrink-0 overflow-hidden rounded-lg border">
           <Image
             src="/python-for-blockchain-analytics.png"
-            alt=""
+            alt="Python for Blockchain Data Analytics course postcard"
             fill
             className="object-cover"
             sizes="112px"

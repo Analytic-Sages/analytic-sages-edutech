@@ -2,7 +2,9 @@ export const siteConfig = {
   name: "Analytic Sages",
   tagline: "Build. Certify. Launch Your Career.",
   eyebrow: "Global Blockchain Data & AI Education Platform",
-  description: "Learn the Technologies Shaping the Future.",
+  description:
+    "Analytic Sages teaches blockchain analytics, data engineering, AI, and quantitative finance through live instructor-led cohorts and self-paced courses.",
+  seoTitle: "Analytic Sages | Blockchain Analytics and Tech Education",
   footerTagline:
     "Building the next generation of Blockchain Data Engineers, AI Builders, and Quantitative Researchers.",
   url: "https://www.analyticsages.io",

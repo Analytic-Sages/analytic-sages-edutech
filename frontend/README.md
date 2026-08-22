@@ -12,7 +12,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-Next.js only loads env from this directory. Repo-root `.env` is for Docker/backend (`FRONTEND_URL`, secrets). The browser API origin is `NEXT_PUBLIC_API_URL` in `.env.local`.
+Next.js only loads env from this directory. Repo-root `.env` is for Docker/backend (`FRONTEND_URL`, secrets). The browser API origin is same-origin `/api` (Next.js rewrites to `NEXT_PUBLIC_API_URL`).
 
 ## Brand
 

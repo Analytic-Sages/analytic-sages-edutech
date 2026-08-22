@@ -1,4 +1,5 @@
 import type { SelfPacedCourseCard, SelfPacedCoursePublic, SelfPacedEnrollment } from "@/lib/api";
+import { isQaCatalogCourse } from "@/lib/qa-fixtures";
 import type { Course } from "@/types/course";
 
 export const FEATURED_FREE_COURSE_SLUG = "dune-analytics-practical-sql-dashboard-techniques";
@@ -23,7 +24,7 @@ export const FEATURED_FREE_COURSE: SelfPacedCourseCard = {
 };
 
 export function mergeFreeCatalog(rows: SelfPacedCourseCard[]): SelfPacedCourseCard[] {
-  const free = rows.filter((course) => course.is_free);
+  const free = rows.filter((course) => course.is_free && !isQaCatalogCourse(course));
   if (free.some((course) => course.slug === FEATURED_FREE_COURSE_SLUG)) return free;
   return [FEATURED_FREE_COURSE, ...free];
 }
@@ -58,6 +59,7 @@ export const FEATURED_FREE_COURSE_PUBLIC: SelfPacedCoursePublic = {
   progress_percent: 0,
   lessons_completed: 0,
   resume_lesson_slug: null,
+  instructors: [],
   modules: [
     {
       id: "m1",
@@ -187,6 +189,9 @@ export function mapSelfPacedEnrollmentToCourse(item: SelfPacedEnrollment): Cours
     completed: Boolean(item.completed_at) || item.status === "completed",
     lessonsCompleted: item.lessons_completed,
     lessonsTotal: item.lessons_total,
+    lastActivityAt: item.last_activity_at ?? null,
+    lastCompletedLessonTitle: item.last_completed_lesson_title ?? null,
+    lastCompletedAt: item.last_completed_at ?? null,
   };
 }
 

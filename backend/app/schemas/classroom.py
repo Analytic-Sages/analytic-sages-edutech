@@ -4,6 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.instructors import InstructorPublic
+
 
 class SessionResource(BaseModel):
     title: str
@@ -64,3 +66,4 @@ class PublicCohortCard(BaseModel):
     next_session_starts_at: datetime | None = None
     next_session_phase: Literal["upcoming", "live", "ended", "cancelled"] | None = None
     sessions_count: int = 0
+    instructors: list[InstructorPublic] = Field(default_factory=list)

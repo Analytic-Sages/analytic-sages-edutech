@@ -48,7 +48,7 @@ export function formatEventWhen(event: Pick<EventCardPublic, "starts_at" | "ends
     hour12: false,
     timeZone: event.timezone,
   });
-  return `${date} · ${time.format(start)}–${time.format(end)} ${shortTimezone(event.timezone)}`;
+  return `${date} · ${time.format(start)}-${time.format(end)} ${shortTimezone(event.timezone)}`;
 }
 
 export function shortTimezone(timezone: string) {

@@ -279,3 +279,19 @@
   }
 }
 
+/* Tawk stays invisible until Talk to the team. */
+body:not(.as-tawk-open) iframe[src*="tawk"],
+body:not(.as-tawk-open) iframe[title*="tawk" i],
+body:not(.as-tawk-open) iframe[title*="chat widget" i],
+body:not(.as-tawk-open) [id^="tawkchat"],
+body:not(.as-tawk-open) [id^="tawk-"],
+body:not(.as-tawk-open) [class*="tawk-min"],
+body:not(.as-tawk-open) .tawk-button {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+
+
+

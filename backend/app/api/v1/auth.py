@@ -1,6 +1,6 @@
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
 
 from app.api.deps import (
@@ -35,10 +35,16 @@ from app.services.google_oauth import GoogleOAuthService
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-def _safe_next_path(next_path: str | None) -> str:
+def _optional_next_path(next_path: str | None) -> str | None:
     if not next_path or not next_path.startswith("/") or next_path.startswith("//"):
-        return "/dashboard"
+        return None
+    if next_path == "/dashboard":
+        return None
     return next_path
+
+
+def _safe_next_path(next_path: str | None) -> str:
+    return _optional_next_path(next_path) or "/dashboard"
 
 
 def _post_login_path(role: UserRole, next_path: str) -> str:
@@ -57,11 +63,18 @@ def _post_login_path(role: UserRole, next_path: str) -> str:
 def register(
     request: Request,
     payload: RegisterRequest,
+    background_tasks: BackgroundTasks,
     auth_service: AuthService = Depends(get_auth_service),
     rate_limiter=Depends(get_rate_limiter),
 ) -> MessageResponse:
     enforce_rate_limit(rate_limiter, request, scope="auth-register")
-    auth_service.register(payload)
+    user, raw_token = auth_service.register(payload)
+    background_tasks.add_task(
+        auth_service.email_service.send_verification_email,
+        email=user.email,
+        token=raw_token,
+        next_path=payload.next,
+    )
     return MessageResponse(
         message="Account created. Check your email to verify your address before signing in."
     )
@@ -84,6 +97,19 @@ def login(
     )
     security.set_refresh_cookie(response, refresh_token)
     return auth_service.build_auth_response(user, access_token)
+
+
+@router.post("/session", response_model=AuthResponse)
+def persist_session(
+    response: Response,
+    current_user: CurrentUser,
+    auth_service: AuthService = Depends(get_auth_service),
+    security: SecurityService = Depends(get_security_service),
+) -> AuthResponse:
+    """Mint a first-party refresh cookie from a valid access token (Google callback, etc.)."""
+    access_token, refresh_token = auth_service.issue_session(current_user)
+    security.set_refresh_cookie(response, refresh_token)
+    return auth_service.build_auth_response(current_user, access_token)
 
 
 @router.post("/refresh", response_model=AuthResponse)
@@ -129,16 +155,20 @@ def get_me(current_user: CurrentUser) -> UserPublic:
     return UserPublic.model_validate(current_user)
 
 
-@router.post("/verify-email", response_model=MessageResponse)
+@router.post("/verify-email", response_model=AuthResponse)
 def verify_email(
     request: Request,
     payload: VerifyEmailRequest,
+    response: Response,
     auth_service: AuthService = Depends(get_auth_service),
+    security: SecurityService = Depends(get_security_service),
     rate_limiter=Depends(get_rate_limiter),
-) -> MessageResponse:
+) -> AuthResponse:
     enforce_rate_limit(rate_limiter, request, scope="auth-verify")
-    auth_service.verify_email(payload.token)
-    return MessageResponse(message="Email verified successfully")
+    user = auth_service.verify_email(payload.token)
+    access_token, refresh_token = auth_service.issue_session(user)
+    security.set_refresh_cookie(response, refresh_token)
+    return auth_service.build_auth_response(user, access_token)
 
 
 @router.post("/resend-verification", response_model=MessageResponse)
@@ -149,7 +179,7 @@ def resend_verification(
     rate_limiter=Depends(get_rate_limiter),
 ) -> MessageResponse:
     enforce_rate_limit(rate_limiter, request, scope="auth-resend")
-    auth_service.resend_verification(payload.email)
+    auth_service.resend_verification(payload.email, next_path=_optional_next_path(payload.next))
     return MessageResponse(
         message="If an unverified account exists for that email, a verification link has been sent."
     )

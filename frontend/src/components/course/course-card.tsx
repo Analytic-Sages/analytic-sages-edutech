@@ -1,12 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Clock, Star, Users } from "lucide-react";
+import { CatalogOfferBadges } from "@/components/course/catalog-offer-badges";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { catalogBrowseCta, catalogFooterPriceLabel } from "@/lib/catalog-price";
 import { getContinueHref, getFirstLesson } from "@/lib/course-paths";
-import { formatPrice } from "@/lib/mock-data";
 import type { Course } from "@/types/course";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +37,8 @@ export function CourseCard({ course, variant = "catalog", className }: CourseCar
       ? course.roleDescription
       : course.description;
   const careerOutcomes = course.careerOutcomes ?? [];
+  const priceLabel = catalogFooterPriceLabel(course);
+  const browseCta = catalogBrowseCta(course);
 
   return (
     <Card
@@ -75,18 +78,12 @@ export function CourseCard({ course, variant = "catalog", className }: CourseCar
           </span>
         </div>
 
-        <Badge className="absolute top-3 left-3 bg-background/90 text-foreground backdrop-blur-sm">
-          {course.category}
-        </Badge>
-        {course.comingSoon ? (
-          <Badge className="absolute top-3 right-3 bg-brand-orange text-white shadow-sm">
-            Launching soon
-          </Badge>
-        ) : course.isFree ? (
-          <Badge className="absolute top-3 right-3 bg-brand-orange text-white shadow-sm">
-            FREE
-          </Badge>
-        ) : null}
+        <CatalogOfferBadges
+          price={course.price}
+          currency={course.currency}
+          isFree={course.isFree}
+          comingSoon={course.comingSoon}
+        />
       </div>
       <CardHeader>
         <div className="flex items-center gap-2">
@@ -156,24 +153,15 @@ export function CourseCard({ course, variant = "catalog", className }: CourseCar
           </div>
         )}
       </CardContent>
-      <CardFooter className="flex items-center justify-between border-t bg-transparent">
-        {course.comingSoon ? (
-          <span className="rounded-full bg-brand-orange/10 px-3 py-1 text-sm font-semibold text-brand-orange">
-            Launching soon
-          </span>
-        ) : course.isFree || course.price === 0 ? (
-          <span className="font-heading text-lg font-bold text-brand-navy dark:text-brand-orange">
-            FREE
-          </span>
-        ) : (
-          <span className="font-heading text-lg font-bold text-brand-navy dark:text-brand-orange">
-            {formatPrice(course.price, course.currency)}
-          </span>
-        )}
+      <CardFooter className="flex items-center justify-between gap-3 border-t bg-transparent">
+        <span className="font-heading text-lg font-bold text-brand-navy dark:text-brand-orange">
+          {priceLabel}
+        </span>
         <ButtonLink
           href={href}
           size="sm"
           className={cn(
+            "shrink-0",
             variant === "enrolled"
               ? "bg-brand-navy hover:bg-brand-navy/90"
               : course.comingSoon
@@ -183,11 +171,8 @@ export function CourseCard({ course, variant = "catalog", className }: CourseCar
             "transition-all hover:-translate-y-0.5"
           )}
         >
-          {variant === "enrolled"
-            ? enrolledCta
-            : course.comingSoon
-              ? "View details"
-              : "View Course"}
+          {variant === "enrolled" ? enrolledCta : browseCta}
+          {variant !== "enrolled" ? <ArrowRight className="ml-1 size-3.5" /> : null}
         </ButtonLink>
       </CardFooter>
     </Card>

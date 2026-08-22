@@ -4,11 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, Circle, Lock, PlayCircle } from "lucide-react";
+import { InstructorRoster } from "@/components/marketing/instructor-roster";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { catalogIsFree, catalogPriceLabel } from "@/lib/catalog-price";
 import {
   ApiError,
   clearAccessToken,
@@ -19,6 +21,7 @@ import {
   type SelfPacedLessonOutline,
 } from "@/lib/api";
 import { firstLessonSlug, formatDurationSeconds, selfPacedLearnHref } from "@/lib/self-paced";
+import { trackStartTrial } from "@/lib/marketing-pixels";
 
 type Props = {
   initialCourse: SelfPacedCoursePublic;
@@ -126,6 +129,7 @@ export function SelfPacedCourseLanding({ initialCourse }: Props) {
       setError(null);
       try {
         const result = await enrollSelfPacedCourse(course.slug);
+        trackStartTrial(course.title);
         const refreshed = await getSelfPacedCourse(course.slug);
         if (cancelled) return;
         setCourse(refreshed);
@@ -161,6 +165,7 @@ export function SelfPacedCourseLanding({ initialCourse }: Props) {
     setEnrolling(true);
     try {
       const result = await enrollSelfPacedCourse(course.slug);
+      trackStartTrial(course.title);
       const refreshed = await getSelfPacedCourse(course.slug);
       setCourse(refreshed);
       router.push(selfPacedLearnHref({ ...refreshed, resume_lesson_slug: result.resume_lesson_slug }));
@@ -187,7 +192,13 @@ export function SelfPacedCourseLanding({ initialCourse }: Props) {
         <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:px-8 lg:py-16">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.14em] text-brand-orange">
-              Free self-paced course
+              {catalogIsFree({
+                price: course.price,
+                currency: course.currency,
+                is_free: course.is_free,
+              })
+                ? "Free self-paced course"
+                : "Paid self-paced course"}
             </p>
             <h1 className="mt-4 font-heading text-4xl font-bold tracking-tight text-brand-navy sm:text-5xl dark:text-foreground">
               {course.title}
@@ -196,7 +207,23 @@ export function SelfPacedCourseLanding({ initialCourse }: Props) {
               {course.long_description || course.description}
             </p>
             <div className="mt-6 flex flex-wrap gap-2">
-              <Badge className="bg-brand-orange text-white">FREE</Badge>
+              <Badge
+                className={
+                  catalogIsFree({
+                    price: course.price,
+                    currency: course.currency,
+                    is_free: course.is_free,
+                  })
+                    ? "bg-brand-orange text-white"
+                    : "bg-brand-navy text-white"
+                }
+              >
+                {catalogPriceLabel({
+                  price: course.price,
+                  currency: course.currency,
+                  is_free: course.is_free,
+                })}
+              </Badge>
               <Badge variant="outline">{lessonCount} lessons</Badge>
               <Badge variant="outline">~{course.estimated_minutes || 70} minutes</Badge>
               <Badge variant="outline">{course.difficulty}</Badge>
@@ -242,6 +269,8 @@ export function SelfPacedCourseLanding({ initialCourse }: Props) {
           </div>
         </div>
       </section>
+
+      <InstructorRoster instructors={course.instructors} />
 
       <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
         <h2 className="font-heading text-2xl font-bold tracking-tight">Course outline</h2>

@@ -48,6 +48,7 @@ export const adminNav: NavItem[] = [
 
 export const operationsNav: NavItem[] = [
   { title: "Events", href: "/admin/events", icon: "events" },
+  { title: "Courses", href: "/admin/courses", icon: "courses" },
 ];
 
 export const staffNav: NavItem[] = [

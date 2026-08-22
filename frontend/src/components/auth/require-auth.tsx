@@ -1,28 +1,37 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useAccessToken } from "@/hooks/use-access-token";
-import { clearAccessToken } from "@/lib/api";
+import { ensureSession } from "@/lib/api";
 
 /**
  * Client-side guard for protected layouts.
- * Middleware checks the session cookie; this ensures a real access token exists.
+ * Waits for session bootstrap (local token or silent refresh) before redirecting.
  */
 export function RequireAuth({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const token = useAccessToken();
+  const [bootstrapped, setBootstrapped] = useState(false);
 
   useEffect(() => {
-    if (token) return;
-    clearAccessToken();
-    const next = pathname || "/dashboard";
-    router.replace(`/login?next=${encodeURIComponent(next)}`);
-  }, [token, pathname, router]);
+    let cancelled = false;
+    ensureSession().then((session) => {
+      if (cancelled) return;
+      setBootstrapped(true);
+      if (!session) {
+        const next = pathname || "/dashboard";
+        router.replace(`/login?next=${encodeURIComponent(next)}`);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname, router]);
 
-  if (!token) {
+  if (!bootstrapped || !token) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center gap-2 text-muted-foreground">
         <Loader2 className="size-5 animate-spin" />

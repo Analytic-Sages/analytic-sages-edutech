@@ -10,7 +10,7 @@ import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/auth/password-input";
-import { ApiError, acceptStaffInvite, setAccessToken } from "@/lib/api";
+import { ApiError, acceptStaffInvite, persistSession, setAccessToken } from "@/lib/api";
 import { resolvePostLoginPath } from "@/lib/auth-redirect";
 
 const schema = z
@@ -46,6 +46,7 @@ function StaffInviteInner() {
     try {
       const result = await acceptStaffInvite(token, data.password);
       setAccessToken(result.access_token);
+      await persistSession();
       router.replace(resolvePostLoginPath(result.user.role, "/dashboard"));
     } catch (err) {
       setError(err instanceof ApiError ? err.detail : "Could not accept invite");

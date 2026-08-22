@@ -51,6 +51,9 @@ export type Course = {
   completed?: boolean;
   lessonsCompleted?: number;
   lessonsTotal?: number;
+  lastActivityAt?: string | null;
+  lastCompletedLessonTitle?: string | null;
+  lastCompletedAt?: string | null;
 };
 
 export type Certificate = {

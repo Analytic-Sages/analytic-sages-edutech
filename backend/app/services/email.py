@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from html import escape
+from urllib.parse import urlencode
 
 import httpx
 
@@ -22,8 +23,11 @@ class EmailService:
     def is_live(self) -> bool:
         return bool(self.settings.email_api_key)
 
-    def send_verification_email(self, *, email: str, token: str) -> None:
-        link = f"{self.settings.frontend_url.rstrip('/')}/verify-email?token={token}"
+    def send_verification_email(self, *, email: str, token: str, next_path: str | None = None) -> None:
+        params = {"token": token}
+        if next_path and next_path.startswith("/") and not next_path.startswith("//"):
+            params["next"] = next_path
+        link = f"{self.settings.frontend_url.rstrip('/')}/verify-email?{urlencode(params)}"
         subject = "Verify your Analytic Sages email"
         html = self._simple_html(
             title="Verify your email",

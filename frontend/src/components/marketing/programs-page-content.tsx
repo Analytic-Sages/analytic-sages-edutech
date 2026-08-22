@@ -100,7 +100,7 @@ export function ProgramsPageContent() {
       <section className="relative min-h-[78vh] overflow-hidden border-b">
         <Image
           src="/4.png"
-          alt=""
+          alt="Analytic Sages learners in an in-person workshop"
           fill
           priority
           className="object-cover object-center"
@@ -150,7 +150,7 @@ export function ProgramsPageContent() {
         <SectionBackground variant="dots" />
         <div className="relative mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-10">
           <FadeIn className="max-w-3xl">
-            <p className={eyebrowClass}>Our Programs</p>
+            <p className={eyebrowClass}>Beginner to expert</p>
             <h2 className="mt-4 font-heading text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
               Pick Your Path.
               <span className="mt-2 block text-brand-navy dark:text-brand-orange">

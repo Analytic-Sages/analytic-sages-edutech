@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     cookie_secure: bool = False
     cookie_domain: str | None = None
     cookie_samesite: Literal["lax", "strict", "none"] = "lax"
+    # Path=/ so the refresh cookie is sent on page loads and same-origin /api calls.
+    refresh_cookie_path: str = "/"
 
     auth_rate_limit_requests: int = 10
     auth_rate_limit_window_seconds: int = 60
@@ -44,10 +46,11 @@ class Settings(BaseSettings):
     email_api_key: str | None = None
     contact_email: str = "support@analyticsages.io"
 
-    # Google OAuth — leave empty to use mock Google login in development
+    # Google OAuth — leave empty to use mock Google login in development.
+    # Redirect URI should be the public site origin (same-origin API rewrite), not the API host.
     google_client_id: str | None = None
     google_client_secret: str | None = None
-    google_redirect_uri: str = "http://localhost:8000/api/v1/auth/google/callback"
+    google_redirect_uri: str | None = None
 
     # Payments — leave keys empty to force mock adapters (recommended for local MVP)
     payment_mode: Literal["mock", "live"] = "mock"
@@ -76,6 +79,29 @@ class Settings(BaseSettings):
     @property
     def refresh_cookie_name(self) -> str:
         return "as_refresh_token"
+
+    @property
+    def refresh_cookie_samesite(self) -> Literal["lax", "strict", "none"]:
+        """First-party cookies on the marketing origin. SameSite=Lax is enough."""
+        return self.cookie_samesite
+
+    @property
+    def resolved_google_redirect_uri(self) -> str:
+        if self.google_redirect_uri and self.google_redirect_uri.strip():
+            return self.google_redirect_uri.rstrip("/")
+        return f"{self.frontend_url.rstrip('/')}/api/v1/auth/google/callback"
+
+    @property
+    def cors_origins(self) -> list[str]:
+        origin = self.frontend_url.rstrip("/")
+        origins = [origin]
+        if origin.startswith("https://www."):
+            origins.append(f"https://{origin.removeprefix('https://www.')}")
+        elif origin.startswith("https://") and "localhost" not in origin:
+            host = origin.removeprefix("https://")
+            if not host.startswith("www."):
+                origins.append(f"https://www.{host}")
+        return origins
 
     @property
     def google_oauth_configured(self) -> bool:

@@ -25,7 +25,11 @@ export function AdminPortal({ children }: { children: React.ReactNode }) {
           return;
         }
         if (user.role === "operations") {
-          if (!pathname.startsWith("/admin/events")) {
+          const allowed =
+            pathname.startsWith("/admin/events") ||
+            pathname.startsWith("/admin/courses") ||
+            pathname.startsWith("/admin/cohorts/");
+          if (!allowed) {
             router.replace("/admin/events");
             return;
           }

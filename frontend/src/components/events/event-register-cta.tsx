@@ -26,6 +26,7 @@ import {
   outlookCalendarUrl,
   registerLoginPath,
 } from "@/lib/events";
+import { trackLead } from "@/lib/marketing-pixels";
 
 type Props = {
   event: EventPublic;
@@ -51,6 +52,7 @@ export function EventRegisterCta({ event, onUpdated }: Props) {
     setWorking(true);
     registerForEvent(event.slug, "login-return")
       .then(async () => {
+        trackLead();
         const next = await getPublicEvent(event.slug);
         onUpdated?.(next);
         router.replace(`/events/${event.slug}`);
@@ -71,6 +73,7 @@ export function EventRegisterCta({ event, onUpdated }: Props) {
     setError(null);
     try {
       await registerForEvent(event.slug, "event-page");
+      trackLead();
       const next = await getPublicEvent(event.slug);
       onUpdated?.(next);
     } catch (err) {

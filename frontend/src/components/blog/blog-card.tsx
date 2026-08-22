@@ -31,7 +31,7 @@ export function BlogCard({ post, className }: BlogCardProps) {
         {post.coverImage ? (
           <Image
             src={post.coverImage}
-            alt=""
+            alt={post.title}
             fill
             className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"

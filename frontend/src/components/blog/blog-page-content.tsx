@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { blogPosts } from "@/lib/mock-blog-data";
+import { BlogLearnCta } from "@/components/blog/blog-learn-cta";
 
 export function BlogPageContent() {
   const [search, setSearch] = useState("");
@@ -85,6 +86,10 @@ export function BlogPageContent() {
           No articles match your search.
         </p>
       )}
+
+      <div className="mt-16">
+        <BlogLearnCta />
+      </div>
     </div>
   );
 }

@@ -172,7 +172,16 @@ def _upsert_lesson(db: Session, course: Course, module: CourseModule, payload: d
     db.add(Lesson(id=uuid.uuid4(), slug=payload["slug"], **fields))
 
 
+def unpublish_pytest_courses(db: Session) -> None:
+    leftovers = db.scalars(
+        select(Course).where(Course.published.is_(True), Course.slug.like("test-%"))
+    ).all()
+    for course in leftovers:
+        course.published = False
+
+
 def seed_dune_course(db: Session) -> Course:
+    unpublish_pytest_courses(db)
     course = db.scalar(
         select(Course)
         .options(selectinload(Course.modules).selectinload(CourseModule.lessons))
