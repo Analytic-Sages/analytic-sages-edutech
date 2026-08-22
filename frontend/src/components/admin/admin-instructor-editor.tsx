@@ -84,7 +84,6 @@ export function AdminInstructorEditor({ kind, slug, title }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     load()
       .catch((err) => {
         if (!cancelled) setError(err instanceof ApiError ? err.detail : "Failed to load instructors");

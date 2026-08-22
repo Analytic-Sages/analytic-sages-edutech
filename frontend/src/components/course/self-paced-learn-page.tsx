@@ -26,6 +26,19 @@ type Props = {
   lessonSlug: string;
 };
 
+function lessonOpenedKey(slug: string, lessonSlug: string) {
+  return `as_lesson_opened:${slug}:${lessonSlug}`;
+}
+
+function readLessonOpened(slug: string, lessonSlug: string) {
+  if (typeof window === "undefined") return false;
+  try {
+    return sessionStorage.getItem(lessonOpenedKey(slug, lessonSlug)) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export function SelfPacedLearnPage({ slug, lessonSlug }: Props) {
   const [course, setCourse] = useState<SelfPacedCoursePublic | null>(null);
   const [lesson, setLesson] = useState<SelfPacedLessonDetail | null>(null);
@@ -33,16 +46,11 @@ export function SelfPacedLearnPage({ slug, lessonSlug }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [forbidden, setForbidden] = useState(false);
   const [completing, setCompleting] = useState(false);
-  const [videoOpened, setVideoOpened] = useState(false);
-
-  useEffect(() => {
-    const key = `as_lesson_opened:${slug}:${lessonSlug}`;
-    setVideoOpened(sessionStorage.getItem(key) === "1");
-  }, [slug, lessonSlug]);
+  const [videoOpened, setVideoOpened] = useState(() => readLessonOpened(slug, lessonSlug));
 
   function handleVideoOpened() {
     setVideoOpened(true);
-    sessionStorage.setItem(`as_lesson_opened:${slug}:${lessonSlug}`, "1");
+    sessionStorage.setItem(lessonOpenedKey(slug, lessonSlug), "1");
   }
 
   useEffect(() => {

@@ -41,7 +41,7 @@ export default function CoursePlayerPage({ params }: Props) {
   }
 
   if (mode === "self-paced") {
-    return <SelfPacedLearnPage slug={slug} lessonSlug={lessonId} />;
+    return <SelfPacedLearnPage key={`${slug}:${lessonId}`} slug={slug} lessonSlug={lessonId} />;
   }
 
   return <MockCoursePlayer params={Promise.resolve({ slug, lessonId })} />;

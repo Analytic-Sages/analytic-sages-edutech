@@ -96,15 +96,15 @@ export function searchCatalog(query: string, sources: {
       href: `/courses/${course.slug}`,
       fields: [course.title, course.description, course.longDescription, ...(course.skills ?? [])],
     });
-    for (const module of course.modules) {
-      for (const lesson of module.lessons) {
+    for (const courseModule of course.modules) {
+      for (const lesson of courseModule.lessons) {
         push({
           id: `lesson:${course.slug}:${lesson.id}`,
           kind: "lesson",
           title: lesson.title,
-          description: `${course.title} · ${module.title}`,
+          description: `${course.title} · ${courseModule.title}`,
           href: `/courses/${course.slug}`,
-          fields: [lesson.title, module.title, course.title],
+          fields: [lesson.title, courseModule.title, course.title],
         });
       }
     }
@@ -155,15 +155,15 @@ export function searchCatalog(query: string, sources: {
     });
   }
 
-  for (const module of FEATURED_FREE_COURSE_PUBLIC.modules) {
-    for (const lesson of module.lessons) {
+  for (const courseModule of FEATURED_FREE_COURSE_PUBLIC.modules) {
+    for (const lesson of courseModule.lessons) {
       push({
         id: `lesson:${lesson.slug}`,
         kind: "lesson",
         title: lesson.title,
-        description: module.title,
+        description: courseModule.title,
         href: `/courses/${FEATURED_FREE_COURSE_PUBLIC.slug}`,
-        fields: [lesson.title, lesson.subtitle || "", module.title, FEATURED_FREE_COURSE_PUBLIC.title],
+        fields: [lesson.title, lesson.subtitle || "", courseModule.title, FEATURED_FREE_COURSE_PUBLIC.title],
       });
     }
   }
