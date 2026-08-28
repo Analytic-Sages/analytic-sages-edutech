@@ -59,6 +59,7 @@ export type OpportunityCard = {
   public_badge: PublicBadge;
   application_domain: string | null;
   primary_career_path: CareerPathPublic | null;
+  skills: SkillPublic[];
   saved?: boolean;
   applied?: boolean;
   match_score?: number | null;
