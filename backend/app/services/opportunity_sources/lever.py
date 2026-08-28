@@ -15,8 +15,8 @@ from app.services.opportunity_sources.base import (
     USER_AGENT,
     RawOpportunity,
 )
+from app.services.opportunity_prose import normalize_description
 from app.services.opportunity_sources.greenhouse import BOARD_TOKEN_RE, _collapse
-from app.services.opportunity_sources.rss import strip_html
 from app.services.opportunity_urls import hostname_of, validate_http_url
 
 logger = logging.getLogger(__name__)
@@ -64,21 +64,20 @@ def parse_jobs(payload: list[Any], source: OpportunitySource) -> list[RawOpportu
         categories = job.get("categories")
         if isinstance(categories, dict):
             location = _collapse(str(categories.get("location") or ""))[:255]
-        description = _collapse(
-            str(job.get("descriptionPlain") or strip_html(str(job.get("description") or "")))
-        )[:20000]
+        source_html = str(job.get("description") or "")
+        source_plain = str(job.get("descriptionPlain") or "")
         results.append(
             RawOpportunity(
                 external_id=job_id[:255],
                 title=title,
                 organization_name=source.name,
-                description=description,
+                description=normalize_description(source_html or source_plain)[:20000],
                 location=location,
                 application_url=url,
                 source_url=url,
                 posted_at=_posted_at(job),
                 workplace_type=_workplace(job),
-                raw_data={"id": job_id, "hostedUrl": url, "categories": categories},
+                raw_data={"id": job_id, "hostedUrl": url, "categories": categories, "source_html": source_html[:20000]},
             )
         )
     return results

@@ -431,7 +431,15 @@ export function AdminOpportunityForm({ opportunityId }: { opportunityId?: string
         <div className="space-y-4">
           <div>
             <Label htmlFor="description">Description</Label>
-            <Textarea id="description" rows={6} value={form.description} onChange={(e) => set("description", e.target.value)} />
+            <p className="mb-2 text-xs text-muted-foreground">
+              Blank lines start paragraphs. Use ## headings and - or 1. for lists. Imported jobs keep this structure after review.
+            </p>
+            <Textarea
+              id="description"
+              rows={14}
+              value={form.description}
+              onChange={(e) => set("description", e.target.value)}
+            />
           </div>
           <div>
             <Label htmlFor="responsibilities">Responsibilities</Label>

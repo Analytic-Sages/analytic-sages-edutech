@@ -64,7 +64,6 @@ export function AdminOpportunitiesContent() {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     load(tab)
       .catch((err) => {
         if (!cancelled) setError(err instanceof ApiError ? err.detail : "Could not load opportunities.");
@@ -78,6 +77,13 @@ export function AdminOpportunitiesContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
+  function selectTab(next: Tab) {
+    if (next === tab) return;
+    setError(null);
+    setLoading(true);
+    setTab(next);
+  }
+
   async function fetchNewListings() {
     setSyncing(true);
     setError(null);
@@ -86,6 +92,7 @@ export function AdminOpportunitiesContent() {
       const result = await syncAdminOpportunitySources();
       setSyncSummary(result);
       if (result.created > 0 && tab !== "review") {
+        setLoading(true);
         setTab("review");
       } else {
         await load(tab);
@@ -180,10 +187,10 @@ export function AdminOpportunitiesContent() {
         </div>
       ) : null}
       <div className="mb-4 flex gap-2">
-        <Button variant={tab === "all" ? "default" : "outline"} size="sm" onClick={() => setTab("all")}>
+        <Button variant={tab === "all" ? "default" : "outline"} size="sm" onClick={() => selectTab("all")}>
           All
         </Button>
-        <Button variant={tab === "review" ? "default" : "outline"} size="sm" onClick={() => setTab("review")}>
+        <Button variant={tab === "review" ? "default" : "outline"} size="sm" onClick={() => selectTab("review")}>
           Pending review{overview && overview.review > 0 ? ` (${overview.review})` : ""}
         </Button>
       </div>

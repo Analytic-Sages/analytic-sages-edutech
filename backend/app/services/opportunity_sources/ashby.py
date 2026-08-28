@@ -14,8 +14,8 @@ from app.services.opportunity_sources.base import (
     USER_AGENT,
     RawOpportunity,
 )
+from app.services.opportunity_prose import normalize_description
 from app.services.opportunity_sources.greenhouse import BOARD_TOKEN_RE, _collapse, _parse_datetime
-from app.services.opportunity_sources.rss import strip_html
 from app.services.opportunity_urls import hostname_of, validate_http_url
 
 logger = logging.getLogger(__name__)
@@ -60,21 +60,25 @@ def parse_jobs(payload: dict[str, Any], source: OpportunitySource) -> list[RawOp
         url = str(job.get("jobUrl") or job.get("applyUrl") or "").strip()
         if not title or not job_id or not url:
             continue
-        description = _collapse(str(job.get("descriptionPlain") or strip_html(str(job.get("descriptionHtml") or ""))))[
-            :20000
-        ]
+        source_html = str(job.get("descriptionHtml") or "")
+        source_plain = str(job.get("descriptionPlain") or "")
         results.append(
             RawOpportunity(
                 external_id=job_id[:255],
                 title=title,
                 organization_name=source.name,
-                description=description,
+                description=normalize_description(source_html or source_plain)[:20000],
                 location=_collapse(str(job.get("location") or ""))[:255],
                 application_url=url,
                 source_url=url,
                 posted_at=_parse_datetime(job.get("publishedAt")),
                 workplace_type=_workplace(job),
-                raw_data={"id": job_id, "jobUrl": url, "department": job.get("department")},
+                raw_data={
+                    "id": job_id,
+                    "jobUrl": url,
+                    "department": job.get("department"),
+                    "source_html": source_html[:20000],
+                },
             )
         )
     return results

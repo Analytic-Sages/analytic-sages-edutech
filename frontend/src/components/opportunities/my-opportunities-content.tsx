@@ -39,7 +39,6 @@ export function MyOpportunitiesContent() {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     listMyOpportunities(bucket)
       .then((data) => {
         if (cancelled) return;
@@ -57,6 +56,13 @@ export function MyOpportunitiesContent() {
       cancelled = true;
     };
   }, [bucket]);
+
+  function selectBucket(next: Bucket) {
+    if (next === bucket) return;
+    setError(null);
+    setLoading(true);
+    setBucket(next);
+  }
 
   async function saveInterests() {
     setSavingInterests(true);
@@ -108,7 +114,7 @@ export function MyOpportunitiesContent() {
 
       <div className="mb-4 flex flex-wrap gap-2">
         {(["saved", "applied", "closed"] as Bucket[]).map((item) => (
-          <Button key={item} size="sm" variant={bucket === item ? "default" : "outline"} onClick={() => setBucket(item)}>
+          <Button key={item} size="sm" variant={bucket === item ? "default" : "outline"} onClick={() => selectBucket(item)}>
             {item === "saved" ? "Saved" : item === "applied" ? "Applied" : "Closed"}
           </Button>
         ))}

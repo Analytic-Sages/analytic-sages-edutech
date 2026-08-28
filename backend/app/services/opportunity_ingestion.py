@@ -45,6 +45,7 @@ from app.schemas.opportunities import (
     OpportunitySyncRunList,
 )
 from app.services.opportunity_mission import is_off_mission_title
+from app.services.opportunity_prose import normalize_description
 from app.services.opportunity_relevance import (
     RELEVANCE_HIGH_AT,
     RELEVANCE_REJECT_BELOW,
@@ -405,14 +406,17 @@ class OpportunityIngestionService:
         if not title:
             return "rejected"
         organization_name = (raw.organization_name or source.name).strip()[:255]
-        description = (raw.description or "")[:20000]
+        source_html = ""
+        if isinstance(raw.raw_data, dict):
+            source_html = str(raw.raw_data.get("source_html") or "")[:20000]
+        description = normalize_description(raw.description or source_html)[:20000]
         application_url = (raw.application_url or "").strip()
         hashed = _content_hash(raw)
         ingestion = OpportunityIngestion(
             source_id=source.id,
             external_id=raw.external_id[:255] if raw.external_id else None,
             raw_title=title,
-            raw_content=description,
+            raw_content=(source_html or raw.description or "")[:20000],
             raw_data=raw.raw_data or {},
             source_url=(raw.source_url or application_url or None),
             content_hash=hashed,
@@ -563,7 +567,7 @@ class OpportunityIngestionService:
         if opportunity.is_manual:
             return
         opportunity.title = (raw.title or opportunity.title)[:255]
-        opportunity.description = (raw.description or opportunity.description)[:20000]
+        opportunity.description = normalize_description(raw.description or opportunity.description)[:20000]
         opportunity.location = (raw.location or opportunity.location)[:255]
         opportunity.application_url = application_url
         opportunity.content_hash = hashed

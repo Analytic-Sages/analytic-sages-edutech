@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Bookmark, BookmarkCheck, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
@@ -24,11 +24,6 @@ export function SaveOpportunityButton({ opportunityId, initiallySaved, initially
   const [applied, setApplied] = useState(Boolean(initiallyApplied));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setSaved(Boolean(initiallySaved));
-    setApplied(Boolean(initiallyApplied));
-  }, [initiallySaved, initiallyApplied]);
 
   if (!signedIn) {
     const next = typeof window === "undefined" ? "/opportunities" : window.location.pathname;

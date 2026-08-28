@@ -52,6 +52,7 @@ from app.schemas.opportunities import (
     TaxonomyOption,
 )
 from app.services.insights import slugify
+from app.services.opportunity_prose import normalize_description, normalize_optional
 from app.services.opportunity_urls import validate_http_url
 
 logger = logging.getLogger(__name__)
@@ -317,10 +318,10 @@ class OpportunityService:
             slug=opportunity.slug,
             title=opportunity.title,
             organization_name=opportunity.organization_name,
-            description=opportunity.description,
-            requirements=opportunity.requirements,
-            responsibilities=opportunity.responsibilities,
-            benefits=opportunity.benefits,
+            description=normalize_description(opportunity.description),
+            requirements=normalize_description(opportunity.requirements or ""),
+            responsibilities=normalize_optional(opportunity.responsibilities),
+            benefits=normalize_optional(opportunity.benefits),
             opportunity_type=_enum_value(opportunity.opportunity_type),
             employment_type=_enum_value(opportunity.employment_type) if opportunity.employment_type else None,
             experience_level=_enum_value(opportunity.experience_level),
@@ -637,10 +638,10 @@ class OpportunityService:
         source = opportunity.source
         return OpportunityPublic(
             **card.model_dump(),
-            description=opportunity.description,
-            requirements=opportunity.requirements,
-            responsibilities=opportunity.responsibilities,
-            benefits=opportunity.benefits,
+            description=normalize_description(opportunity.description),
+            requirements=normalize_description(opportunity.requirements or ""),
+            responsibilities=normalize_optional(opportunity.responsibilities),
+            benefits=normalize_optional(opportunity.benefits),
             application_url=opportunity.application_url,
             source_url=opportunity.source_url,
             career_paths=self._career_paths(opportunity),
@@ -814,10 +815,10 @@ class OpportunityService:
             slug=slug,
             title=payload.title,
             organization_name=payload.organization_name,
-            description=payload.description,
-            requirements=payload.requirements,
-            responsibilities=payload.responsibilities,
-            benefits=payload.benefits,
+            description=normalize_description(payload.description),
+            requirements=normalize_description(payload.requirements),
+            responsibilities=normalize_optional(payload.responsibilities),
+            benefits=normalize_optional(payload.benefits),
             opportunity_type=payload.opportunity_type,
             employment_type=payload.employment_type,
             experience_level=payload.experience_level,
@@ -872,6 +873,14 @@ class OpportunityService:
             opportunity.source_id = source_id
         for key, value in data.items():
             setattr(opportunity, key, value)
+        if "description" in data:
+            opportunity.description = normalize_description(opportunity.description)
+        if "requirements" in data:
+            opportunity.requirements = normalize_description(opportunity.requirements or "")
+        if "responsibilities" in data:
+            opportunity.responsibilities = normalize_optional(opportunity.responsibilities)
+        if "benefits" in data:
+            opportunity.benefits = normalize_optional(opportunity.benefits)
         self._apply_urls(opportunity, application_url, source_url)
         if career_path_ids is not None or skill_ids is not None:
             self._replace_taxonomy(opportunity, career_path_ids, skill_ids)

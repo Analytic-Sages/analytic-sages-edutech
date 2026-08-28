@@ -1,4 +1,5 @@
 import { CalendarDays, MapPin } from "lucide-react";
+import { OpportunityDescription } from "@/components/opportunities/opportunity-description";
 import { ApplySafetyButton } from "@/components/opportunities/apply-safety-modal";
 import { OpportunityRow } from "@/components/opportunities/opportunity-card";
 import { OpportunityTrustBadge } from "@/components/opportunities/opportunity-trust-badge";
@@ -19,15 +20,9 @@ import {
 function ProseBlock({ title, text }: { title: string; text: string | null | undefined }) {
   if (!text?.trim()) return null;
   return (
-    <section className="space-y-3">
-      <h2 className="font-heading text-lg font-semibold">{title}</h2>
-      <div className="space-y-3 text-muted-foreground">
-        {text.split(/\n{2,}/).map((paragraph) => (
-          <p key={paragraph.slice(0, 48)} className="whitespace-pre-wrap">
-            {paragraph}
-          </p>
-        ))}
-      </div>
+    <section>
+      <h2 className="mb-4 font-heading text-lg font-semibold">{title}</h2>
+      <OpportunityDescription text={text} />
     </section>
   );
 }
@@ -139,6 +134,7 @@ export function OpportunityDetailView({ opportunity }: { opportunity: Opportunit
             </div>
             <div className="mt-3">
               <SaveOpportunityButton
+                key={opportunity.id}
                 opportunityId={opportunity.id}
                 initiallySaved={opportunity.saved}
                 initiallyApplied={opportunity.applied}

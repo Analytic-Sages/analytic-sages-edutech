@@ -18,6 +18,7 @@ from app.services.opportunity_sources.base import (
     USER_AGENT,
     RawOpportunity,
 )
+from app.services.opportunity_prose import normalize_description
 from app.services.opportunity_urls import hostname_of, validate_http_url
 
 logger = logging.getLogger(__name__)
@@ -101,12 +102,8 @@ def parse_feed(xml_text: str, source: OpportunitySource) -> list[RawOpportunity]
     results: list[RawOpportunity] = []
     for index, item in enumerate(items[:MAX_ITEMS_PER_SYNC]):
         title = _collapse(strip_html(_child_text(item, {"title"})))[:255]
-        description = _collapse(
-            strip_html(
-                _child_text(item, {"content", "encoded", "description", "summary"})
-                or (item.text or "")
-            )
-        )[:20000]
+        source_html = _child_text(item, {"content", "encoded", "description", "summary"}) or (item.text or "")
+        description = normalize_description(source_html)[:20000]
         link = _link(item).strip()
         guid = _collapse(_child_text(item, {"guid", "id"})) or link or f"rss-{index}"
         posted = _parse_datetime(_child_text(item, {"pubdate", "published", "updated", "date"}))
@@ -123,7 +120,7 @@ def parse_feed(xml_text: str, source: OpportunitySource) -> list[RawOpportunity]
                 application_url=application_url,
                 source_url=link or None,
                 posted_at=posted,
-                raw_data={"guid": guid, "link": link},
+                raw_data={"guid": guid, "link": link, "source_html": source_html[:20000]},
             )
         )
     return results
