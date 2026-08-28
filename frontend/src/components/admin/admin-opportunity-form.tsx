@@ -32,6 +32,7 @@ import {
   type PublicBadge,
   type WorkplaceType,
 } from "@/lib/opportunities";
+import { isOpportunitiesPublic } from "@/lib/feature-flags";
 
 type FormState = {
   slug: string;
@@ -517,7 +518,7 @@ export function AdminOpportunityForm({ opportunityId }: { opportunityId?: string
               Unpublish
             </Button>
           ) : null}
-          {opportunityId && status === "published" ? (
+          {opportunityId && status === "published" && isOpportunitiesPublic() ? (
             <Button
               type="button"
               variant="outline"

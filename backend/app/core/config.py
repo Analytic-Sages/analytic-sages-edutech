@@ -81,6 +81,9 @@ class Settings(BaseSettings):
     # Leave empty to keep the endpoints disabled.
     opportunity_sync_token: str | None = None
 
+    # Public opportunities hub. Off until go-live so listings stay staff-only.
+    opportunities_public: bool = False
+
     # Telegram Bot API. Leave empty to skip announcements on publish.
     telegram_bot_token: str | None = None
     telegram_channel_id: str | None = None

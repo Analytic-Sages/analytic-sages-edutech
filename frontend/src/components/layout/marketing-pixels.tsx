@@ -13,6 +13,7 @@ import {
   trackMarketingPageView,
   trackViewContent,
 } from "@/lib/marketing-pixels";
+import { isOpportunitiesPublic } from "@/lib/feature-flags";
 
 function contentFromPath(path: string): { name: string; category: string } | null {
   if (path === "/instructor-led") return { name: "Instructor-led training", category: "program" };
@@ -20,6 +21,7 @@ function contentFromPath(path: string): { name: string; category: string } | nul
   if (path === "/programs") return { name: "Programs", category: "program" };
   if (path === "/events") return { name: "Events", category: "event" };
   if (path === "/opportunities" || path.startsWith("/opportunities/")) {
+    if (!isOpportunitiesPublic()) return null;
     return { name: "Opportunities", category: "opportunity" };
   }
   if (path === "/insights" || path === "/blog") return { name: "Insights", category: "blog" };

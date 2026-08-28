@@ -15,6 +15,7 @@ from app.api.deps import (
     get_opportunity_telegram_service,
     get_current_user_optional,
     require_admin,
+    require_public_opportunities_hub,
     require_student,
 )
 from app.core.config import Settings, get_settings
@@ -62,6 +63,7 @@ router = APIRouter(tags=["opportunities"])
 
 @router.get("/opportunities", response_model=OpportunityListPublic)
 def list_opportunities(
+    _: None = Depends(require_public_opportunities_hub),
     opportunities: OpportunityService = Depends(get_opportunity_service),
     current_user: User | None = Depends(get_current_user_optional),
     q: str | None = Query(default=None, max_length=120),
@@ -92,6 +94,7 @@ def list_opportunities(
 
 @router.get("/opportunities/filters", response_model=OpportunityFiltersPublic)
 def opportunity_filters(
+    _: None = Depends(require_public_opportunities_hub),
     opportunities: OpportunityService = Depends(get_opportunity_service),
 ) -> OpportunityFiltersPublic:
     return opportunities.list_filters()
@@ -100,6 +103,7 @@ def opportunity_filters(
 @router.get("/opportunities/{slug}", response_model=OpportunityPublic)
 def get_opportunity(
     slug: str,
+    _: None = Depends(require_public_opportunities_hub),
     opportunities: OpportunityService = Depends(get_opportunity_service),
     current_user: User | None = Depends(get_current_user_optional),
 ) -> OpportunityPublic:
@@ -277,6 +281,7 @@ def internal_opportunity_digest(
 
 @router.get("/me/opportunity-interests", response_model=UserCareerInterestsPublic)
 def my_opportunity_interests(
+    _: None = Depends(require_public_opportunities_hub),
     current_user: User = Depends(require_student),
     engagement: OpportunityEngagementService = Depends(get_opportunity_engagement_service),
 ) -> UserCareerInterestsPublic:
@@ -286,6 +291,7 @@ def my_opportunity_interests(
 @router.put("/me/opportunity-interests", response_model=UserCareerInterestsPublic)
 def update_opportunity_interests(
     payload: UserCareerInterestsUpdate,
+    _: None = Depends(require_public_opportunities_hub),
     current_user: User = Depends(require_student),
     engagement: OpportunityEngagementService = Depends(get_opportunity_engagement_service),
 ) -> UserCareerInterestsPublic:
@@ -294,6 +300,7 @@ def update_opportunity_interests(
 
 @router.get("/me/opportunities", response_model=OpportunitySaveList)
 def my_saved_opportunities(
+    _: None = Depends(require_public_opportunities_hub),
     current_user: User = Depends(require_student),
     engagement: OpportunityEngagementService = Depends(get_opportunity_engagement_service),
     bucket: str = Query(default="saved", pattern="^(saved|applied|closed)$"),
@@ -304,6 +311,7 @@ def my_saved_opportunities(
 @router.post("/me/opportunities/{opportunity_id}/save", response_model=OpportunitySavePublic)
 def save_opportunity(
     opportunity_id: UUID,
+    _: None = Depends(require_public_opportunities_hub),
     current_user: User = Depends(require_student),
     engagement: OpportunityEngagementService = Depends(get_opportunity_engagement_service),
 ) -> OpportunitySavePublic:
@@ -313,6 +321,7 @@ def save_opportunity(
 @router.post("/me/opportunities/{opportunity_id}/applied", response_model=OpportunitySavePublic)
 def mark_opportunity_applied(
     opportunity_id: UUID,
+    _: None = Depends(require_public_opportunities_hub),
     current_user: User = Depends(require_student),
     engagement: OpportunityEngagementService = Depends(get_opportunity_engagement_service),
 ) -> OpportunitySavePublic:
@@ -322,6 +331,7 @@ def mark_opportunity_applied(
 @router.delete("/me/opportunities/{opportunity_id}/save", status_code=status.HTTP_204_NO_CONTENT)
 def unsave_opportunity(
     opportunity_id: UUID,
+    _: None = Depends(require_public_opportunities_hub),
     current_user: User = Depends(require_student),
     engagement: OpportunityEngagementService = Depends(get_opportunity_engagement_service),
 ) -> None:

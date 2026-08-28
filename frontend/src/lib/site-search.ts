@@ -1,5 +1,6 @@
 import { siteConfig } from "@/config/site";
 import type { EventCardPublic, PublicCohortCard, SelfPacedCourseCard } from "@/lib/api";
+import { isOpportunitiesPublic } from "@/lib/feature-flags";
 import type { InsightCard } from "@/lib/insights";
 import type { OpportunityCard } from "@/lib/opportunities";
 import { courses } from "@/lib/mock-data";
@@ -159,30 +160,32 @@ export function searchCatalog(query: string, sources: {
     });
   }
 
-  push({
-    id: "opportunity:hub",
-    kind: "opportunity",
-    title: "Opportunities Hub",
-    description: "Jobs, internships, fellowships, grants, and research mapped to Analytic Sages pathways.",
-    href: "/opportunities",
-    fields: ["opportunities", "jobs", "internships", "fellowships", "grants", "hackathons", "career"],
-  });
-
-  for (const opportunity of sources.opportunities || []) {
+  if (isOpportunitiesPublic()) {
     push({
-      id: `opportunity:${opportunity.slug}`,
+      id: "opportunity:hub",
       kind: "opportunity",
-      title: opportunity.title,
-      description: opportunity.organization_name,
-      href: `/opportunities/${opportunity.slug}`,
-      fields: [
-        opportunity.title,
-        opportunity.organization_name,
-        opportunity.slug,
-        opportunity.opportunity_type,
-        opportunity.primary_career_path?.name || "",
-      ],
+      title: "Opportunities Hub",
+      description: "Jobs, internships, fellowships, grants, and research mapped to Analytic Sages pathways.",
+      href: "/opportunities",
+      fields: ["opportunities", "jobs", "internships", "fellowships", "grants", "hackathons", "career"],
     });
+
+    for (const opportunity of sources.opportunities || []) {
+      push({
+        id: `opportunity:${opportunity.slug}`,
+        kind: "opportunity",
+        title: opportunity.title,
+        description: opportunity.organization_name,
+        href: `/opportunities/${opportunity.slug}`,
+        fields: [
+          opportunity.title,
+          opportunity.organization_name,
+          opportunity.slug,
+          opportunity.opportunity_type,
+          opportunity.primary_career_path?.name || "",
+        ],
+      });
+    }
   }
 
   for (const courseModule of FEATURED_FREE_COURSE_PUBLIC.modules) {

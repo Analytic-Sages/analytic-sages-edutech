@@ -41,6 +41,8 @@ class OpportunityTelegramService:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only published opportunities can be announced")
         if opportunity.telegram_announced_at is not None and not force:
             return {"status": "already_announced", "announced_at": opportunity.telegram_announced_at.isoformat()}
+        if not self.settings.opportunities_public:
+            return {"status": "skipped", "detail": "Opportunities hub is private until go-live"}
         if not self.configured:
             return {"status": "skipped", "detail": "Telegram is not configured"}
         posted = self._post(opportunity)

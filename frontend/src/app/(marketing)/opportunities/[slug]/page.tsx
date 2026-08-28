@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { OpportunitiesHub } from "@/components/opportunities/opportunities-hub";
 import { OpportunityDetailView } from "@/components/opportunities/opportunity-detail";
 import { ApiError } from "@/lib/api";
+import { isOpportunitiesPublic } from "@/lib/feature-flags";
 import {
   getOpportunity,
   TYPE_LABELS,
@@ -26,6 +27,7 @@ async function loadOpportunity(slug: string): Promise<OpportunityDetail | null> 
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  if (!isOpportunitiesPublic()) return { robots: { index: false, follow: false } };
   const { slug } = await params;
   const type = typeFromPath(slug);
   if (type) {
@@ -46,6 +48,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function OpportunitySlugPage({ params }: Props) {
+  if (!isOpportunitiesPublic()) notFound();
   const { slug } = await params;
   const type = typeFromPath(slug);
   if (type) {

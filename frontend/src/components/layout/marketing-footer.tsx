@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
 import { CookieSettingsButton } from "@/components/layout/cookie-settings-button";
 import { siteConfig } from "@/config/site";
-import { marketingNav } from "@/config/navigation";
+import { publicMarketingNav } from "@/config/navigation";
 
 export function MarketingFooter() {
   return (
@@ -39,7 +39,7 @@ export function MarketingFooter() {
           <div>
             <h4 className="font-heading text-sm font-semibold">Platform</h4>
             <ul className="mt-4 space-y-2">
-              {marketingNav.map((item) => (
+              {publicMarketingNav().map((item) => (
                 <li key={item.href}>
                   <Link
                     href={item.href}

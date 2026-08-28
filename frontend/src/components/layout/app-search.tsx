@@ -16,6 +16,7 @@ import {
 } from "@/lib/api";
 import { listInsights, type InsightCard } from "@/lib/insights";
 import { listOpportunities, type OpportunityCard } from "@/lib/opportunities";
+import { isOpportunitiesPublic } from "@/lib/feature-flags";
 import { searchCatalog, searchKindLabel, type SearchHit } from "@/lib/site-search";
 import { cn } from "@/lib/utils";
 
@@ -34,7 +35,7 @@ function useSearchIndex() {
       listPublicCohorts(),
       listPublicEvents(),
       listInsights(),
-      listOpportunities({ limit: 50 }),
+      isOpportunitiesPublic() ? listOpportunities({ limit: 50 }) : Promise.resolve({ items: [] as OpportunityCard[] }),
     ]).then(([courseResult, cohortResult, eventResult, insightResult, opportunityResult]) => {
       if (cancelled) return;
       if (courseResult.status === "fulfilled") setCourses(courseResult.value);
@@ -77,7 +78,7 @@ function SearchResults({
   if (hits.length === 0) {
     return (
       <p className="px-3 py-4 text-sm text-muted-foreground">
-        No matches. Try a course, program, event, opportunity, or Insights topic.
+        No matches. Try a course, program, event{isOpportunitiesPublic() ? ", opportunity," : ","} or Insights topic.
       </p>
     );
   }

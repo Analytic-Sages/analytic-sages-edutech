@@ -30,6 +30,7 @@ import {
   type OpportunityStatus,
   type OpportunitySyncAllResult,
 } from "@/lib/opportunities";
+import { isOpportunitiesPublic } from "@/lib/feature-flags";
 
 const STATUS_LABEL: Record<OpportunityStatus, string> = {
   draft: "Draft",
@@ -163,9 +164,11 @@ export function AdminOpportunitiesContent() {
             <Button variant="outline" onClick={fetchNewListings} disabled={syncing || digesting}>
               {syncing ? "Fetching…" : "Fetch new listings"}
             </Button>
-            <Button variant="outline" onClick={sendDigest} disabled={digesting || syncing}>
-              {digesting ? "Sending digest…" : "Send weekly digest"}
-            </Button>
+            {isOpportunitiesPublic() ? (
+              <Button variant="outline" onClick={sendDigest} disabled={digesting || syncing}>
+                {digesting ? "Sending digest…" : "Send weekly digest"}
+              </Button>
+            ) : null}
             <ButtonLink href="/admin/opportunities/discover" variant="outline">
               Discover
             </ButtonLink>
@@ -178,6 +181,11 @@ export function AdminOpportunitiesContent() {
           </div>
         }
       />
+      {!isOpportunitiesPublic() ? (
+        <p className="mb-6 rounded-lg border border-brand-navy/15 bg-brand-surface px-4 py-3 text-sm text-muted-foreground">
+          The public hub is private until go-live. Published listings stay in admin only — they are not on the site, in search, or announced.
+        </p>
+      ) : null}
       {overview ? (
         <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <OverviewCard label="Published" value={overview.published} />

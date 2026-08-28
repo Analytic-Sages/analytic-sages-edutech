@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { FEATURED_EVENT_SLUG } from "@/lib/events";
+import { isOpportunitiesPublic } from "@/lib/feature-flags";
 import { SEEDED_INSIGHT_SLUGS } from "@/lib/insight-slugs";
 import { listPublicProgramPaths, PUBLIC_SITE_ORIGIN } from "@/lib/program-pages";
 import { FEATURED_FREE_COURSE_SLUG } from "@/lib/self-paced";
@@ -10,10 +11,21 @@ const HIGH_PRIORITY = new Set([
   "/instructor-led",
   "/courses",
   "/events",
-  "/opportunities",
+  ...(isOpportunitiesPublic() ? ["/opportunities"] : []),
   `/courses/${FEATURED_FREE_COURSE_SLUG}`,
   `/events/${FEATURED_EVENT_SLUG}`,
 ]);
+
+const OPPORTUNITY_PATHS = [
+  "/opportunities",
+  "/opportunities/jobs",
+  "/opportunities/internships",
+  "/opportunities/fellowships",
+  "/opportunities/hackathons",
+  "/opportunities/grants",
+  "/opportunities/bounties",
+  "/opportunities/research",
+];
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const lastModified = new Date();
@@ -25,14 +37,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     `/courses/${FEATURED_FREE_COURSE_SLUG}`,
     "/events",
     `/events/${FEATURED_EVENT_SLUG}`,
-    "/opportunities",
-    "/opportunities/jobs",
-    "/opportunities/internships",
-    "/opportunities/fellowships",
-    "/opportunities/hackathons",
-    "/opportunities/grants",
-    "/opportunities/bounties",
-    "/opportunities/research",
+    ...(isOpportunitiesPublic() ? OPPORTUNITY_PATHS : []),
     "/about",
     "/insights",
     "/faq",

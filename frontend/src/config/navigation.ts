@@ -1,3 +1,5 @@
+import { isOpportunitiesPublic } from "@/lib/feature-flags";
+
 export type NavItemId =
   | "dashboard"
   | "classroom"
@@ -69,3 +71,15 @@ export const studioNav: NavItem[] = [
 export const staffNav: NavItem[] = [
   { title: "Classroom", href: "/staff", icon: "classroom" },
 ];
+
+export function publicMarketingNav() {
+  if (isOpportunitiesPublic()) return marketingNav;
+  return marketingNav.filter((item) => item.href !== "/opportunities");
+}
+
+export function publicStudentNav(): NavItem[] {
+  if (isOpportunitiesPublic()) return studentNav;
+  return studentNav.filter(
+    (item) => item.href !== "/opportunities" && item.href !== "/my-opportunities",
+  );
+}

@@ -222,5 +222,12 @@ require_student = require_roles(
     UserRole.ADMIN, UserRole.INSTRUCTOR, UserRole.OPERATIONS, UserRole.STUDENT
 )
 
+
+def require_public_opportunities_hub(settings: Settings = Depends(get_settings)) -> None:
+    """Hide the public hub until OPPORTUNITIES_PUBLIC is enabled."""
+    if not settings.opportunities_public:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
+
 CurrentUser = Annotated[User, Depends(get_current_user)]
 OptionalUser = Annotated[User | None, Depends(get_current_user_optional)]

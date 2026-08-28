@@ -35,6 +35,12 @@ class OpportunityDigestService:
         self.opportunities = OpportunityService(db)
 
     def send_weekly(self, *, actor: User | None = None, force: bool = False) -> dict:
+        if not self.settings.opportunities_public:
+            return {
+                "status": "skipped",
+                "detail": "Opportunities hub is private until go-live",
+                "listing_count": 0,
+            }
         now = datetime.now(UTC)
         if not force:
             latest = self.db.scalar(select(OpportunityDigestRun).order_by(OpportunityDigestRun.sent_at.desc()).limit(1))

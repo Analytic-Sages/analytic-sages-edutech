@@ -322,3 +322,42 @@ def test_region_filter_and_closing_soon_sort():
     finally:
         _cleanup_slug(slug)
         _cleanup_user(admin_email)
+
+
+def test_public_hub_is_hidden_until_go_live(monkeypatch):
+    monkeypatch.setattr(get_settings(), "opportunities_public", False)
+    slug = f"private-hub-{uuid.uuid4().hex[:8]}"
+    _cleanup_slug(slug)
+    admin_email = f"admin-private-{uuid.uuid4()}@example.com"
+    student_email = f"student-private-{uuid.uuid4()}@example.com"
+    admin = _make_user(admin_email, UserRole.ADMIN)
+    student = _make_user(student_email, UserRole.STUDENT)
+    try:
+        created = client.post("/api/v1/admin/opportunities", headers=_auth(admin), json=_payload(slug=slug))
+        assert created.status_code == 201, created.text
+        opportunity_id = created.json()["id"]
+        published = client.post(
+            f"/api/v1/admin/opportunities/{opportunity_id}/publish",
+            headers=_auth(admin),
+            json={},
+        )
+        assert published.status_code == 200, published.text
+        assert client.get("/api/v1/opportunities").status_code == 404
+        assert client.get("/api/v1/opportunities/filters").status_code == 404
+        assert client.get(f"/api/v1/opportunities/{slug}").status_code == 404
+        assert client.get("/api/v1/opportunities", headers=_auth(admin)).status_code == 404
+        assert client.get("/api/v1/admin/opportunities", headers=_auth(admin)).status_code == 200
+        assert client.get("/api/v1/me/opportunities", headers=_auth(student)).status_code == 404
+        announce = client.post(
+            f"/api/v1/admin/opportunities/{opportunity_id}/announce",
+            headers=_auth(admin),
+        )
+        assert announce.status_code == 200
+        assert announce.json()["status"] == "skipped"
+        digest = client.post("/api/v1/admin/opportunities/digest", headers=_auth(admin))
+        assert digest.status_code == 200
+        assert digest.json()["status"] == "skipped"
+    finally:
+        _cleanup_slug(slug)
+        _cleanup_user(admin_email)
+        _cleanup_user(student_email)
