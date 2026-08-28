@@ -1,0 +1,971 @@
+from __future__ import annotations
+
+import logging
+import re
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
+from urllib.parse import urlparse
+from uuid import UUID
+
+from fastapi import HTTPException, status
+from sqlalchemy import and_, exists, func, or_, select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session, selectinload
+
+from app.models.opportunity import (
+    CareerPath,
+    ExperienceLevel,
+    LocationRegion,
+    Opportunity,
+    OpportunityCareerPath,
+    OpportunityPublicBadge,
+    OpportunitySkill,
+    OpportunitySource,
+    OpportunityStatus,
+    OpportunityTrustStatus,
+    OpportunityType,
+    Skill,
+    VerificationEvent,
+    VerificationEventResult,
+    VerificationEventType,
+    WorkplaceType,
+)
+from app.models.user import User
+from app.schemas.opportunities import (
+    AdminTaxonomy,
+    CareerPathAdmin,
+    CareerPathPublic,
+    FilterOption,
+    OpportunityAdmin,
+    OpportunityAdminList,
+    OpportunityCardPublic,
+    OpportunityCreate,
+    OpportunityFiltersPublic,
+    OpportunityListPublic,
+    OpportunityPublic,
+    OpportunityUpdate,
+    RiskFlagAdmin,
+    SkillAdmin,
+    SkillPublic,
+    SourceAdmin,
+    SourcePublic,
+    TaxonomyOption,
+)
+from app.services.insights import slugify
+from app.services.opportunity_urls import validate_http_url
+
+logger = logging.getLogger(__name__)
+
+HTML_RE = re.compile(r"<[^>]+>")
+RESERVED_SLUGS = {
+    "jobs",
+    "internships",
+    "fellowships",
+    "grants",
+    "hackathons",
+    "bounties",
+    "research",
+    "filters",
+    "new",
+}
+TYPE_LABELS = {
+    OpportunityType.JOB: "Jobs",
+    OpportunityType.INTERNSHIP: "Internships",
+    OpportunityType.FELLOWSHIP: "Fellowships",
+    OpportunityType.HACKATHON: "Hackathons",
+    OpportunityType.GRANT: "Grants",
+    OpportunityType.BOUNTY: "Bounties",
+    OpportunityType.RESEARCH: "Research",
+    OpportunityType.OTHER: "Other",
+}
+WORKPLACE_LABELS = {
+    WorkplaceType.REMOTE: "Remote",
+    WorkplaceType.HYBRID: "Hybrid",
+    WorkplaceType.ONSITE: "Onsite",
+}
+EXPERIENCE_LABELS = {
+    ExperienceLevel.INTERN: "Intern",
+    ExperienceLevel.JUNIOR: "Junior",
+    ExperienceLevel.MID: "Mid-level",
+    ExperienceLevel.SENIOR: "Senior",
+    ExperienceLevel.LEAD: "Lead",
+    ExperienceLevel.NOT_SPECIFIED: "Not specified",
+}
+REGION_LABELS = {
+    LocationRegion.GLOBAL: "Global",
+    LocationRegion.AFRICA: "Africa",
+    LocationRegion.NIGERIA: "Nigeria",
+    LocationRegion.EUROPE: "Europe",
+    LocationRegion.NORTH_AMERICA: "North America",
+    LocationRegion.ASIA: "Asia",
+    LocationRegion.REMOTE: "Remote",
+}
+CLOSING_SOON_DAYS = 14
+
+
+def _enum_value(value: object) -> str:
+    return value.value if hasattr(value, "value") else str(value)
+
+
+class OpportunityService:
+    def __init__(self, db: Session) -> None:
+        self.db = db
+
+    def _utcnow(self) -> datetime:
+        return datetime.now(UTC)
+
+    def _aware(self, value: datetime | None) -> datetime | None:
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value.astimezone(UTC)
+
+    def _reject_html(self, text: str | None, field: str) -> None:
+        if text and HTML_RE.search(text):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"{field} cannot contain HTML",
+            )
+
+    def _validate_http_url(self, url: str, field: str) -> str:
+        return validate_http_url(url, field)
+
+    def _validate_text_fields(self, payload: OpportunityCreate | OpportunityUpdate) -> None:
+        mapping = {
+            "title": payload.title,
+            "organization_name": payload.organization_name,
+            "description": payload.description,
+            "requirements": payload.requirements,
+            "responsibilities": payload.responsibilities,
+            "benefits": payload.benefits,
+            "admin_notes": getattr(payload, "admin_notes", None),
+            "location": payload.location,
+        }
+        for field, value in mapping.items():
+            if isinstance(value, str):
+                self._reject_html(value, field)
+
+    def _ensure_slug(self, title: str, slug: str | None, *, exclude_id: UUID | None = None) -> str:
+        base = slug or slugify(title)[:180]
+        if len(base) < 3:
+            base = f"{base}-opportunity"[:180]
+        if base in RESERVED_SLUGS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="That slug is reserved for a public hub page",
+            )
+        candidate = base
+        suffix = 2
+        while True:
+            query = select(Opportunity.id).where(Opportunity.slug == candidate)
+            if exclude_id:
+                query = query.where(Opportunity.id != exclude_id)
+            taken = self.db.scalar(query)
+            if not taken:
+                return candidate
+            if slug:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="An opportunity with this slug already exists",
+                )
+            candidate = f"{base[:170]}-{suffix}"
+            suffix += 1
+
+    def _visible_now(self, now: datetime | None = None):
+        current = now or self._utcnow()
+        return and_(
+            Opportunity.status == OpportunityStatus.PUBLISHED,
+            or_(Opportunity.deadline.is_(None), Opportunity.deadline >= current),
+        )
+
+    def _detail_load(self):
+        return (
+            selectinload(Opportunity.career_path_links).selectinload(OpportunityCareerPath.career_path),
+            selectinload(Opportunity.skill_links).selectinload(OpportunitySkill.skill),
+            selectinload(Opportunity.source),
+            selectinload(Opportunity.risk_flags),
+        )
+
+    def _career_paths(self, opportunity: Opportunity) -> list[CareerPathPublic]:
+        links = sorted(
+            opportunity.career_path_links,
+            key=lambda item: (not item.is_primary, -float(item.relevance_score or 0)),
+        )
+        rows: list[CareerPathPublic] = []
+        for link in links:
+            path = link.career_path
+            if not path or not path.is_active:
+                continue
+            rows.append(
+                CareerPathPublic(
+                    id=path.id,
+                    name=path.name,
+                    slug=path.slug,
+                    description=path.description,
+                    is_primary=link.is_primary,
+                    relevance_score=float(link.relevance_score) if link.relevance_score is not None else None,
+                )
+            )
+        return rows
+
+    def _skills(self, opportunity: Opportunity) -> list[SkillPublic]:
+        rows: list[SkillPublic] = []
+        for link in opportunity.skill_links:
+            skill = link.skill
+            if not skill or not skill.is_active:
+                continue
+            rows.append(
+                SkillPublic(
+                    id=skill.id,
+                    name=skill.name,
+                    slug=skill.slug,
+                    category=skill.category,
+                    importance=_enum_value(link.importance),
+                )
+            )
+        return rows
+
+    def _application_domain(self, url: str | None) -> str | None:
+        if not url:
+            return None
+        host = urlparse(url).hostname
+        return host.lower() if host else None
+
+    def _is_closing_soon(self, deadline: datetime | None, now: datetime | None = None) -> bool:
+        if deadline is None:
+            return False
+        current = now or self._utcnow()
+        due = self._aware(deadline)
+        if due is None or due < current:
+            return False
+        return due <= current + timedelta(days=CLOSING_SOON_DAYS)
+
+    def _card(self, opportunity: Opportunity) -> OpportunityCardPublic:
+        paths = self._career_paths(opportunity)
+        primary = next((item for item in paths if item.is_primary), paths[0] if paths else None)
+        return OpportunityCardPublic(
+            id=opportunity.id,
+            slug=opportunity.slug,
+            title=opportunity.title,
+            organization_name=opportunity.organization_name,
+            opportunity_type=_enum_value(opportunity.opportunity_type),
+            employment_type=_enum_value(opportunity.employment_type) if opportunity.employment_type else None,
+            experience_level=_enum_value(opportunity.experience_level),
+            location=opportunity.location,
+            country=opportunity.country,
+            region=opportunity.region,
+            workplace_type=_enum_value(opportunity.workplace_type),
+            deadline=opportunity.deadline,
+            published_at=opportunity.published_at,
+            featured=opportunity.featured,
+            closing_soon=self._is_closing_soon(opportunity.deadline),
+            public_badge=_enum_value(opportunity.public_badge),
+            application_domain=self._application_domain(opportunity.application_url),
+            primary_career_path=primary,
+            skills=self._skills(opportunity),
+        )
+
+    def _decorate_card(self, card: OpportunityCardPublic, opportunity: Opportunity, user: User | None) -> OpportunityCardPublic:
+        if user is None:
+            return card
+        from app.services.opportunity_saves import OpportunityEngagementService, match_score
+
+        engagement = OpportunityEngagementService(self.db)
+        saves = engagement.save_map(user, [opportunity.id])
+        save = saves.get(opportunity.id)
+        card.saved = save is not None
+        card.applied = bool(save and save.state.value == "applied")
+        card.match_score = match_score(opportunity, set(engagement.interest_path_ids(user)))
+        return card
+
+    def _admin(self, opportunity: Opportunity) -> OpportunityAdmin:
+        source = opportunity.source
+        paths: list[CareerPathAdmin] = []
+        for link in opportunity.career_path_links:
+            path = link.career_path
+            if not path:
+                continue
+            paths.append(
+                CareerPathAdmin(
+                    id=path.id,
+                    name=path.name,
+                    slug=path.slug,
+                    description=path.description,
+                    is_active=path.is_active,
+                    is_primary=link.is_primary,
+                    relevance_score=float(link.relevance_score) if link.relevance_score is not None else None,
+                )
+            )
+        skills: list[SkillAdmin] = []
+        for link in opportunity.skill_links:
+            skill = link.skill
+            if not skill:
+                continue
+            skills.append(
+                SkillAdmin(
+                    id=skill.id,
+                    name=skill.name,
+                    slug=skill.slug,
+                    category=skill.category,
+                    is_active=skill.is_active,
+                    importance=_enum_value(link.importance),
+                )
+            )
+        return OpportunityAdmin(
+            id=opportunity.id,
+            slug=opportunity.slug,
+            title=opportunity.title,
+            organization_name=opportunity.organization_name,
+            description=opportunity.description,
+            requirements=opportunity.requirements,
+            responsibilities=opportunity.responsibilities,
+            benefits=opportunity.benefits,
+            opportunity_type=_enum_value(opportunity.opportunity_type),
+            employment_type=_enum_value(opportunity.employment_type) if opportunity.employment_type else None,
+            experience_level=_enum_value(opportunity.experience_level),
+            location=opportunity.location,
+            country=opportunity.country,
+            region=opportunity.region,
+            workplace_type=_enum_value(opportunity.workplace_type),
+            application_url=opportunity.application_url,
+            source_url=opportunity.source_url,
+            deadline=opportunity.deadline,
+            published_at=opportunity.published_at,
+            expires_at=opportunity.expires_at,
+            status=opportunity.status,
+            source_id=opportunity.source_id,
+            source=self._source_admin(source) if source else None,
+            trust_score=opportunity.trust_score,
+            trust_status=opportunity.trust_status,
+            public_badge=opportunity.public_badge,
+            featured=opportunity.featured,
+            admin_notes=opportunity.admin_notes,
+            is_manual=opportunity.is_manual,
+            external_id=opportunity.external_id,
+            relevance_score=opportunity.relevance_score,
+            duplicate_of_id=opportunity.duplicate_of_id,
+            created_by=opportunity.created_by,
+            approved_by=opportunity.approved_by,
+            career_paths=paths,
+            skills=skills,
+            risk_flags=[
+                RiskFlagAdmin(
+                    flag_type=flag.flag_type,
+                    severity=_enum_value(flag.severity),
+                    description=flag.description,
+                    is_resolved=flag.is_resolved,
+                )
+                for flag in list(getattr(opportunity, "risk_flags", []) or [])
+                if not flag.is_resolved
+            ],
+            telegram_announced_at=opportunity.telegram_announced_at,
+            review_assist=opportunity.review_assist or {},
+            created_at=opportunity.created_at,
+            updated_at=opportunity.updated_at,
+        )
+
+    def _similar(self, opportunity: Opportunity, limit: int = 3) -> list[OpportunityCardPublic]:
+        now = self._utcnow()
+        path_ids = [link.career_path_id for link in opportunity.career_path_links]
+        query = (
+            select(Opportunity)
+            .options(*self._detail_load())
+            .where(self._visible_now(now), Opportunity.id != opportunity.id)
+        )
+        if path_ids:
+            matching_ids = select(OpportunityCareerPath.opportunity_id).where(
+                OpportunityCareerPath.career_path_id.in_(path_ids)
+            )
+            query = query.where(
+                or_(
+                    Opportunity.opportunity_type == opportunity.opportunity_type,
+                    Opportunity.id.in_(matching_ids),
+                )
+            )
+        else:
+            query = query.where(Opportunity.opportunity_type == opportunity.opportunity_type)
+        query = query.order_by(
+            Opportunity.featured.desc(),
+            Opportunity.published_at.desc().nullslast(),
+        ).limit(limit)
+        return [self._card(row) for row in self.db.scalars(query).all()]
+
+    def _log(
+        self,
+        opportunity: Opportunity,
+        event_type: VerificationEventType,
+        result: VerificationEventResult,
+        actor: User | None,
+        notes: str | None = None,
+        evidence: dict | None = None,
+    ) -> None:
+        self.db.add(
+            VerificationEvent(
+                opportunity_id=opportunity.id,
+                event_type=event_type,
+                result=result,
+                performed_by=actor.id if actor else None,
+                notes=notes,
+                evidence=evidence or {},
+            )
+        )
+
+    def _replace_taxonomy(
+        self,
+        opportunity: Opportunity,
+        career_path_ids: list[UUID] | None,
+        skill_ids: list[UUID] | None,
+    ) -> None:
+        if career_path_ids is not None:
+            unique_ids = list(dict.fromkeys(career_path_ids))
+            if unique_ids:
+                found = {
+                    row.id: row
+                    for row in self.db.scalars(
+                        select(CareerPath).where(CareerPath.id.in_(unique_ids), CareerPath.is_active.is_(True))
+                    ).all()
+                }
+                missing = [str(item) for item in unique_ids if item not in found]
+                if missing:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="One or more career paths are invalid",
+                    )
+            opportunity.career_path_links.clear()
+            self.db.flush()
+            for index, path_id in enumerate(unique_ids):
+                opportunity.career_path_links.append(
+                    OpportunityCareerPath(
+                        career_path_id=path_id,
+                        is_primary=index == 0,
+                        relevance_score=Decimal("1.000"),
+                    )
+                )
+        if skill_ids is not None:
+            unique_ids = list(dict.fromkeys(skill_ids))
+            if unique_ids:
+                found = {
+                    row.id: row
+                    for row in self.db.scalars(
+                        select(Skill).where(Skill.id.in_(unique_ids), Skill.is_active.is_(True))
+                    ).all()
+                }
+                missing = [str(item) for item in unique_ids if item not in found]
+                if missing:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="One or more skills are invalid",
+                    )
+            opportunity.skill_links.clear()
+            self.db.flush()
+            for skill_id in unique_ids:
+                opportunity.skill_links.append(OpportunitySkill(skill_id=skill_id))
+
+    def _apply_urls(self, opportunity: Opportunity, application_url: str | None, source_url: str | None) -> None:
+        if application_url is not None:
+            opportunity.application_url = self._validate_http_url(application_url, "application_url")
+        if source_url is not None:
+            opportunity.source_url = self._validate_http_url(source_url, "source_url") if source_url else None
+
+    def _source_admin(self, source: OpportunitySource) -> SourceAdmin:
+        return SourceAdmin(
+            id=source.id,
+            name=source.name,
+            website_url=source.website_url,
+            source_type=_enum_value(source.source_type),
+            trust_level=_enum_value(source.trust_level),
+            automation_enabled=source.automation_enabled,
+            auto_publish_allowed=source.auto_publish_allowed,
+            is_active=source.is_active,
+        )
+
+    def _get(self, opportunity_id: UUID) -> Opportunity:
+        opportunity = self.db.scalar(
+            select(Opportunity).options(*self._detail_load()).where(Opportunity.id == opportunity_id)
+        )
+        if not opportunity:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Opportunity not found")
+        return opportunity
+
+    def list_public(
+        self,
+        *,
+        q: str | None = None,
+        opportunity_type: OpportunityType | None = None,
+        career_path: str | None = None,
+        skill: str | None = None,
+        workplace_type: WorkplaceType | None = None,
+        experience_level: ExperienceLevel | None = None,
+        region: LocationRegion | None = None,
+        sort: str = "newest",
+        limit: int = 20,
+        offset: int = 0,
+        user: User | None = None,
+    ) -> OpportunityListPublic:
+        now = self._utcnow()
+        filters = [self._visible_now(now)]
+        query = select(Opportunity).options(*self._detail_load())
+        count_query = select(func.count()).select_from(Opportunity)
+
+        if q:
+            term = f"%{q.strip()}%"
+            search = or_(
+                Opportunity.title.ilike(term),
+                Opportunity.organization_name.ilike(term),
+                Opportunity.location.ilike(term),
+                Opportunity.description.ilike(term),
+                Opportunity.requirements.ilike(term),
+                exists(
+                    select(OpportunitySkill.id)
+                    .join(Skill)
+                    .where(
+                        OpportunitySkill.opportunity_id == Opportunity.id,
+                        or_(Skill.name.ilike(term), Skill.slug.ilike(term)),
+                    )
+                ),
+                exists(
+                    select(OpportunityCareerPath.id)
+                    .join(CareerPath)
+                    .where(
+                        OpportunityCareerPath.opportunity_id == Opportunity.id,
+                        or_(CareerPath.name.ilike(term), CareerPath.slug.ilike(term)),
+                    )
+                ),
+            )
+            filters.append(search)
+        if opportunity_type:
+            filters.append(Opportunity.opportunity_type == opportunity_type)
+        if workplace_type:
+            filters.append(Opportunity.workplace_type == workplace_type)
+        if experience_level:
+            filters.append(Opportunity.experience_level == experience_level)
+        if region:
+            filters.append(Opportunity.region == region.value)
+        if career_path:
+            try:
+                path_uuid = UUID(career_path)
+                path_match = CareerPath.id == path_uuid
+            except ValueError:
+                path_match = CareerPath.slug == career_path
+            filters.append(
+                Opportunity.id.in_(
+                    select(OpportunityCareerPath.opportunity_id).join(CareerPath).where(path_match)
+                )
+            )
+        if skill:
+            try:
+                skill_uuid = UUID(skill)
+                skill_match = Skill.id == skill_uuid
+            except ValueError:
+                skill_match = Skill.slug == skill
+            filters.append(
+                Opportunity.id.in_(
+                    select(OpportunitySkill.opportunity_id).join(Skill).where(skill_match)
+                )
+            )
+
+        query = query.where(*filters)
+        count_query = count_query.where(*filters)
+        interest_ids: set[UUID] = set()
+        if user is not None and sort == "matched":
+            from app.services.opportunity_saves import OpportunityEngagementService, match_score
+
+            engagement = OpportunityEngagementService(self.db)
+            interest_ids = set(engagement.interest_path_ids(user))
+            if interest_ids:
+                filters.append(
+                    Opportunity.id.in_(
+                        select(OpportunityCareerPath.opportunity_id).where(
+                            OpportunityCareerPath.career_path_id.in_(interest_ids)
+                        )
+                    )
+                )
+                query = select(Opportunity).options(*self._detail_load()).where(*filters)
+                count_query = select(func.count()).select_from(Opportunity).where(*filters)
+                rows = list(self.db.scalars(query).all())
+                rows.sort(key=lambda row: match_score(row, interest_ids) or 0, reverse=True)
+                total = len(rows)
+                page = rows[offset : offset + limit]
+                return OpportunityListPublic(
+                    items=[self._decorate_card(self._card(row), row, user) for row in page],
+                    total=total,
+                    limit=limit,
+                    offset=offset,
+                )
+        if sort == "deadline":
+            query = query.order_by(
+                Opportunity.deadline.asc().nullslast(),
+                Opportunity.published_at.desc().nullslast(),
+            )
+        elif sort == "closing_soon":
+            soon = now + timedelta(days=CLOSING_SOON_DAYS)
+            query = query.where(Opportunity.deadline.is_not(None), Opportunity.deadline <= soon)
+            count_query = count_query.where(Opportunity.deadline.is_not(None), Opportunity.deadline <= soon)
+            query = query.order_by(Opportunity.deadline.asc())
+        elif sort == "featured":
+            query = query.order_by(
+                Opportunity.featured.desc(),
+                Opportunity.published_at.desc().nullslast(),
+            )
+        else:
+            query = query.order_by(
+                Opportunity.featured.desc(),
+                Opportunity.published_at.desc().nullslast(),
+                Opportunity.created_at.desc(),
+            )
+
+        total = int(self.db.scalar(count_query) or 0)
+        rows = self.db.scalars(query.offset(offset).limit(limit)).all()
+        return OpportunityListPublic(
+            items=[self._decorate_card(self._card(row), row, user) for row in rows],
+            total=total,
+            limit=limit,
+            offset=offset,
+        )
+
+    def get_public(self, slug: str, user: User | None = None) -> OpportunityPublic:
+        now = self._utcnow()
+        opportunity = self.db.scalar(
+            select(Opportunity)
+            .options(*self._detail_load())
+            .where(Opportunity.slug == slug, self._visible_now(now))
+        )
+        if not opportunity:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Opportunity not found")
+        card = self._decorate_card(self._card(opportunity), opportunity, user)
+        source = opportunity.source
+        return OpportunityPublic(
+            **card.model_dump(),
+            description=opportunity.description,
+            requirements=opportunity.requirements,
+            responsibilities=opportunity.responsibilities,
+            benefits=opportunity.benefits,
+            application_url=opportunity.application_url,
+            source_url=opportunity.source_url,
+            career_paths=self._career_paths(opportunity),
+            source=SourcePublic(
+                id=source.id,
+                name=source.name,
+                source_type=_enum_value(source.source_type),
+            )
+            if source
+            else None,
+            updated_at=opportunity.updated_at,
+            similar=self._similar(opportunity),
+        )
+
+    def list_filters(self) -> OpportunityFiltersPublic:
+        now = self._utcnow()
+        visible = self._visible_now(now)
+
+        def _counts(column) -> dict[str, int]:
+            rows = self.db.execute(
+                select(column, func.count()).where(visible).group_by(column)
+            ).all()
+            return {_enum_value(value): int(count) for value, count in rows if value is not None}
+
+        type_counts = _counts(Opportunity.opportunity_type)
+        workplace_counts = _counts(Opportunity.workplace_type)
+        experience_counts = _counts(Opportunity.experience_level)
+        region_counts = _counts(Opportunity.region)
+
+        path_rows = self.db.execute(
+            select(CareerPath.id, CareerPath.slug, CareerPath.name, func.count(Opportunity.id))
+            .outerjoin(OpportunityCareerPath, OpportunityCareerPath.career_path_id == CareerPath.id)
+            .outerjoin(Opportunity, and_(Opportunity.id == OpportunityCareerPath.opportunity_id, visible))
+            .where(CareerPath.is_active.is_(True))
+            .group_by(CareerPath.id)
+            .order_by(CareerPath.sort_order, CareerPath.name)
+        ).all()
+        skill_rows = self.db.execute(
+            select(Skill.id, Skill.slug, Skill.name, func.count(Opportunity.id))
+            .outerjoin(OpportunitySkill, OpportunitySkill.skill_id == Skill.id)
+            .outerjoin(Opportunity, and_(Opportunity.id == OpportunitySkill.opportunity_id, visible))
+            .where(Skill.is_active.is_(True))
+            .group_by(Skill.id)
+            .order_by(Skill.name)
+        ).all()
+
+        return OpportunityFiltersPublic(
+            types=[
+                FilterOption(value=item.value, label=TYPE_LABELS[item], count=type_counts.get(item.value, 0))
+                for item in OpportunityType
+                if item != OpportunityType.OTHER or type_counts.get(item.value, 0)
+            ],
+            career_paths=[
+                TaxonomyOption(id=row[0], slug=row[1], name=row[2], count=int(row[3] or 0))
+                for row in path_rows
+            ],
+            skills=[
+                TaxonomyOption(id=row[0], slug=row[1], name=row[2], count=int(row[3] or 0))
+                for row in skill_rows
+            ],
+            workplace_types=[
+                FilterOption(value=item.value, label=WORKPLACE_LABELS[item], count=workplace_counts.get(item.value, 0))
+                for item in WorkplaceType
+            ],
+            experience_levels=[
+                FilterOption(
+                    value=item.value,
+                    label=EXPERIENCE_LABELS[item],
+                    count=experience_counts.get(item.value, 0),
+                )
+                for item in ExperienceLevel
+            ],
+            regions=[
+                FilterOption(value=item.value, label=REGION_LABELS[item], count=region_counts.get(item.value, 0))
+                for item in LocationRegion
+            ],
+        )
+
+    def list_admin(
+        self,
+        *,
+        q: str | None = None,
+        status_filter: OpportunityStatus | None = None,
+        review_queue: bool = False,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> OpportunityAdminList:
+        filters = []
+        if q:
+            term = f"%{q.strip()}%"
+            filters.append(
+                or_(
+                    Opportunity.title.ilike(term),
+                    Opportunity.organization_name.ilike(term),
+                    Opportunity.slug.ilike(term),
+                )
+            )
+        if review_queue:
+            filters.append(Opportunity.status == OpportunityStatus.DRAFT)
+            filters.append(
+                Opportunity.trust_status.in_(
+                    (OpportunityTrustStatus.REVIEW_REQUIRED, OpportunityTrustStatus.HIGH_RISK)
+                )
+            )
+        elif status_filter:
+            filters.append(Opportunity.status == status_filter)
+        query = select(Opportunity).options(*self._detail_load())
+        count_query = select(func.count()).select_from(Opportunity)
+        if filters:
+            query = query.where(*filters)
+            count_query = count_query.where(*filters)
+        total = int(self.db.scalar(count_query) or 0)
+        rows = self.db.scalars(
+            query.order_by(Opportunity.updated_at.desc()).offset(offset).limit(limit)
+        ).all()
+        return OpportunityAdminList(
+            items=[self._admin(row) for row in rows],
+            total=total,
+            limit=limit,
+            offset=offset,
+        )
+
+    def get_admin(self, opportunity_id: UUID) -> OpportunityAdmin:
+        return self._admin(self._get(opportunity_id))
+
+    def admin_taxonomy(self) -> AdminTaxonomy:
+        paths = self.db.scalars(
+            select(CareerPath).where(CareerPath.is_active.is_(True)).order_by(CareerPath.sort_order, CareerPath.name)
+        ).all()
+        skills = self.db.scalars(
+            select(Skill).where(Skill.is_active.is_(True)).order_by(Skill.name)
+        ).all()
+        sources = self.db.scalars(
+            select(OpportunitySource).where(OpportunitySource.is_active.is_(True)).order_by(OpportunitySource.name)
+        ).all()
+        return AdminTaxonomy(
+            career_paths=[
+                CareerPathAdmin(
+                    id=row.id,
+                    name=row.name,
+                    slug=row.slug,
+                    description=row.description,
+                    is_active=row.is_active,
+                )
+                for row in paths
+            ],
+            skills=[
+                SkillAdmin(
+                    id=row.id,
+                    name=row.name,
+                    slug=row.slug,
+                    category=row.category,
+                    is_active=row.is_active,
+                )
+                for row in skills
+            ],
+            sources=[self._source_admin(row) for row in sources],
+        )
+
+    def create(self, payload: OpportunityCreate, actor: User) -> OpportunityAdmin:
+        self._validate_text_fields(payload)
+        slug = self._ensure_slug(payload.title, payload.slug)
+        source_id = payload.source_id
+        if source_id is None:
+            manual = self.db.scalar(select(OpportunitySource).where(OpportunitySource.name == "Manual"))
+            source_id = manual.id if manual else None
+        elif not self.db.get(OpportunitySource, source_id):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Source not found")
+
+        opportunity = Opportunity(
+            slug=slug,
+            title=payload.title,
+            organization_name=payload.organization_name,
+            description=payload.description,
+            requirements=payload.requirements,
+            responsibilities=payload.responsibilities,
+            benefits=payload.benefits,
+            opportunity_type=payload.opportunity_type,
+            employment_type=payload.employment_type,
+            experience_level=payload.experience_level,
+            location=payload.location,
+            country=payload.country,
+            region=_enum_value(payload.region) if payload.region else None,
+            workplace_type=payload.workplace_type,
+            deadline=self._aware(payload.deadline),
+            source_id=source_id,
+            public_badge=payload.public_badge,
+            featured=payload.featured,
+            admin_notes=payload.admin_notes,
+            created_by=actor.id,
+            status=OpportunityStatus.DRAFT,
+            trust_status=OpportunityTrustStatus.UNVERIFIED,
+        )
+        self._apply_urls(opportunity, payload.application_url, payload.source_url)
+        self.db.add(opportunity)
+        try:
+            self.db.flush()
+        except IntegrityError as exc:
+            self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="An opportunity with this slug already exists",
+            ) from exc
+        self._replace_taxonomy(opportunity, payload.career_path_ids, payload.skill_ids)
+        self._log(opportunity, VerificationEventType.CREATED, VerificationEventResult.RECORDED, actor)
+        self.db.commit()
+        return self.get_admin(opportunity.id)
+
+    def update(self, opportunity_id: UUID, payload: OpportunityUpdate, actor: User) -> OpportunityAdmin:
+        opportunity = self._get(opportunity_id)
+        self._validate_text_fields(payload)
+        data = payload.model_dump(exclude_unset=True)
+        career_path_ids = data.pop("career_path_ids", None)
+        skill_ids = data.pop("skill_ids", None)
+        application_url = data.pop("application_url", None)
+        source_url = data.pop("source_url", None)
+        if "slug" in data:
+            opportunity.slug = self._ensure_slug(
+                data.get("title") or opportunity.title,
+                data.pop("slug"),
+                exclude_id=opportunity.id,
+            )
+        if "deadline" in data:
+            opportunity.deadline = self._aware(data.pop("deadline"))
+        if "source_id" in data:
+            source_id = data.pop("source_id")
+            if source_id and not self.db.get(OpportunitySource, source_id):
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Source not found")
+            opportunity.source_id = source_id
+        for key, value in data.items():
+            setattr(opportunity, key, value)
+        self._apply_urls(opportunity, application_url, source_url)
+        if career_path_ids is not None or skill_ids is not None:
+            self._replace_taxonomy(opportunity, career_path_ids, skill_ids)
+        self._log(opportunity, VerificationEventType.UPDATED, VerificationEventResult.RECORDED, actor)
+        try:
+            self.db.commit()
+        except IntegrityError as exc:
+            self.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="An opportunity with this slug already exists",
+            ) from exc
+        return self.get_admin(opportunity.id)
+
+    def _assert_can_publish(self, opportunity: Opportunity) -> None:
+        if not opportunity.title.strip() or not opportunity.organization_name.strip():
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Title and organization are required")
+        if not opportunity.description.strip():
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Description is required to publish")
+        if not opportunity.application_url:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Application URL is required")
+        deadline = self._aware(opportunity.deadline)
+        if deadline is not None and deadline < self._utcnow():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot publish an opportunity whose deadline has already passed",
+            )
+
+    def publish(self, opportunity_id: UUID, actor: User, notes: str | None = None) -> OpportunityAdmin:
+        opportunity = self._get(opportunity_id)
+        if opportunity.status == OpportunityStatus.ARCHIVED:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Archived opportunities cannot be published")
+        self._assert_can_publish(opportunity)
+        opportunity.status = OpportunityStatus.PUBLISHED
+        if opportunity.published_at is None:
+            opportunity.published_at = self._utcnow()
+        opportunity.approved_by = actor.id
+        if opportunity.trust_status in {
+            OpportunityTrustStatus.REVIEW_REQUIRED,
+            OpportunityTrustStatus.HIGH_RISK,
+            OpportunityTrustStatus.UNVERIFIED,
+        }:
+            opportunity.trust_status = OpportunityTrustStatus.SOURCE_CHECKED
+        if (
+            not opportunity.is_manual
+            and opportunity.public_badge == OpportunityPublicBadge.NONE
+        ):
+            opportunity.public_badge = OpportunityPublicBadge.SOURCE_CHECKED
+        self._log(
+            opportunity,
+            VerificationEventType.ADMIN_APPROVAL,
+            VerificationEventResult.APPROVED,
+            actor,
+            notes=notes,
+        )
+        self.db.commit()
+        logger.info("opportunity_published id=%s slug=%s actor=%s", opportunity.id, opportunity.slug, actor.id)
+        return self.get_admin(opportunity.id)
+
+    def unpublish(self, opportunity_id: UUID, actor: User, notes: str | None = None) -> OpportunityAdmin:
+        opportunity = self._get(opportunity_id)
+        opportunity.status = OpportunityStatus.DRAFT
+        self._log(
+            opportunity,
+            VerificationEventType.ADMIN_UNPUBLISH,
+            VerificationEventResult.UNPUBLISHED,
+            actor,
+            notes=notes,
+        )
+        self.db.commit()
+        return self.get_admin(opportunity.id)
+
+    def reject(self, opportunity_id: UUID, actor: User, notes: str | None = None) -> OpportunityAdmin:
+        opportunity = self._get(opportunity_id)
+        opportunity.status = OpportunityStatus.REJECTED
+        self._log(
+            opportunity,
+            VerificationEventType.ADMIN_REJECT,
+            VerificationEventResult.REJECTED,
+            actor,
+            notes=notes,
+        )
+        self.db.commit()
+        return self.get_admin(opportunity.id)
+
+    def archive(self, opportunity_id: UUID, actor: User, notes: str | None = None) -> OpportunityAdmin:
+        opportunity = self._get(opportunity_id)
+        opportunity.status = OpportunityStatus.ARCHIVED
+        self._log(
+            opportunity,
+            VerificationEventType.ADMIN_ARCHIVE,
+            VerificationEventResult.ARCHIVED,
+            actor,
+            notes=notes,
+        )
+        self.db.commit()
+        return self.get_admin(opportunity.id)

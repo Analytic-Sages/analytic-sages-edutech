@@ -1,6 +1,7 @@
 import { siteConfig } from "@/config/site";
 import type { EventCardPublic, PublicCohortCard, SelfPacedCourseCard } from "@/lib/api";
 import type { InsightCard } from "@/lib/insights";
+import type { OpportunityCard } from "@/lib/opportunities";
 import { courses } from "@/lib/mock-data";
 import {
   FEATURED_FREE_COURSE_PUBLIC,
@@ -8,7 +9,7 @@ import {
 } from "@/lib/self-paced";
 import { listPublicProgramPaths, getProgramPage, getProgramPageHref } from "@/lib/program-pages";
 
-export type SearchKind = "course" | "program" | "event" | "lesson" | "blog" | "community";
+export type SearchKind = "course" | "program" | "event" | "lesson" | "blog" | "community" | "opportunity";
 
 export type SearchHit = {
   id: string;
@@ -26,6 +27,7 @@ const KIND_LABEL: Record<SearchKind, string> = {
   lesson: "Lesson",
   blog: "Insights",
   community: "Community",
+  opportunity: "Opportunity",
 };
 
 export function searchKindLabel(kind: SearchKind) {
@@ -55,6 +57,7 @@ export function searchCatalog(query: string, sources: {
   cohorts: PublicCohortCard[];
   events: EventCardPublic[];
   insights?: InsightCard[];
+  opportunities?: OpportunityCard[];
 }): SearchHit[] {
   const q = query.trim();
   if (q.length < 2) return [];
@@ -153,6 +156,32 @@ export function searchCatalog(query: string, sources: {
       description: event.short_description,
       href: `/events/${event.slug}`,
       fields: [event.title, event.short_description, event.slug, String(event.event_type)],
+    });
+  }
+
+  push({
+    id: "opportunity:hub",
+    kind: "opportunity",
+    title: "Opportunities Hub",
+    description: "Jobs, internships, fellowships, grants, and research mapped to Analytic Sages pathways.",
+    href: "/opportunities",
+    fields: ["opportunities", "jobs", "internships", "fellowships", "grants", "hackathons", "career"],
+  });
+
+  for (const opportunity of sources.opportunities || []) {
+    push({
+      id: `opportunity:${opportunity.slug}`,
+      kind: "opportunity",
+      title: opportunity.title,
+      description: opportunity.organization_name,
+      href: `/opportunities/${opportunity.slug}`,
+      fields: [
+        opportunity.title,
+        opportunity.organization_name,
+        opportunity.slug,
+        opportunity.opportunity_type,
+        opportunity.primary_career_path?.name || "",
+      ],
     });
   }
 

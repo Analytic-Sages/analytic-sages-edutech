@@ -8,6 +8,7 @@ from app.db.session import Base
 from app.models import (  # noqa: F401
     Article,
     AuthorProfile,
+    CareerPath,
     Cohort,
     CohortInstructor,
     CohortMember,
@@ -22,10 +23,19 @@ from app.models import (  # noqa: F401
     Lesson,
     LessonProgress,
     LiveSession,
+    Opportunity,
+    OpportunityCareerPath,
+    OpportunityIngestion,
+    OpportunityRiskFlag,
+    OpportunitySkill,
+    OpportunitySource,
+    OpportunitySyncRun,
     PasswordResetToken,
     Payment,
     RefreshToken,
+    Skill,
     User,
+    VerificationEvent,
 )
 
 config = context.config

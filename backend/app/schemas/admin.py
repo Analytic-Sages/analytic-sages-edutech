@@ -77,6 +77,52 @@ class AdminOverview(BaseModel):
     recent_payments: list[AdminPaymentRow]
 
 
+class AdminCountPoint(BaseModel):
+    label: str
+    value: int
+
+
+class AdminNamedCount(BaseModel):
+    name: str
+    value: int
+
+
+class AdminRecentLearner(BaseModel):
+    user_email: str
+    user_name: str | None
+    course_title: str
+    last_activity_at: datetime
+
+
+class AdminAnalytics(BaseModel):
+    users_total: int
+    students_total: int
+    users_verified: int
+    users_unverified: int
+    signups_24h: int
+    signups_7d: int
+    signups_30d: int
+    enrollments_active: int
+    enrollments_completed: int
+    lessons_completed: int
+    learners_active_7d: int
+    payments_confirmed: int
+    payments_pending: int
+    event_registrations: int
+    published_opportunities: int
+    opportunity_saves: int
+    published_insights: int
+    revenue_by_currency: list[AdminRevenueByCurrency]
+    featured_cohort: AdminFeaturedCohort | None
+    signups_by_day: list[AdminCountPoint]
+    enrollments_by_day: list[AdminCountPoint]
+    roles: list[AdminNamedCount]
+    courses: list[AdminNamedCount]
+    opportunity_statuses: list[AdminNamedCount]
+    recent_learners: list[AdminRecentLearner]
+    untracked: list[str]
+
+
 class AdminCohortDetail(BaseModel):
     cohort: AdminFeaturedCohort
     members: list[AdminCohortMemberRow]

@@ -1,0 +1,386 @@
+from __future__ import annotations
+
+import hashlib
+import json
+from datetime import UTC, datetime
+from uuid import UUID
+
+from fastapi import HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.core.config import Settings, get_settings
+from app.models.opportunity import (
+    CareerPath,
+    EmploymentType,
+    ExperienceLevel,
+    Opportunity,
+    OpportunityStatus,
+    OpportunityTrustStatus,
+    OpportunityType,
+    Skill,
+)
+from app.models.user import User
+from app.schemas.opportunities import (
+    OpportunityCreate,
+    OpportunityDiscoverCandidate,
+    OpportunityDiscoverImportResult,
+    OpportunityDiscoverResponse,
+)
+from app.services.llm_complete import complete_json, llm_configured
+from app.services.opportunity_mission import is_off_mission_title
+from app.services.opportunity_relevance import infer_opportunity_type, score_relevance
+from app.services.opportunity_sources.base import RawOpportunity
+from app.services.opportunity_urls import (
+    hostname_of,
+    is_aggregator_url,
+    is_shortened_url,
+    validate_http_url,
+)
+from app.services.opportunities import OpportunityService
+
+MAX_CANDIDATES = 18
+DISCOVERY_TYPES = (
+    OpportunityType.INTERNSHIP,
+    OpportunityType.FELLOWSHIP,
+    OpportunityType.HACKATHON,
+    OpportunityType.GRANT,
+    OpportunityType.BOUNTY,
+    OpportunityType.RESEARCH,
+)
+PREFERRED_HOSTS = (
+    "ethglobal.com",
+    "ethereum.foundation",
+    "esp.ethereum.foundation",
+    "ethereum.org",
+    "gitcoin.co",
+    "immunefi.com",
+    "flashbots.net",
+    "protocol.ai",
+    "filecoin.io",
+    "uniswap.org",
+    "a16zcrypto.com",
+    "openai.com",
+    "anthropic.com",
+    "deepmind.google",
+)
+ALLOWED_TYPES = {item.value for item in DISCOVERY_TYPES}
+
+
+class OpportunityDiscoveryService:
+    def __init__(self, db: Session, settings: Settings | None = None) -> None:
+        self.db = db
+        self.settings = settings or get_settings()
+        self.opportunities = OpportunityService(db)
+
+    @property
+    def configured(self) -> bool:
+        return llm_configured(self.settings)
+
+    def reclassify_drafts(self) -> int:
+        drafts = list(
+            self.db.scalars(
+                select(Opportunity).where(Opportunity.status == OpportunityStatus.DRAFT)
+            ).all()
+        )
+        updated = 0
+        for opportunity in drafts:
+            inferred = infer_opportunity_type(
+                RawOpportunity(
+                    external_id=str(opportunity.id),
+                    title=opportunity.title,
+                    organization_name=opportunity.organization_name,
+                    description=opportunity.description,
+                    requirements=opportunity.requirements,
+                    location=opportunity.location,
+                    application_url=opportunity.application_url,
+                )
+            )
+            if inferred != opportunity.opportunity_type:
+                opportunity.opportunity_type = inferred
+                updated += 1
+        if updated:
+            self.db.commit()
+        return updated
+
+    def discover(
+        self,
+        *,
+        types: list[OpportunityType] | None = None,
+        query: str | None = None,
+    ) -> OpportunityDiscoverResponse:
+        if not self.configured:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Discovery is not configured. Set OPENAI_API_KEY or GEMINI_API_KEY.",
+            )
+        selected = [item for item in (types or list(DISCOVERY_TYPES)) if item in DISCOVERY_TYPES]
+        if not selected:
+            selected = list(DISCOVERY_TYPES)
+        types_updated = self.reclassify_drafts()
+        paths = list(
+            self.db.scalars(select(CareerPath).where(CareerPath.is_active.is_(True)).order_by(CareerPath.sort_order)).all()
+        )
+        raw_rows, grounded, provider = self._complete(selected, (query or "").strip(), [path.slug for path in paths])
+        candidates: list[OpportunityDiscoverCandidate] = []
+        dropped = 0
+        seen: set[str] = set()
+        for row in raw_rows:
+            candidate, reason = self._sanitize(row, selected, seen)
+            if reason or candidate is None:
+                dropped += 1
+                continue
+            seen.add(_normalize_url(candidate.application_url))
+            candidates.append(candidate)
+            if len(candidates) >= MAX_CANDIDATES:
+                break
+        notes = None
+        if not grounded:
+            notes = "Web search was unavailable. Verify every official URL before importing."
+        if provider == "gemini":
+            extra = "Used Gemini after OpenAI was unavailable." if (self.settings.openai_api_key or "").strip() else "Used Gemini."
+            notes = f"{notes} {extra}".strip() if notes else extra
+        return OpportunityDiscoverResponse(
+            configured=True,
+            grounded=grounded,
+            never_publishes=True,
+            types_updated=types_updated,
+            dropped=dropped,
+            candidates=candidates,
+            provider=provider,
+            notes=notes,
+        )
+
+    def import_candidates(
+        self,
+        candidates: list[OpportunityDiscoverCandidate],
+        actor: User,
+    ) -> OpportunityDiscoverImportResult:
+        imported: list[UUID] = []
+        skipped = 0
+        for candidate in candidates[:MAX_CANDIDATES]:
+            cleaned, reason = self._sanitize(candidate.model_dump(), list(DISCOVERY_TYPES), set())
+            if reason or cleaned is None:
+                skipped += 1
+                continue
+            if self._find_by_url(cleaned.application_url):
+                skipped += 1
+                continue
+            opportunity = self._create_draft(cleaned, actor)
+            imported.append(opportunity.id)
+        return OpportunityDiscoverImportResult(
+            imported=len(imported),
+            skipped=skipped,
+            opportunity_ids=imported,
+            published=False,
+        )
+
+    def _create_draft(self, candidate: OpportunityDiscoverCandidate, actor: User) -> Opportunity:
+        opportunity_type = OpportunityType(candidate.opportunity_type)
+        raw = RawOpportunity(
+            external_id=_external_id(candidate.application_url),
+            title=candidate.title,
+            organization_name=candidate.organization_name,
+            description=candidate.description,
+            application_url=candidate.application_url,
+            source_url=candidate.source_url,
+            opportunity_type=opportunity_type,
+        )
+        relevance = score_relevance(raw, "medium")
+        path_ids = _ids_for_slugs(
+            self.db,
+            CareerPath,
+            candidate.career_path_slugs or relevance.career_path_slugs,
+        )
+        skill_ids = _ids_for_slugs(self.db, Skill, relevance.skill_slugs)
+        created = self.opportunities.create(
+            OpportunityCreate(
+                title=candidate.title,
+                organization_name=candidate.organization_name,
+                description=candidate.description[:20000],
+                opportunity_type=opportunity_type,
+                employment_type=(
+                    EmploymentType.INTERNSHIP if opportunity_type == OpportunityType.INTERNSHIP else None
+                ),
+                experience_level=(
+                    ExperienceLevel.INTERN
+                    if opportunity_type == OpportunityType.INTERNSHIP
+                    else ExperienceLevel.NOT_SPECIFIED
+                ),
+                location=candidate.location or "",
+                workplace_type=relevance.workplace_type,
+                application_url=candidate.application_url,
+                source_url=candidate.source_url,
+                deadline=candidate.deadline,
+                admin_notes=f"AI discovery draft. {candidate.why_relevant}".strip()[:4000],
+                career_path_ids=path_ids,
+                skill_ids=skill_ids,
+            ),
+            actor,
+        )
+        opportunity = self.db.get(Opportunity, created.id)
+        assert opportunity is not None
+        opportunity.trust_status = OpportunityTrustStatus.REVIEW_REQUIRED
+        opportunity.external_id = _external_id(candidate.application_url)
+        opportunity.relevance_score = relevance.score
+        self.db.commit()
+        return opportunity
+
+    def _sanitize(
+        self,
+        row: dict | OpportunityDiscoverCandidate,
+        selected: list[OpportunityType],
+        seen: set[str],
+    ) -> tuple[OpportunityDiscoverCandidate | None, str | None]:
+        data = row if isinstance(row, dict) else row.model_dump()
+        title = str(data.get("title") or "").strip()
+        organization = str(data.get("organization_name") or "").strip()
+        url = str(data.get("application_url") or data.get("url") or "").strip()
+        if len(title) < 3 or len(organization) < 2 or not url:
+            return None, "incomplete"
+        if is_off_mission_title(title):
+            return None, "off_mission"
+        try:
+            url = validate_http_url(url, "application_url")
+        except HTTPException:
+            return None, "invalid_url"
+        if not url.lower().startswith("https://"):
+            return None, "https_required"
+        if is_aggregator_url(url) or is_shortened_url(url):
+            return None, "aggregator"
+        key = _normalize_url(url)
+        if key in seen:
+            return None, "duplicate"
+        suggested = str(data.get("opportunity_type") or "").strip().lower()
+        inferred = infer_opportunity_type(
+            RawOpportunity(
+                external_id=key,
+                title=title,
+                organization_name=organization,
+                description=str(data.get("description") or ""),
+                application_url=url,
+                opportunity_type=OpportunityType(suggested) if suggested in ALLOWED_TYPES else None,
+            )
+        )
+        if inferred not in selected and inferred not in DISCOVERY_TYPES:
+            return None, "not_typed"
+        if inferred == OpportunityType.JOB:
+            if suggested in ALLOWED_TYPES:
+                inferred = OpportunityType(suggested)
+            else:
+                return None, "job"
+        already = self._find_by_url(url) is not None
+        deadline = _parse_deadline(data.get("deadline"))
+        source_url = str(data.get("source_url") or "").strip() or None
+        if source_url:
+            try:
+                source_url = validate_http_url(source_url, "source_url")
+            except HTTPException:
+                source_url = None
+            if source_url and (is_aggregator_url(source_url) or is_shortened_url(source_url)):
+                source_url = None
+        paths = [str(item) for item in (data.get("career_path_slugs") or []) if isinstance(item, str)]
+        return (
+            OpportunityDiscoverCandidate(
+                title=title[:255],
+                organization_name=organization[:255],
+                opportunity_type=inferred.value,
+                application_url=url[:500],
+                source_url=(source_url[:500] if source_url else None),
+                description=str(data.get("description") or why_or_empty(data))[:4000],
+                why_relevant=str(data.get("why_relevant") or "")[:500],
+                location=str(data.get("location") or "")[:255],
+                deadline=deadline,
+                career_path_slugs=paths[:6],
+                already_imported=already,
+                source_host=hostname_of(url),
+            ),
+            None,
+        )
+
+    def _find_by_url(self, url: str) -> Opportunity | None:
+        return self.db.scalar(
+            select(Opportunity).where(Opportunity.application_url == url.strip().rstrip("/"))
+        ) or self.db.scalar(select(Opportunity).where(Opportunity.application_url == url.strip()))
+
+    def _complete(
+        self,
+        types: list[OpportunityType],
+        query: str,
+        path_slugs: list[str],
+    ) -> tuple[list[dict], bool, str]:
+        payload = {
+            "types": [item.value for item in types],
+            "extra_query": query or None,
+            "career_paths": path_slugs,
+            "preferred_hosts": list(PREFERRED_HOSTS),
+            "do_not_use_hosts": [
+                "linkedin.com",
+                "indeed.com",
+                "web3.career",
+                "crypto.jobs",
+                "glassdoor.com",
+                "wellfound.com",
+            ],
+            "mission": (
+                "Analytic Sages teaches blockchain analytics, data engineering, applied AI, "
+                "agentic systems, quantitative research, and forensic analytics. Include Web3 "
+                "and non-Web3 listings that match those skills. Exclude sales, recruiting, HR, "
+                "and generic marketing."
+            ),
+        }
+        instructions = (
+            "You find CURRENT internships, fellowships, hackathons, grants, bounties, and "
+            "research opportunities for Analytic Sages admins. Never decide to publish. "
+            "Return JSON {candidates:[{title, organization_name, opportunity_type, "
+            "application_url, source_url, description, why_relevant, location, deadline, "
+            "career_path_slugs}]}. opportunity_type must be one of internship, fellowship, "
+            "hackathon, grant, bounty, research. application_url must be an https official "
+            "page (the program or apply page), not an aggregator. Prefer preferred_hosts. "
+            "Skip closed or unverifiable listings. Max 3 per type."
+        )
+        parsed, grounded, provider = complete_json(
+            self.settings,
+            instructions=instructions,
+            user_content=json.dumps(payload),
+            with_search=True,
+        )
+        rows = parsed.get("candidates") if isinstance(parsed, dict) else None
+        if not isinstance(rows, list):
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Discovery returned invalid JSON",
+            )
+        return [row for row in rows if isinstance(row, dict)][: MAX_CANDIDATES * 2], grounded, provider
+
+
+def why_or_empty(data: dict) -> str:
+    return str(data.get("why_relevant") or "")
+
+
+def _normalize_url(url: str) -> str:
+    return url.strip().rstrip("/").lower()
+
+
+def _external_id(url: str) -> str:
+    return "discover:" + hashlib.sha256(_normalize_url(url).encode()).hexdigest()[:24]
+
+
+def _parse_deadline(value: object) -> datetime | None:
+    if not value:
+        return None
+    raw = str(value).strip()
+    try:
+        parsed = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
+def _ids_for_slugs(db: Session, model: type, slugs: list[str]) -> list[UUID]:
+    if not slugs:
+        return []
+    rows = db.scalars(select(model).where(model.slug.in_(slugs))).all()  # type: ignore[attr-defined]
+    return [row.id for row in rows]

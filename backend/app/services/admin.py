@@ -8,23 +8,40 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.admin import FEATURED_COHORT_SLUG
-from app.core.payments import PaymentStatus
+from app.core.payments import EnrollmentStatus, PaymentStatus
 from app.core.roles import UserRole
+from app.models.article import Article, ArticleStatus
 from app.models.classroom import Cohort, CohortMember, CohortMemberRole, CohortStatus
+from app.models.course import Course
+from app.models.enrollment import Enrollment
+from app.models.event import EventRegistration, EventRegistrationStatus
+from app.models.lms import LessonProgress
+from app.models.opportunity import Opportunity, OpportunityStatus, OpportunitySave
 from app.models.payment import Payment
 from app.models.user import User
 from app.schemas.admin import (
+    AdminAnalytics,
     AdminCohortDetail,
     AdminCohortMemberRow,
+    AdminCountPoint,
     AdminFeaturedCohort,
+    AdminNamedCount,
     AdminOverview,
     AdminPaymentRow,
+    AdminRecentLearner,
     AdminRevenueByCurrency,
     AdminUserRow,
 )
 
 PENDING_STATUSES = (PaymentStatus.PENDING, PaymentStatus.CONFIRMING)
 LIST_CAP = 500
+ANALYTICS_DAYS = 30
+UNTRACKED = [
+    "Watch time is not recorded.",
+    "Quiz attempts and pass rates are not tracked yet.",
+    "Last login is not stored; recent learners use last lesson activity only.",
+    "Certificate issuance is not live.",
+]
 
 
 class AdminService:
@@ -56,6 +73,57 @@ class AdminService:
             featured_cohort=self._cohort_summary(featured) if featured else None,
             recent_signups=self._user_rows(self._list_users(limit=8), featured_member_ids),
             recent_payments=self._payment_rows(self._list_payments(limit=8)),
+        )
+
+    def analytics(self) -> AdminAnalytics:
+        now = datetime.now(UTC)
+        featured = self._featured_cohort()
+        users_total = self._count(User)
+        users_verified = self._count(User, User.email_verified.is_(True))
+
+        return AdminAnalytics(
+            users_total=users_total,
+            students_total=self._count(User, User.role == UserRole.STUDENT),
+            users_verified=users_verified,
+            users_unverified=max(users_total - users_verified, 0),
+            signups_24h=self._count(User, User.created_at >= now - timedelta(hours=24)),
+            signups_7d=self._count(User, User.created_at >= now - timedelta(days=7)),
+            signups_30d=self._count(User, User.created_at >= now - timedelta(days=30)),
+            enrollments_active=self._count(Enrollment, Enrollment.status == EnrollmentStatus.ACTIVE),
+            enrollments_completed=self._count(
+                Enrollment, Enrollment.status == EnrollmentStatus.COMPLETED
+            ),
+            lessons_completed=self._count(LessonProgress, LessonProgress.completed.is_(True)),
+            learners_active_7d=int(
+                self.db.scalar(
+                    select(func.count(func.distinct(Enrollment.user_id))).where(
+                        Enrollment.last_activity_at >= now - timedelta(days=7)
+                    )
+                )
+                or 0
+            ),
+            payments_confirmed=self._count(Payment, Payment.status == PaymentStatus.CONFIRMED),
+            payments_pending=self._count(Payment, Payment.status.in_(PENDING_STATUSES)),
+            event_registrations=self._count(
+                EventRegistration,
+                EventRegistration.status == EventRegistrationStatus.REGISTERED,
+            ),
+            published_opportunities=self._count(
+                Opportunity, Opportunity.status == OpportunityStatus.PUBLISHED
+            ),
+            opportunity_saves=self._count(OpportunitySave),
+            published_insights=self._count(Article, Article.status == ArticleStatus.PUBLISHED),
+            revenue_by_currency=self._revenue_by_currency(),
+            featured_cohort=self._cohort_summary(featured) if featured else None,
+            signups_by_day=self._daily_counts(User.created_at),
+            enrollments_by_day=self._daily_counts(Enrollment.enrolled_at),
+            roles=self._enum_counts(User.role, [role.value for role in UserRole]),
+            courses=self._course_enrollment_counts(),
+            opportunity_statuses=self._enum_counts(
+                Opportunity.status, [status.value for status in OpportunityStatus]
+            ),
+            recent_learners=self._recent_learners(),
+            untracked=list(UNTRACKED),
         )
 
     def list_users(self, *, limit: int = 200) -> list[AdminUserRow]:
@@ -257,6 +325,82 @@ class AdminService:
             elif pay_status in PENDING_STATUSES:
                 bucket.pending_amount += value
         return sorted(totals.values(), key=lambda item: item.currency)
+
+    def _daily_counts(self, column: object, *filters: object) -> list[AdminCountPoint]:
+        now = datetime.now(UTC)
+        start = datetime(now.year, now.month, now.day, tzinfo=UTC) - timedelta(
+            days=ANALYTICS_DAYS - 1
+        )
+        day_expr = func.date_trunc("day", column)
+        stmt = select(day_expr, func.count()).where(column >= start)
+        if filters:
+            stmt = stmt.where(*filters)  # type: ignore[arg-type]
+        rows = self.db.execute(stmt.group_by(day_expr).order_by(day_expr)).all()
+        counts: dict[str, int] = {}
+        for day, value in rows:
+            if day is None:
+                continue
+            if getattr(day, "tzinfo", None) is None:
+                day = day.replace(tzinfo=UTC)
+            else:
+                day = day.astimezone(UTC)
+            counts[day.date().isoformat()] = int(value or 0)
+        return [
+            AdminCountPoint(
+                label=(start + timedelta(days=offset)).date().isoformat(),
+                value=counts.get((start + timedelta(days=offset)).date().isoformat(), 0),
+            )
+            for offset in range(ANALYTICS_DAYS)
+        ]
+
+    def _enum_counts(self, column: object, names: list[str]) -> list[AdminNamedCount]:
+        rows = self.db.execute(select(column, func.count()).group_by(column)).all()
+        found: dict[str, int] = {}
+        for name, value in rows:
+            key = name.value if hasattr(name, "value") else str(name)
+            found[key] = int(value or 0)
+        return [AdminNamedCount(name=name, value=found.get(name, 0)) for name in names]
+
+    def _course_enrollment_counts(self) -> list[AdminNamedCount]:
+        rows = self.db.execute(
+            select(Course.title, func.count())
+            .join(Enrollment, Enrollment.course_id == Course.id)
+            .where(
+                Enrollment.status.in_((EnrollmentStatus.ACTIVE, EnrollmentStatus.COMPLETED))
+            )
+            .group_by(Course.title)
+            .order_by(func.count().desc())
+            .limit(8)
+        ).all()
+        return [AdminNamedCount(name=title, value=int(count or 0)) for title, count in rows]
+
+    def _recent_learners(self) -> list[AdminRecentLearner]:
+        enrollments = list(
+            self.db.scalars(
+                select(Enrollment)
+                .options(joinedload(Enrollment.user), joinedload(Enrollment.course))
+                .where(Enrollment.last_activity_at.is_not(None))
+                .order_by(Enrollment.last_activity_at.desc())
+                .limit(8)
+            )
+            .unique()
+            .all()
+        )
+        rows: list[AdminRecentLearner] = []
+        for enrollment in enrollments:
+            if enrollment.last_activity_at is None:
+                continue
+            user = enrollment.user
+            course = enrollment.course
+            rows.append(
+                AdminRecentLearner(
+                    user_email=user.email if user else "",
+                    user_name=user.full_name if user else None,
+                    course_title=course.title if course else "",
+                    last_activity_at=enrollment.last_activity_at,
+                )
+            )
+        return rows
 
     @staticmethod
     def _clamp(limit: int) -> int:

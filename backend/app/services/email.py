@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 from html import escape
 from urllib.parse import quote, urlencode
 
@@ -331,6 +332,89 @@ class EmailService:
             return False
         logger.info("Sent Insights newsletter for %s", slug)
         return True
+
+    def send_opportunity_digest(
+        self,
+        *,
+        counts: dict[str, int],
+        listings: list[dict[str, str]],
+        total: int,
+    ) -> bool:
+        hub = f"{self.settings.frontend_url.rstrip('/')}/opportunities"
+        if not self.newsletter_ready:
+            if self.settings.is_production:
+                logger.error("Cannot send opportunities digest; EMAIL_API_KEY or RESEND_AUDIENCE_ID missing")
+                return False
+            logger.info("[dev-email] opportunities-digest total=%s counts=%s", total, counts)
+            return True
+        html = self._opportunity_digest_html(counts=counts, listings=listings, total=total, hub=hub)
+        created = self._resend(
+            "POST",
+            "/broadcasts",
+            json={
+                "segment_id": self.settings.resend_audience_id,
+                "from": self.settings.email_from,
+                "subject": "Analytic Sages Opportunities Weekly",
+                "name": f"Opportunities weekly · {datetime.now(UTC).date().isoformat()}",
+                "html": html,
+                "send": True,
+            },
+        )
+        if created is None:
+            return False
+        status, body = created
+        if status >= 400:
+            logger.error("Resend opportunities digest failed status=%s body=%s", status, body[:400])
+            return False
+        logger.info("Sent opportunities weekly digest total=%s", total)
+        return True
+
+    def _opportunity_digest_html(
+        self,
+        *,
+        counts: dict[str, int],
+        listings: list[dict[str, str]],
+        total: int,
+        hub: str,
+    ) -> str:
+        labels = {
+            "job": "Jobs",
+            "internship": "Internships",
+            "fellowship": "Fellowships",
+            "hackathon": "Hackathons",
+            "grant": "Grants",
+            "bounty": "Bounties",
+            "research": "Research",
+        }
+        summary = "".join(
+            f'<li style="margin:0 0 6px">🔹 {counts[key]} {labels[key]}</li>'
+            for key in labels
+            if counts.get(key)
+        ) or "<li>No new listings this week.</li>"
+        items = "".join(
+            f'<li style="margin:0 0 10px"><a href="{escape(item["url"])}">{escape(item["title"])}</a>'
+            f' — {escape(item["organization_name"])}</li>'
+            for item in listings
+        )
+        listing_html = f'<ul style="padding-left:18px;margin:0 0 24px">{items}</ul>' if items else ""
+        return (
+            '<div style="font-family:system-ui,-apple-system,sans-serif;line-height:1.5;'
+            'max-width:560px;margin:0 auto;padding:24px;color:#0b1f33">'
+            '<p style="margin:0 0 8px;font-size:12px;letter-spacing:0.04em;color:#c45c26;'
+            'text-transform:uppercase">Analytic Sages Opportunities Weekly</p>'
+            f'<h1 style="font-size:22px;line-height:1.3;margin:0 0 12px">This week\'s opportunities</h1>'
+            f'<p style="margin:0 0 16px">{total} newly published, still-active listing'
+            f'{"s" if total != 1 else ""}.</p>'
+            f'<ul style="padding-left:18px;margin:0 0 20px">{summary}</ul>'
+            f"{listing_html}"
+            f'<p style="margin:0 0 24px"><a href="{escape(hub)}" '
+            'style="display:inline-block;background:#0b1f33;color:#fff;text-decoration:none;'
+            'padding:10px 16px;border-radius:8px">Explore all opportunities</a></p>'
+            '<p style="margin:0;font-size:12px;color:#666">'
+            '<a href="{{{RESEND_UNSUBSCRIBE_URL}}}" style="color:#666">Unsubscribe</a>'
+            "</p>"
+            "</div>"
+        )
 
     def _insight_newsletter_html(
         self, *, title: str, excerpt: str, byline: str, url: str

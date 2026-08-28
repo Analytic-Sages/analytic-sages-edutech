@@ -66,7 +66,7 @@ export function AdminOverviewContent() {
     <div>
       <PageHeader
         title="Cohort 9 monitor"
-        description="Live signups, payments, and seats from production data. Courses, certificates, and analytics are still coming soon."
+        description="Live signups, payments, and seats from production data. Certificates are still coming soon."
         action={
           <ButtonLink href="/admin/users" variant="outline">
             Invite instructor

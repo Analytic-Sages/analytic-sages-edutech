@@ -22,6 +22,13 @@ from app.services.instructors import InstructorService
 from app.services.payments import PaymentService
 from app.services.self_paced import SelfPacedService
 from app.services.insights import InsightService
+from app.services.opportunities import OpportunityService
+from app.services.opportunity_ingestion import OpportunityIngestionService
+from app.services.opportunity_saves import OpportunityEngagementService
+from app.services.opportunity_telegram import OpportunityTelegramService
+from app.services.opportunity_digest import OpportunityDigestService
+from app.services.opportunity_review_assist import OpportunityReviewAssistService
+from app.services.opportunity_discovery import OpportunityDiscoveryService
 from app.services.storage import StorageService
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -70,6 +77,47 @@ def get_insight_service(
     email_service: EmailService = Depends(get_email_service),
 ) -> InsightService:
     return InsightService(db, email_service)
+
+
+def get_opportunity_service(db: Session = Depends(get_db)) -> OpportunityService:
+    return OpportunityService(db)
+
+
+def get_opportunity_ingestion_service(db: Session = Depends(get_db)) -> OpportunityIngestionService:
+    return OpportunityIngestionService(db)
+
+
+def get_opportunity_engagement_service(db: Session = Depends(get_db)) -> OpportunityEngagementService:
+    return OpportunityEngagementService(db)
+
+
+def get_opportunity_telegram_service(
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> OpportunityTelegramService:
+    return OpportunityTelegramService(db, settings)
+
+
+def get_opportunity_digest_service(
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+    email_service: EmailService = Depends(get_email_service),
+) -> OpportunityDigestService:
+    return OpportunityDigestService(db, settings, email_service)
+
+
+def get_opportunity_review_assist_service(
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> OpportunityReviewAssistService:
+    return OpportunityReviewAssistService(db, settings)
+
+
+def get_opportunity_discovery_service(
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> OpportunityDiscoveryService:
+    return OpportunityDiscoveryService(db, settings)
 
 
 def get_storage_service(settings: Settings = Depends(get_settings)) -> StorageService:

@@ -9,6 +9,7 @@ from app.api.v1 import (
     health,
     insights,
     instructors,
+    opportunities,
     payments,
     rbac,
     self_paced,
@@ -26,3 +27,4 @@ api_router.include_router(self_paced.router)
 api_router.include_router(events.router)
 api_router.include_router(instructors.router)
 api_router.include_router(insights.router)
+api_router.include_router(opportunities.router)

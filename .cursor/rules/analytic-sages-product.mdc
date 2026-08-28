@@ -1,0 +1,51 @@
+---
+description: Analytic Sages product direction — progressive launch, branding, and build priorities
+alwaysApply: true
+---
+
+# Analytic Sages — standing product direction
+
+## Progressive public launch
+
+- Ship a usable public shell; unlock features as they become trustworthy.
+- States: **Live** | **In progress** | **Coming soon** — polished copy, never broken nav or fake functionality.
+- Rule: **visible before ready is OK; functional before trustworthy is not** (especially payments and certificates).
+- Prefer simple feature flags / gated UI over unfinished routes that imply the feature works.
+
+## Learning models (public IA)
+
+- **Instructor-Led** (`/instructor-led`): live cohorts + classroom — primary go-live path.
+- **Self-Paced** (`/courses`): catalog visible with **Launching soon** until Bunny player is trustworthy.
+- Do not sell self-paced checkout as if the on-demand player is ready.
+
+## Brand & positioning
+
+- Global brand (African-rooted, globally relevant) — not Africa-only.
+- Navy + Analytic Sages orange; avoid purple SaaS, neon Web3, glassmorphism-heavy layouts.
+- Prefer real photography and real product UI over fake metrics, fake dashboards, or invented social proof.
+- Prefer specific language about what Analytic Sages does over generic “empowering the future” copy.
+
+## Auth & access
+
+- Guests: marketing, catalog, course detail, blog, community links.
+- Sign-in required: dashboard, my courses, learn/quiz player, checkout, admin.
+- Enrolled users should continue learning — not see “Enroll now” / Get Started as primary CTAs.
+
+## Build priority (default)
+
+1. **Live classroom (cohort)** — RealtimeKit + session hub (current focus)
+2. Curriculum + player + progress (Bunny Stream for recorded premium content)
+3. Live payments + production email
+4. Admin / content ops
+5. Quizzes + certificates
+6. AI tutor (later)
+
+## Blog
+
+- Currently mock data (`mock-blog-data.ts`). CMS/admin publishing is later unless marketing is blocked.
+
+## About / marketing pages
+
+- Tell a real company story with real workshop photos (`/2.png`, `/4.png`, etc.).
+- Platform roadmap sections must label Live / In progress / Coming soon honestly.
+---

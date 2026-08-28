@@ -77,6 +77,21 @@ class Settings(BaseSettings):
     # Local article image uploads (dev / API disk). Not Postgres.
     storage_dir: str = "var/uploads"
 
+    # Optional header token for POST /api/v1/internal/opportunities/sync and weekly digest.
+    # Leave empty to keep the endpoints disabled.
+    opportunity_sync_token: str | None = None
+
+    # Telegram Bot API. Leave empty to skip announcements on publish.
+    telegram_bot_token: str | None = None
+    telegram_channel_id: str | None = None
+
+    # Optional LLM review assist and typed discovery. Never auto-publishes.
+    # OpenAI is tried first; Gemini is the fallback when OpenAI is missing or fails.
+    openai_api_key: str | None = None
+    openai_model: str = "gpt-4.1-mini"
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-2.0-flash"
+
     @property
     def is_production(self) -> bool:
         return self.environment == "production"

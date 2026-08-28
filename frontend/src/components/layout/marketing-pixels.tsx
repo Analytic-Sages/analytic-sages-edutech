@@ -19,6 +19,9 @@ function contentFromPath(path: string): { name: string; category: string } | nul
   if (path === "/courses") return { name: "Self-paced courses", category: "catalog" };
   if (path === "/programs") return { name: "Programs", category: "program" };
   if (path === "/events") return { name: "Events", category: "event" };
+  if (path === "/opportunities" || path.startsWith("/opportunities/")) {
+    return { name: "Opportunities", category: "opportunity" };
+  }
   if (path === "/insights" || path === "/blog") return { name: "Insights", category: "blog" };
 
   const course = path.match(/^\/courses\/([^/]+)$/);

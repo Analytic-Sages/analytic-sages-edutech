@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, Query
 from app.api.deps import get_admin_service, get_auth_service, get_self_paced_service, require_admin, require_catalog_ops
 from app.models.user import User
 from app.schemas.admin import (
+    AdminAnalytics,
     AdminCohortDetail,
     AdminOverview,
     AdminPaymentRow,
@@ -24,6 +25,14 @@ def admin_overview(
     admin: AdminService = Depends(get_admin_service),
 ) -> AdminOverview:
     return admin.overview()
+
+
+@router.get("/analytics", response_model=AdminAnalytics)
+def admin_analytics(
+    _: User = Depends(require_admin),
+    admin: AdminService = Depends(get_admin_service),
+) -> AdminAnalytics:
+    return admin.analytics()
 
 
 @router.get("/users", response_model=list[AdminUserRow])

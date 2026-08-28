@@ -5,6 +5,21 @@ from app.models.enrollment import Enrollment
 from app.models.event import Event, EventRegistration
 from app.models.instructor import CohortInstructor, CourseInstructor, InstructorProfile
 from app.models.lms import CourseModule, Lesson, LessonProgress
+from app.models.opportunity import (
+    CareerPath,
+    Opportunity,
+    OpportunityCareerPath,
+    OpportunityDigestRun,
+    OpportunityIngestion,
+    OpportunityRiskFlag,
+    OpportunitySave,
+    OpportunitySkill,
+    OpportunitySource,
+    OpportunitySyncRun,
+    Skill,
+    UserCareerInterest,
+    VerificationEvent,
+)
 from app.models.payment import Payment
 from app.models.user import (
     EmailVerificationToken,
@@ -34,4 +49,17 @@ __all__ = [
     "LiveSession",
     "Article",
     "AuthorProfile",
+    "CareerPath",
+    "Skill",
+    "OpportunitySource",
+    "Opportunity",
+    "OpportunityCareerPath",
+    "OpportunitySkill",
+    "VerificationEvent",
+    "OpportunityIngestion",
+    "OpportunitySyncRun",
+    "OpportunityRiskFlag",
+    "OpportunitySave",
+    "UserCareerInterest",
+    "OpportunityDigestRun",
 ]

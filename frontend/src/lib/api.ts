@@ -1019,6 +1019,60 @@ export function getAdminOverview() {
   return apiFetch<AdminOverview>("/api/v1/admin/overview");
 }
 
+export type AdminCountPoint = {
+  label: string;
+  value: number;
+};
+
+export type AdminNamedCount = {
+  name: string;
+  value: number;
+};
+
+export type AdminRecentLearner = {
+  user_email: string;
+  user_name: string | null;
+  course_title: string;
+  last_activity_at: string;
+};
+
+export type AdminAnalytics = {
+  users_total: number;
+  students_total: number;
+  users_verified: number;
+  users_unverified: number;
+  signups_24h: number;
+  signups_7d: number;
+  signups_30d: number;
+  enrollments_active: number;
+  enrollments_completed: number;
+  lessons_completed: number;
+  learners_active_7d: number;
+  payments_confirmed: number;
+  payments_pending: number;
+  event_registrations: number;
+  published_opportunities: number;
+  opportunity_saves: number;
+  published_insights: number;
+  revenue_by_currency: Array<{
+    currency: string;
+    confirmed_amount: number;
+    pending_amount: number;
+  }>;
+  featured_cohort: AdminFeaturedCohort | null;
+  signups_by_day: AdminCountPoint[];
+  enrollments_by_day: AdminCountPoint[];
+  roles: AdminNamedCount[];
+  courses: AdminNamedCount[];
+  opportunity_statuses: AdminNamedCount[];
+  recent_learners: AdminRecentLearner[];
+  untracked: string[];
+};
+
+export function getAdminAnalytics() {
+  return apiFetch<AdminAnalytics>("/api/v1/admin/analytics");
+}
+
 export function getAdminUsers(limit = 200) {
   return apiFetch<AdminUserRow[]>(`/api/v1/admin/users?limit=${limit}`);
 }
