@@ -19,6 +19,39 @@ from app.services.self_paced import SelfPacedService
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
+def _invite_response(result) -> InviteInstructorResponse:
+    user = result.user
+    role_labels = {
+        "operations": "operations",
+        "editor": "editor",
+        "author": "author",
+        "instructor": "instructor",
+    }
+    role_label = role_labels.get(user.role.value, "staff")
+    if result.promoted and not result.resent:
+        if user.password_hash:
+            message = (
+                f"Promoted {user.email} to {role_label}. "
+                "They can sign in with their existing password."
+            )
+        else:
+            message = (
+                f"Promoted {user.email} to {role_label} and sent an invite to set a password."
+            )
+    elif result.resent:
+        message = f"Invite resent to {user.email}."
+    else:
+        message = f"Invite sent to {user.email}. They have 7 days to set a password."
+    return InviteInstructorResponse(
+        email=user.email,
+        full_name=user.full_name,
+        role=user.role.value,
+        resent=result.resent,
+        promoted=result.promoted,
+        message=message,
+    )
+
+
 @router.get("/overview", response_model=AdminOverview)
 def admin_overview(
     _: User = Depends(require_admin),
@@ -86,20 +119,9 @@ def invite_instructor(
     auth: AuthService = Depends(get_auth_service),
     admin: AdminService = Depends(get_admin_service),
 ) -> InviteInstructorResponse:
-    user, resent = auth.invite_instructor(email=payload.email, full_name=payload.full_name)
-    admin.add_instructor_to_featured_cohort(user)
-    message = (
-        f"Invite resent to {user.email}."
-        if resent
-        else f"Invite sent to {user.email}. They have 7 days to set a password."
-    )
-    return InviteInstructorResponse(
-        email=user.email,
-        full_name=user.full_name,
-        role=user.role.value,
-        resent=resent,
-        message=message,
-    )
+    result = auth.invite_instructor(email=payload.email, full_name=payload.full_name)
+    admin.add_instructor_to_featured_cohort(result.user)
+    return _invite_response(result)
 
 
 @router.post("/operations", response_model=InviteInstructorResponse)
@@ -108,19 +130,7 @@ def invite_operations(
     _: User = Depends(require_admin),
     auth: AuthService = Depends(get_auth_service),
 ) -> InviteInstructorResponse:
-    user, resent = auth.invite_operations(email=payload.email, full_name=payload.full_name)
-    message = (
-        f"Invite resent to {user.email}."
-        if resent
-        else f"Invite sent to {user.email}. They have 7 days to set a password."
-    )
-    return InviteInstructorResponse(
-        email=user.email,
-        full_name=user.full_name,
-        role=user.role.value,
-        resent=resent,
-        message=message,
-    )
+    return _invite_response(auth.invite_operations(email=payload.email, full_name=payload.full_name))
 
 
 @router.post("/editors", response_model=InviteInstructorResponse)
@@ -129,19 +139,7 @@ def invite_editor(
     _: User = Depends(require_admin),
     auth: AuthService = Depends(get_auth_service),
 ) -> InviteInstructorResponse:
-    user, resent = auth.invite_editor(email=payload.email, full_name=payload.full_name)
-    message = (
-        f"Invite resent to {user.email}."
-        if resent
-        else f"Invite sent to {user.email}. They have 7 days to set a password."
-    )
-    return InviteInstructorResponse(
-        email=user.email,
-        full_name=user.full_name,
-        role=user.role.value,
-        resent=resent,
-        message=message,
-    )
+    return _invite_response(auth.invite_editor(email=payload.email, full_name=payload.full_name))
 
 
 @router.post("/authors", response_model=InviteInstructorResponse)
@@ -150,16 +148,4 @@ def invite_author(
     _: User = Depends(require_admin),
     auth: AuthService = Depends(get_auth_service),
 ) -> InviteInstructorResponse:
-    user, resent = auth.invite_author(email=payload.email, full_name=payload.full_name)
-    message = (
-        f"Invite resent to {user.email}."
-        if resent
-        else f"Invite sent to {user.email}. They have 7 days to set a password."
-    )
-    return InviteInstructorResponse(
-        email=user.email,
-        full_name=user.full_name,
-        role=user.role.value,
-        resent=resent,
-        message=message,
-    )
+    return _invite_response(auth.invite_author(email=payload.email, full_name=payload.full_name))

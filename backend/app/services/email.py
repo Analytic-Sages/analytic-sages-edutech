@@ -120,6 +120,36 @@ class EmailService:
         )
         self._send(to=email, subject=subject, html=html, dev_label="staff-invite", link=link)
 
+    def send_staff_promoted_email(
+        self,
+        *,
+        email: str,
+        full_name: str | None,
+        role: str,
+    ) -> None:
+        login_link = f"{self.settings.frontend_url.rstrip('/')}/login"
+        greeting = f"Hi {full_name}," if full_name else "Hi,"
+        role_labels = {
+            "operations": "operations manager",
+            "editor": "Insights editor",
+            "author": "Insights author",
+            "instructor": "instructor",
+        }
+        role_label = role_labels.get(role, "staff member")
+        subject = f"Your Analytic Sages access is now {role_label}"
+        html = self._simple_html(
+            title="Staff access updated",
+            body=(
+                f"<p>{greeting}</p>"
+                f"<p>Your Analytic Sages account is now set up as <strong>{role_label}</strong>. "
+                "Sign in with your existing password to open the staff dashboard.</p>"
+                f'<p><a href="{login_link}">Sign in</a></p>'
+                f"<p style=\"color:#666;font-size:12px\">Or paste this link:<br>{login_link}</p>"
+                "<p>If you were not expecting this, contact Analytic Sages support.</p>"
+            ),
+        )
+        self._send(to=email, subject=subject, html=html, dev_label="staff-promoted", link=login_link)
+
     def send_payment_receipt(
         self,
         *,

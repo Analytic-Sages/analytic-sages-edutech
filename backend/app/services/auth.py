@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -10,6 +11,20 @@ from app.core.security import SecurityService
 from app.models.user import EmailVerificationToken, PasswordResetToken, RefreshToken, User
 from app.schemas.auth import AuthResponse, RegisterRequest, UserPublic
 from app.services.email import EmailService
+
+STAFF_INVITE_ROLES = {
+    UserRole.INSTRUCTOR,
+    UserRole.OPERATIONS,
+    UserRole.EDITOR,
+    UserRole.AUTHOR,
+}
+
+
+@dataclass
+class StaffInviteResult:
+    user: User
+    resent: bool = False
+    promoted: bool = False
 
 
 class AuthService:
@@ -199,16 +214,16 @@ class AuthService:
         self._revoke_all_refresh_tokens(user.id)
         self.db.commit()
 
-    def invite_instructor(self, *, email: str, full_name: str | None) -> tuple[User, bool]:
+    def invite_instructor(self, *, email: str, full_name: str | None) -> StaffInviteResult:
         return self.invite_staff(email=email, full_name=full_name, role=UserRole.INSTRUCTOR)
 
-    def invite_operations(self, *, email: str, full_name: str | None) -> tuple[User, bool]:
+    def invite_operations(self, *, email: str, full_name: str | None) -> StaffInviteResult:
         return self.invite_staff(email=email, full_name=full_name, role=UserRole.OPERATIONS)
 
-    def invite_editor(self, *, email: str, full_name: str | None) -> tuple[User, bool]:
+    def invite_editor(self, *, email: str, full_name: str | None) -> StaffInviteResult:
         return self.invite_staff(email=email, full_name=full_name, role=UserRole.EDITOR)
 
-    def invite_author(self, *, email: str, full_name: str | None) -> tuple[User, bool]:
+    def invite_author(self, *, email: str, full_name: str | None) -> StaffInviteResult:
         return self.invite_staff(email=email, full_name=full_name, role=UserRole.AUTHOR)
 
     def invite_staff(
@@ -217,8 +232,8 @@ class AuthService:
         email: str,
         full_name: str | None,
         role: UserRole,
-    ) -> tuple[User, bool]:
-        if role not in {UserRole.INSTRUCTOR, UserRole.OPERATIONS, UserRole.EDITOR, UserRole.AUTHOR}:
+    ) -> StaffInviteResult:
+        if role not in STAFF_INVITE_ROLES:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="That staff role cannot be invited",
@@ -234,37 +249,55 @@ class AuthService:
         role_label = role_labels[role]
 
         if user:
-            if user.role == UserRole.STUDENT:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="This email already has a learner account. Use a different staff email.",
-                )
             if user.role == UserRole.ADMIN:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="This email is already an admin account.",
                 )
-            if user.role != role:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="This email already has a different staff role.",
-                )
-            if user.password_hash:
+            if user.role == role and user.password_hash:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail=f"This {role_label} already has an account. They can sign in.",
                 )
-            if full_name and not user.full_name:
+            if user.role not in {UserRole.STUDENT, *STAFF_INVITE_ROLES}:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="This email already has an account that cannot be invited as staff.",
+                )
+
+            previous_role = user.role
+            promoted = previous_role != role
+            if full_name:
                 user.full_name = full_name
+            user.role = role
+
+            # Existing password: promote/change role and notify. No new invite token needed.
+            if user.password_hash:
+                self._revoke_all_refresh_tokens(user.id)
+                self.db.commit()
+                self.db.refresh(user)
+                self.email_service.send_staff_promoted_email(
+                    email=user.email,
+                    full_name=user.full_name,
+                    role=role.value,
+                )
+                return StaffInviteResult(user=user, promoted=promoted)
+
+            # Pending invite (no password yet): assign role and resend set-password link.
             raw_token = self._issue_invite_token(user.id)
             self.db.commit()
+            self.db.refresh(user)
             self.email_service.send_staff_invite_email(
                 email=user.email,
                 token=raw_token,
                 full_name=user.full_name,
                 role=role.value,
             )
-            return user, True
+            return StaffInviteResult(
+                user=user,
+                resent=previous_role == role,
+                promoted=promoted,
+            )
 
         user = User(
             email=email_normalized,
@@ -284,7 +317,7 @@ class AuthService:
             full_name=user.full_name,
             role=role.value,
         )
-        return user, False
+        return StaffInviteResult(user=user)
 
     def accept_invite(self, *, token: str, password: str) -> tuple[User, str, str]:
         token_hash = self.security.hash_token(token)

@@ -139,4 +139,5 @@ class InviteInstructorResponse(BaseModel):
     full_name: str | None
     role: str
     resent: bool
+    promoted: bool = False
     message: str

@@ -1090,6 +1090,7 @@ export type InviteInstructorResponse = {
   full_name: string | null;
   role: string;
   resent: boolean;
+  promoted?: boolean;
   message: string;
 };
 
