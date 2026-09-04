@@ -8,7 +8,10 @@ import { SectionBackground } from "@/components/marketing/section-background";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ApiError, listPublicCohorts, type PublicCohortCard } from "@/lib/api";
-import { BDE_COHORT_SLUG } from "@/lib/blockchain-data-engineering-program";
+import {
+  BDE_COHORT_SLUG,
+  blockchainDataEngineeringProgram,
+} from "@/lib/blockchain-data-engineering-program";
 import { formatPrice } from "@/lib/mock-data";
 import {
   comingSoonCohortSlugs,
@@ -54,6 +57,10 @@ export function InstructorLedPageContent() {
   const [error, setError] = useState<string | null>(null);
   const comingSoonPrograms = listComingSoonPrograms();
   const sortedCohorts = sortedOpenCohorts(cohorts);
+  const hasBdeFromApi = cohorts.some((cohort) => cohort.slug === BDE_COHORT_SLUG);
+  const showBdeFallback = !loading && !hasBdeFromApi;
+  const hasProgrammes =
+    sortedCohorts.length > 0 || comingSoonPrograms.length > 0 || showBdeFallback;
 
   useEffect(() => {
     let cancelled = false;
@@ -69,6 +76,7 @@ export function InstructorLedPageContent() {
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof ApiError ? err.detail : "Failed to load upcoming cohorts");
+          setCohorts([]);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -93,20 +101,13 @@ export function InstructorLedPageContent() {
           </h1>
           <p className="mt-5 max-w-2xl text-lg text-muted-foreground sm:text-xl">
             Join scheduled expert-led cohorts with live classroom sessions, projects, and a learning
-            community. Programmes open independently — Blockchain Data Engineering is open now; SQL
-            Blockchain Data Analytics is coming soon.
+            community. Browse open programmes below — each opens independently.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <ButtonLink
-              href="/programs/blockchain-data-engineering"
-              className="bg-brand-orange text-white hover:bg-brand-orange/90"
-            >
-              Blockchain Data Engineering
-            </ButtonLink>
-            <ButtonLink href="/classroom" variant="outline">
+            <ButtonLink href="/classroom" className="bg-brand-orange text-white hover:bg-brand-orange/90">
               Go to Classroom
             </ButtonLink>
-            <ButtonLink href="/courses" variant="ghost">
+            <ButtonLink href="/courses" variant="outline">
               Prefer self-paced?
             </ButtonLink>
           </div>
@@ -131,12 +132,13 @@ export function InstructorLedPageContent() {
         )}
 
         {!loading && error && (
-          <Card className="border-destructive/30">
-            <CardContent className="py-8 text-sm text-destructive">{error}</CardContent>
-          </Card>
+          <p className="mb-6 text-sm text-muted-foreground">
+            Live cohort details are temporarily unavailable. Open programmes below still reflect what
+            we are offering.
+          </p>
         )}
 
-        {!loading && !error && cohorts.length === 0 && comingSoonPrograms.length === 0 && (
+        {!loading && !hasProgrammes && (
           <Card>
             <CardContent className="py-10 text-center">
               <p className="font-heading text-lg font-semibold">New cohorts coming soon</p>
@@ -150,15 +152,17 @@ export function InstructorLedPageContent() {
           </Card>
         )}
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          {sortedCohorts.map((cohort) => (
-            <CohortCard key={cohort.id} cohort={cohort} />
-          ))}
-          {!loading &&
-            comingSoonPrograms.map((program) => (
+        {!loading && hasProgrammes && (
+          <div className="grid gap-6 lg:grid-cols-2">
+            {showBdeFallback ? <OpenEngineeringProgramCard /> : null}
+            {sortedCohorts.map((cohort) => (
+              <CohortCard key={cohort.id} cohort={cohort} />
+            ))}
+            {comingSoonPrograms.map((program) => (
               <ComingSoonProgramCard key={program.pageSlug} program={program} />
             ))}
-        </div>
+          </div>
+        )}
       </section>
     </div>
   );
@@ -170,6 +174,61 @@ function sortedOpenCohorts(cohorts: PublicCohortCard[]) {
     if (b.slug === BDE_COHORT_SLUG) return 1;
     return 0;
   });
+}
+
+/** Shown when the live BDE cohort is not yet returned by the public API. */
+function OpenEngineeringProgramCard() {
+  const program = blockchainDataEngineeringProgram;
+  return (
+    <Card className="overflow-hidden shadow-card">
+      <div className="relative aspect-[16/10] bg-brand-surface">
+        <Image
+          src={program.postcardImage}
+          alt={`${program.h1} postcard`}
+          fill
+          className="object-cover"
+          sizes="(max-width: 1024px) 100vw, 50vw"
+        />
+      </div>
+      <CardHeader className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-md bg-brand-orange/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-brand-orange">
+            Open for registration
+          </span>
+        </div>
+        <CardTitle className="font-heading text-2xl">{program.h1}</CardTitle>
+        <p className="text-base font-medium text-foreground/80">{program.support}</p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+          <p>
+            <span className="font-medium text-foreground">Duration:</span> {program.duration}
+          </p>
+          <p>
+            <span className="font-medium text-foreground">Time:</span> {program.timeCommitment}
+          </p>
+          <p>
+            <span className="font-medium text-foreground">Tuition:</span> From $200
+          </p>
+          <p>
+            <span className="font-medium text-foreground">Format:</span> {program.learningMode}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-3 pt-2">
+          <ButtonLink
+            href={program.canonicalPath}
+            className="bg-brand-orange text-white hover:bg-brand-orange/90"
+          >
+            View program
+            <ArrowRight className="ml-1 size-4" />
+          </ButtonLink>
+          <ButtonLink href="/classroom" variant="outline">
+            Open Classroom
+          </ButtonLink>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 function ComingSoonProgramCard({ program }: { program: ProgramPageContent }) {
