@@ -76,8 +76,8 @@ export function BlockchainDataEngineeringCurriculum({
         <div className="mx-auto max-w-5xl px-4 py-14 sm:px-6 lg:px-8">
           <h2 className="font-heading text-2xl font-bold sm:text-3xl">Technology stack</h2>
           <p className="mt-3 max-w-2xl text-muted-foreground">
-            Explore the tools you&apos;ll use — categories, how they connect, and where each fits in
-            a blockchain data pipeline — on the programme overview.
+            Explore the tools you&apos;ll use: categories, how they connect, and where each fits in
+            a blockchain data pipeline on the programme overview.
           </p>
           <Link
             href={`${program.canonicalPath}#tech-stack`}

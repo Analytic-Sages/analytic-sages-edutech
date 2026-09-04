@@ -101,7 +101,7 @@ export function InstructorLedPageContent() {
           </h1>
           <p className="mt-5 max-w-2xl text-lg text-muted-foreground sm:text-xl">
             Join scheduled expert-led cohorts with live classroom sessions, projects, and a learning
-            community. Browse open programmes below — each opens independently.
+            community. Browse open programmes below. Each opens independently.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <ButtonLink href="/classroom" className="bg-brand-orange text-white hover:bg-brand-orange/90">

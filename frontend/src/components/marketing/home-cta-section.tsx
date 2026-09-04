@@ -19,7 +19,7 @@ export function HomeCtaSection() {
             </p>
             <p className="mt-4 text-base font-medium text-white/90 sm:text-lg">
               Blockchain Data Engineering is open for registration. SQL Blockchain Data Analytics
-              is coming soon — each is its own programme.
+              is coming soon. Each is its own programme.
             </p>
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <ButtonLink

@@ -279,7 +279,7 @@ export default function CohortCheckoutPage() {
 
           <p className="pt-2 text-xs text-muted-foreground">
             Your seat unlocks after the first confirmed payment. Later installments
-            stay on your Billing page — we do not auto-revoke access for missed
+            stay on your Billing page. We do not auto-revoke access for missed
             later payments in this release.
           </p>
         </CardContent>

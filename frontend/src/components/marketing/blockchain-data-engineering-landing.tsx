@@ -288,7 +288,7 @@ export function BlockchainDataEngineeringLanding({
           {program.programSignal}
         </p>
         <p className="mt-2 max-w-2xl text-muted-foreground">
-          {program.learningMode} — each module builds on the last until you can ship a connected
+          {program.learningMode}. Each module builds on the last until you can ship a connected
           system.
         </p>
         <ol className="mt-10 divide-y divide-border/70 border-y border-border/70">

@@ -278,7 +278,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
         </h2>
         <p className="mt-4 text-muted-foreground">
           {isComingSoon
-            ? "Registration is not open yet. Get notified when this programme launches — it is separate from our other live instructor-led courses."
+            ? "Registration is not open yet. Get notified when this programme launches. It is separate from our other live instructor-led courses."
             : deadline
               ? `Registration closes ${deadline}.`
               : "Join this cohort for structured, instructor-led SQL blockchain analytics."}

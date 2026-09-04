@@ -53,7 +53,7 @@ export const STACK_FLOW_LAYERS: { label: string; tools: string[] }[] = [
   { label: "Cloud deployment", tools: ["AWS", "Google Cloud", "Railway", "Render"] },
 ];
 
-/** Mini path shown in the detail panel — selected tool name is highlighted. */
+/** Mini path shown in the detail panel - selected tool name is highlighted. */
 export const STACK_PATH = [
   "Blockchain",
   "Extraction",
@@ -84,7 +84,7 @@ export const STACK_TOOLS: StackTool[] = [
     iconSlug: null,
     brandColor: "#336791",
     summary:
-      "The language of structured data — query warehouses, shape analytics models and validate pipeline outputs.",
+      "The language of structured data - query warehouses, shape analytics models and validate pipeline outputs.",
     uses: ["Querying warehouses", "Analytics engineering", "Data quality checks", "Reporting"],
     pathHighlight: "PostgreSQL",
   },
@@ -96,7 +96,7 @@ export const STACK_TOOLS: StackTool[] = [
     iconSlug: "ethereum",
     brandColor: "#627EEA",
     summary:
-      "Python library for talking to Ethereum-compatible nodes — fetch blocks, logs, contracts and receipts.",
+      "Python library for talking to Ethereum-compatible nodes - fetch blocks, logs, contracts and receipts.",
     uses: ["RPC calls", "Event / log extraction", "Contract reads", "Onchain ingestion"],
     pathHighlight: "Extraction",
   },
@@ -132,7 +132,7 @@ export const STACK_TOOLS: StackTool[] = [
     iconSlug: "python",
     brandColor: "#3776AB",
     summary:
-      "Python’s async toolkit for concurrent network I/O — critical when pulling many blocks, logs or endpoints.",
+      "Python’s async toolkit for concurrent network I/O - critical when pulling many blocks, logs or endpoints.",
     uses: ["Concurrent RPC calls", "Backfill jobs", "Throughput", "Non-blocking pipelines"],
     pathHighlight: "Extraction",
   },
@@ -180,7 +180,7 @@ export const STACK_TOOLS: StackTool[] = [
     iconSlug: "docker",
     brandColor: "#2496ED",
     summary:
-      "Define multi-container stacks — database, workers and APIs — with one config for development and demos.",
+      "Define multi-container stacks - database, workers and APIs - with one config for development and demos.",
     uses: ["Multi-service local runs", "DB + app wiring", "Dev parity", "Quick demos"],
     pathHighlight: "Extraction",
   },
@@ -216,7 +216,7 @@ export const STACK_TOOLS: StackTool[] = [
     iconSlug: "apachekafka",
     brandColor: "#231F20",
     summary:
-      "Streaming backbone for high-throughput event data — useful when onchain activity must move in near real time.",
+      "Streaming backbone for high-throughput event data - useful when onchain activity must move in near real time.",
     uses: ["Event streams", "Decoupled producers", "Near-real-time feeds", "Scale-out ingest"],
     pathHighlight: "Data product",
   },
@@ -252,7 +252,7 @@ export const STACK_TOOLS: StackTool[] = [
     iconSlug: "googlecloud",
     brandColor: "#4285F4",
     summary:
-      "Alternative cloud for containers, storage and services — choose what fits your team and budget.",
+      "Alternative cloud for containers, storage and services - choose what fits your team and budget.",
     uses: ["Cloud run / VMs", "Storage", "Managed services", "Deployment practice"],
     pathHighlight: "Data product",
   },
@@ -276,7 +276,7 @@ export const STACK_TOOLS: StackTool[] = [
     iconSlug: "render",
     brandColor: "#46E3B7",
     summary:
-      "Simple PaaS for web services and background jobs — a practical path from local Docker to the internet.",
+      "Simple PaaS for web services and background jobs - a practical path from local Docker to the internet.",
     uses: ["Web services", "Background workers", "Managed TLS", "Straightforward deploys"],
     pathHighlight: "Data product",
   },

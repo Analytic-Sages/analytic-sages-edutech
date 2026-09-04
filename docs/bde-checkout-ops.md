@@ -80,8 +80,8 @@ Covers: schedule sums, obligation generation, checkout requires a plan when the 
 | Step | Pass when |
 |------|-----------|
 | Pay in Full | Charged full amount; seat unlocked; no open installment left |
-| Pay in 2 — first | Charged first installment only; seat unlocked; Billing shows remaining |
-| Pay in 2 — second | Paid from **Billing** (not Join again); obligation paid; outstanding 0 |
+| Pay in 2 (first) | Charged first installment only; seat unlocked; Billing shows remaining |
+| Pay in 2 (second) | Paid from **Billing** (not Join again); obligation paid; outstanding 0 |
 | Admin | `/admin/billing` and `/admin/payments` show account + attempt |
 | Flag off regression | With flag false and no reliance on plans, legacy one-time still works |
 
@@ -106,4 +106,4 @@ Product behaviour in this release: seat unlocks after the **first** confirmed pa
 | Checkout: single price, no plans | `BILLING_PLANS_ENABLED` false or not redeployed; or plans never seeded |
 | Checkout: “Select a tuition plan” API error | Flag on and plans exist, but client omitted `tuition_plan_id` |
 | Plans API always `[]` | Flag off |
-| “Registration has closed” | `registration_deadline` in the past — refresh via BDE seed |
+| “Registration has closed” | `registration_deadline` in the past; refresh via BDE seed |

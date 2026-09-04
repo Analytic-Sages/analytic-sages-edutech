@@ -35,7 +35,7 @@ export type ProgramPageContent = {
   duration: string;
   timeCommitment: string;
   paymentOptions: string;
-  /** When true, show Coming soon — do not sell checkout as open. */
+  /** When true, show Coming soon - do not sell checkout as open. */
   comingSoon?: boolean;
   audienceFor: string[];
   audienceNotFor: string[];
@@ -198,7 +198,7 @@ const cohort9: ProgramPageContent = {
     {
       question: "Is registration open?",
       answer:
-        "Not yet — this SQL Blockchain Data Analytics programme is coming soon. It is separate from Blockchain Data Engineering, which is open for registration now. When this programme opens, payment will be one-time via Paystack or NOWPayments.",
+        "Not yet. This SQL Blockchain Data Analytics programme is coming soon. It is separate from Blockchain Data Engineering, which is open for registration now. When this programme opens, payment will be one-time via Paystack or NOWPayments.",
     },
     {
       question: "What do I need to start?",
@@ -249,7 +249,7 @@ export function listComingSoonPrograms(): ProgramPageContent[] {
   return programPages.filter((page) => page.comingSoon);
 }
 
-/** API cohort slugs that should never appear as open — marketing marks them Coming soon. */
+/** API cohort slugs that should never appear as open - marketing marks them Coming soon. */
 export function comingSoonCohortSlugs(): Set<string> {
   return new Set(listComingSoonPrograms().map((page) => page.cohortSlug));
 }

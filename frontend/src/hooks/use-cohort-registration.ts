@@ -30,7 +30,7 @@ export type CohortRegistrationState = {
   checkoutHref: string;
   /** Live cohort price when available; otherwise marketing fallback */
   priceLabel: string;
-  /** Short marketing line only — not plan schedule details */
+  /** Short marketing line only - not plan schedule details */
   tuitionSummary: string | null;
 };
 

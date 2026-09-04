@@ -108,9 +108,9 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
   heroBody:
     "Learn how to extract, transform, store and deploy real onchain data pipelines using Python, SQL, Web3.py, PostgreSQL, dbt and modern data engineering tools.",
   support:
-    "Learn Blockchain Data Engineering by building real onchain data systems — pipelines, warehouses, transformations, APIs and cloud deployment.",
+    "Learn Blockchain Data Engineering by building real onchain data systems - pipelines, warehouses, transformations, APIs and cloud deployment.",
   positioning:
-    "Don't just learn tools. Learn how the system connects — from blockchain RPCs to production data products.",
+    "Don't just learn tools. Learn how the system connects - from blockchain RPCs to production data products.",
   positioningPhrase:
     "Learn Blockchain Data Engineering by Building Real Onchain Data Systems.",
   seoTitle: "Blockchain Data Engineering Programme | Learn Python, Web3.py & Onchain Data",
@@ -125,7 +125,7 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
   paymentOptions: "Card, bank transfer, or crypto at checkout.",
   applyLabel: "Join the Next Cohort",
   registrationLive: true,
-  tuitionSummary: "Pay in full or in installments — choose at checkout.",
+  tuitionSummary: "Pay in full or in installments. Choose at checkout.",
   programSignal: "5 Modules · 10 Weeks · 30 Sessions · Learn by Building",
   learningMode: "Project-Based Learning",
   problemTitle: "Blockchain Data Is Growing. So Is the Need for Infrastructure.",
@@ -195,7 +195,7 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
   ],
   stackTitle: "Build Your Blockchain Data Engineering Stack",
   stackIntro:
-    "Learn the fundamentals so you understand how data systems work — and explore modern tools so you understand where the industry is heading.",
+    "Learn the fundamentals so you understand how data systems work - and explore modern tools so you understand where the industry is heading.",
   stackTiers: [
     { label: "Programming & Data", tools: ["Python", "SQL"] },
     {
@@ -259,7 +259,7 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
     {
       question: "What is Blockchain Data Engineering?",
       answer:
-        "Blockchain Data Engineering is the process of building systems that collect, process, transform and serve blockchain data — from RPCs and smart contract events through warehouses, ETL/ELT pipelines, streaming systems and cloud infrastructure.",
+        "Blockchain Data Engineering is the process of building systems that collect, process, transform and serve blockchain data - from RPCs and smart contract events through warehouses, ETL/ELT pipelines, streaming systems and cloud infrastructure.",
     },
     {
       question: "What does a Blockchain Data Engineer do?",
@@ -269,7 +269,7 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
     {
       question: "Do I need to know blockchain before learning Blockchain Data Engineering?",
       answer:
-        "You should be interested in blockchain technology, but you do not need to be a smart contract developer. We introduce the blockchain data shapes — transactions, logs and events — as you build extraction and pipeline skills.",
+        "You should be interested in blockchain technology, but you do not need to be a smart contract developer. We introduce the blockchain data shapes - transactions, logs and events - as you build extraction and pipeline skills.",
     },
     {
       question: "Do I need Python or SQL experience?",
@@ -284,12 +284,12 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
     {
       question: "Will I work with real blockchain data?",
       answer:
-        "Yes. The programme is built around extracting and processing real onchain data — not toy datasets disconnected from blockchain networks.",
+        "Yes. The programme is built around extracting and processing real onchain data - not toy datasets disconnected from blockchain networks.",
     },
     {
       question: "What projects will I build?",
       answer:
-        "You'll work toward blockchain data pipelines, onchain data warehouses, dbt analytics engineering models, automated workflows, data APIs and deployable cloud data products — culminating in a connected capstone system.",
+        "You'll work toward blockchain data pipelines, onchain data warehouses, dbt analytics engineering models, automated workflows, data APIs and deployable cloud data products - culminating in a connected capstone system.",
     },
     {
       question: "Is Blockchain Data Engineering the same as Onchain Analytics?",
@@ -314,7 +314,7 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
     {
       question: "Can I pay in installments?",
       answer:
-        "Yes. At checkout you can choose Pay in Full ($200) or Pay in 2 Installments ($110 now to unlock your seat, then $110 later — total $220). Pay with Paystack or crypto via NOWPayments. Later installments appear on your Billing page after you enrol.",
+        "Yes. At checkout you can choose Pay in Full ($200) or Pay in 2 Installments ($110 now to unlock your seat, then $110 later - total $220). Pay with Paystack or crypto via NOWPayments. Later installments appear on your Billing page after you enrol.",
     },
   ],
   curriculum: {
@@ -322,7 +322,7 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
     seoDescription:
       "Full Blockchain Data Engineering curriculum: Web3.py extraction, PostgreSQL warehousing, dbt analytics engineering, Prefect, Apache Airflow, Apache Kafka, FastAPI and cloud deployment across 10 weeks.",
     intro:
-      "Learn Blockchain Data Engineering by building real onchain data systems. Project-Based Learning across 5 modules, 10 weeks and 30 sessions — from blockchain RPCs to cloud deployment.",
+      "Learn Blockchain Data Engineering by building real onchain data systems. Project-Based Learning across 5 modules, 10 weeks and 30 sessions - from blockchain RPCs to cloud deployment.",
     modules: [
       {
         number: "01",
@@ -724,7 +724,7 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
       },
     ],
     facilitatorNote:
-      "Sessions are live and project-driven. Facilitators guide implementation, debugging and architecture reviews — the emphasis is building working Blockchain Data Engineering systems, not watching slides.",
+      "Sessions are live and project-driven. Facilitators guide implementation, debugging and architecture reviews - the emphasis is building working Blockchain Data Engineering systems, not watching slides.",
   },
 };
 
