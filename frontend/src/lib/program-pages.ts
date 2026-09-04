@@ -249,6 +249,11 @@ export function listComingSoonPrograms(): ProgramPageContent[] {
   return programPages.filter((page) => page.comingSoon);
 }
 
+/** API cohort slugs that should never appear as open — marketing marks them Coming soon. */
+export function comingSoonCohortSlugs(): Set<string> {
+  return new Set(listComingSoonPrograms().map((page) => page.cohortSlug));
+}
+
 export function getProgramPageHref(cohortApiSlug: string): string | null {
   const engineering = getEngineeringProgramPage(cohortApiSlug);
   if (engineering) return `/programs/${engineering.pageSlug}`;

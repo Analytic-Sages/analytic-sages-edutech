@@ -11,6 +11,7 @@ import { ApiError, listPublicCohorts, type PublicCohortCard } from "@/lib/api";
 import { BDE_COHORT_SLUG } from "@/lib/blockchain-data-engineering-program";
 import { formatPrice } from "@/lib/mock-data";
 import {
+  comingSoonCohortSlugs,
   getProgramPageHref,
   getProgramPostcard,
   listComingSoonPrograms,
@@ -61,7 +62,10 @@ export function InstructorLedPageContent() {
       setError(null);
       try {
         const data = await listPublicCohorts();
-        if (!cancelled) setCohorts(data);
+        if (!cancelled) {
+          const blocked = comingSoonCohortSlugs();
+          setCohorts(data.filter((cohort) => !blocked.has(cohort.slug)));
+        }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof ApiError ? err.detail : "Failed to load upcoming cohorts");

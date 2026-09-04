@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BDE_COHORT_SLUG, blockchainDataEngineeringProgram } from "@/lib/blockchain-data-engineering-program";
 import { formatPrice } from "@/lib/mock-data";
 import {
+  comingSoonCohortSlugs,
   getProgramPageHref,
   getProgramPostcard,
   listComingSoonPrograms,
@@ -112,12 +113,16 @@ export function HomeInstructorLedSection() {
     listPublicCohorts()
       .then((data) => {
         if (!cancelled) {
+          const blocked = comingSoonCohortSlugs();
           // Prefer open cohorts; keep BDE first when present so it leads the grid.
-          const sorted = [...data].sort((a, b) => {
-            if (a.slug === BDE_COHORT_SLUG) return -1;
-            if (b.slug === BDE_COHORT_SLUG) return 1;
-            return 0;
-          });
+          // Never show programmes marked Coming soon as open (even if API status lags).
+          const sorted = data
+            .filter((cohort) => !blocked.has(cohort.slug))
+            .sort((a, b) => {
+              if (a.slug === BDE_COHORT_SLUG) return -1;
+              if (b.slug === BDE_COHORT_SLUG) return 1;
+              return 0;
+            });
           setCohorts(sorted.slice(0, 2));
         }
       })
