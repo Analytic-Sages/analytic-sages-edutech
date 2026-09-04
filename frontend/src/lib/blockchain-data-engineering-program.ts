@@ -41,8 +41,15 @@ export type EngineeringProgramPageContent = {
   duration: string;
   timeCommitment: string;
   paymentOptions: string;
-  /** Marketing tuition line for hero / CTA when registration is open. */
+  /**
+   * Short marketing line for programme pages (plan amounts live on checkout).
+   */
   tuitionSummary: string;
+  /**
+   * When true, marketing CTAs treat registration as live even if the public
+   * cohorts API has not returned this cohort yet. Checkout remains the hard gate.
+   */
+  registrationLive: boolean;
   applyLabel: string;
   programSignal: string;
   learningMode: string;
@@ -115,12 +122,10 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
   format: "Project-Based Learning · Live sessions · Builds · Reviews · Community",
   duration: "10 weeks",
   timeCommitment: "8–12 hours per week",
-  paymentOptions:
-    "Pay in full ($200) or 2 installments ($110 + $110). Paystack (cards and bank transfer) or crypto via NOWPayments at checkout.",
+  paymentOptions: "Card, bank transfer, or crypto at checkout.",
   applyLabel: "Join the Next Cohort",
-  /** Shown on the programme page when live tuition plans are not returned by the API. */
-  tuitionSummary:
-    "Pay in full ($200) or 2 installments ($110 due today, then $110 later).",
+  registrationLive: true,
+  tuitionSummary: "Pay in full or in installments — choose at checkout.",
   programSignal: "5 Modules · 10 Weeks · 30 Sessions · Learn by Building",
   learningMode: "Project-Based Learning",
   problemTitle: "Blockchain Data Is Growing. So Is the Need for Infrastructure.",

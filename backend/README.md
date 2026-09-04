@@ -66,6 +66,17 @@ Or: `bash scripts/dev.sh`
 
 Without `EMAIL_API_KEY`, links are printed in API logs as `[dev-email]`.
 
+### BDE cohort checkout & tuition plans
+
+Production open registration + installments need seeded data and `BILLING_PLANS_ENABLED=true`. Full checklist: [`docs/bde-checkout-ops.md`](../docs/bde-checkout-ops.md).
+
+```bash
+python scripts/seed_blockchain_data_engineering.py
+python scripts/seed_tuition_plans.py
+# then set BILLING_PLANS_ENABLED=true and redeploy
+python scripts/verify_bde_checkout.py
+```
+
 ## RBAC test routes
 
 | Method | Path | Role |

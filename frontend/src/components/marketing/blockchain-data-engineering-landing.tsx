@@ -33,13 +33,14 @@ export function BlockchainDataEngineeringLanding({
   program: EngineeringProgramPageContent;
 }) {
   const { cohort, loading, open, checkoutHref, priceLabel, tuitionSummary } =
-    useCohortRegistration(program.cohortSlug, program.tuitionSummary);
+    useCohortRegistration(program.cohortSlug, {
+      tuitionSummary: program.tuitionSummary,
+      registrationLive: program.registrationLive,
+    });
 
   const curriculumHref = program.curriculumPath;
   const startDate = formatDate(cohort?.starts_at ?? null);
   const deadline = formatDate(cohort?.registration_deadline ?? null);
-  const primaryHref = open ? checkoutHref : curriculumHref;
-  const primaryLabel = open ? program.applyLabel : "View Curriculum";
 
   return (
     <div className="bg-background pb-24 text-foreground md:pb-0">
@@ -67,75 +68,58 @@ export function BlockchainDataEngineeringLanding({
             <p className="mt-2 text-sm text-white/65">{program.learningMode}</p>
 
             <div className="mt-8 max-w-md rounded-lg border border-white/15 bg-white/5 px-4 py-4 backdrop-blur-sm">
-              {loading ? (
-                <p className="inline-flex items-center gap-2 text-sm text-white/70">
-                  <Loader2 className="size-4 animate-spin" />
-                  Checking registration…
-                </p>
-              ) : (
+              <p className="font-heading text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                {priceLabel}
+              </p>
+              {open ? (
                 <>
-                  <p className="font-heading text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                    {priceLabel}
+                  <p className="mt-1 text-sm font-medium text-brand-orange">
+                    Open for registration
                   </p>
-                  {open ? (
-                    <>
-                      <p className="mt-1 text-sm font-medium text-brand-orange">
-                        Open for registration
-                      </p>
-                      {tuitionSummary ? (
-                        <p className="mt-2 text-sm leading-relaxed text-white/80">
-                          {tuitionSummary}
-                        </p>
-                      ) : (
-                        <p className="mt-2 text-sm text-white/75">
-                          One-time payment at checkout via Paystack or crypto.
-                        </p>
-                      )}
-                      {deadline ? (
-                        <p className="mt-2 text-xs text-white/55">
-                          Registration deadline: {deadline}
-                          {startDate ? ` · Starts ${startDate}` : null}
-                        </p>
-                      ) : null}
-                    </>
-                  ) : (
-                    <p className="mt-2 text-sm leading-relaxed text-white/75">
-                      Registration isn&apos;t open for this cohort right now. You can still review
-                      the curriculum — checkout unlocks when seats are available.
+                  {tuitionSummary ? (
+                    <p className="mt-2 text-sm leading-relaxed text-white/80">{tuitionSummary}</p>
+                  ) : null}
+                  {loading && !deadline && !startDate ? (
+                    <p className="mt-2 inline-flex items-center gap-2 text-xs text-white/55">
+                      <Loader2 className="size-3.5 animate-spin" />
+                      Loading dates…
                     </p>
-                  )}
+                  ) : null}
+                  {deadline || startDate ? (
+                    <p className="mt-2 text-xs text-white/55">
+                      {[
+                        deadline ? `Registration deadline: ${deadline}` : null,
+                        startDate ? `Starts ${startDate}` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                  ) : null}
                 </>
+              ) : (
+                <p className="mt-2 text-sm leading-relaxed text-white/75">
+                  Registration details will appear here when the next cohort opens.
+                </p>
               )}
             </div>
 
             <div className="mt-8 flex flex-wrap gap-3">
               <ButtonLink
-                href={primaryHref}
+                href={checkoutHref}
                 size="lg"
                 className="h-12 bg-brand-orange px-8 text-base text-white hover:bg-brand-orange/90"
               >
-                {primaryLabel}
+                {program.applyLabel}
                 <ArrowRight className="ml-2 size-4" />
               </ButtonLink>
-              {open ? (
-                <ButtonLink
-                  href={curriculumHref}
-                  size="lg"
-                  variant="outline"
-                  className="h-12 border-white/30 bg-transparent px-8 text-base text-white hover:bg-white/10"
-                >
-                  View Curriculum
-                </ButtonLink>
-              ) : (
-                <ButtonLink
-                  href="/instructor-led"
-                  size="lg"
-                  variant="outline"
-                  className="h-12 border-white/30 bg-transparent px-8 text-base text-white hover:bg-white/10"
-                >
-                  Instructor-Led programmes
-                </ButtonLink>
-              )}
+              <ButtonLink
+                href={curriculumHref}
+                size="lg"
+                variant="outline"
+                className="h-12 border-white/30 bg-transparent px-8 text-base text-white hover:bg-white/10"
+              >
+                View Curriculum
+              </ButtonLink>
             </div>
           </div>
           <div className="relative mx-auto w-full max-w-lg lg:max-w-none">
@@ -334,47 +318,34 @@ export function BlockchainDataEngineeringLanding({
       <section id="register" className="scroll-mt-24 border-t border-border/60 bg-[#F7F9FC] dark:bg-transparent">
         <div className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6 sm:py-20">
           <h2 className="font-heading text-3xl font-bold sm:text-4xl">Pricing & payment</h2>
-          {loading ? (
-            <p className="mt-8 inline-flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" />
-              Loading cohort pricing…
+          <div className="mt-10 border border-border/70 bg-background px-6 py-8 sm:px-10">
+            <p className="font-heading text-4xl font-bold text-[#0B1F3A] dark:text-foreground">
+              {priceLabel}
             </p>
-          ) : (
-            <div className="mt-10 border border-border/70 bg-background px-6 py-8 sm:px-10">
-              <p className="font-heading text-4xl font-bold text-[#0B1F3A] dark:text-foreground">
-                {priceLabel}
-              </p>
-              <p className="mt-2 text-sm font-medium text-[#0B1F3A]/80 dark:text-foreground/80">
-                {program.programSignal}
-              </p>
-              <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                {tuitionSummary ?? program.tuitionSummary}
-              </p>
-              <p className="mt-3 text-sm text-muted-foreground">{program.paymentOptions}</p>
+            <p className="mt-2 text-sm font-medium text-brand-orange">Open for registration</p>
+            <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+              {program.tuitionSummary}
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">{program.paymentOptions}</p>
+            {(deadline || startDate) && (
               <p className="mt-4 text-sm text-muted-foreground">
                 {[
-                  open ? "Open for registration" : "Registration not open yet",
                   deadline ? `Closes ${deadline}` : null,
                   startDate ? `Starts ${startDate}` : null,
                 ]
                   .filter(Boolean)
                   .join(" · ")}
               </p>
-              <ButtonLink
-                href={primaryHref}
-                size="lg"
-                className="mt-8 h-12 bg-brand-orange px-10 text-base text-white hover:bg-brand-orange/90"
-              >
-                {primaryLabel}
-                <ArrowRight className="ml-2 size-4" />
-              </ButtonLink>
-              {open ? (
-                <p className="mt-4 text-xs text-muted-foreground">
-                  Choose your tuition plan and pay with Paystack or crypto on the checkout page.
-                </p>
-              ) : null}
-            </div>
-          )}
+            )}
+            <ButtonLink
+              href={checkoutHref}
+              size="lg"
+              className="mt-8 h-12 bg-brand-orange px-10 text-base text-white hover:bg-brand-orange/90"
+            >
+              {program.applyLabel}
+              <ArrowRight className="ml-2 size-4" />
+            </ButtonLink>
+          </div>
         </div>
       </section>
 
@@ -406,22 +377,16 @@ export function BlockchainDataEngineeringLanding({
         <p className="mx-auto mt-4 max-w-xl text-muted-foreground">{program.positioningPhrase}</p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <ButtonLink
-            href={primaryHref}
+            href={checkoutHref}
             size="lg"
             className="h-12 bg-brand-orange px-10 text-base text-white hover:bg-brand-orange/90"
           >
-            {primaryLabel}
+            {program.applyLabel}
             <ArrowRight className="ml-2 size-4" />
           </ButtonLink>
-          {open ? (
-            <ButtonLink href={curriculumHref} size="lg" variant="outline" className="h-12 px-8">
-              View Curriculum
-            </ButtonLink>
-          ) : (
-            <ButtonLink href="/instructor-led" size="lg" variant="outline" className="h-12 px-8">
-              Instructor-Led programmes
-            </ButtonLink>
-          )}
+          <ButtonLink href={curriculumHref} size="lg" variant="outline" className="h-12 px-8">
+            View Curriculum
+          </ButtonLink>
         </div>
       </section>
 
@@ -436,10 +401,10 @@ export function BlockchainDataEngineeringLanding({
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-3 backdrop-blur md:hidden">
         <ButtonLink
-          href={primaryHref}
+          href={checkoutHref}
           className="h-12 w-full bg-brand-orange text-white hover:bg-brand-orange/90"
         >
-          {open ? `Join cohort · ${priceLabel}` : "View Curriculum"}
+          Join cohort · {priceLabel}
         </ButtonLink>
       </div>
     </div>
