@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.models.opportunity import (
     CareerPath,
+    DuplicateMatch,
     IngestionStatus,
     Opportunity,
     OpportunityCareerPath,
@@ -26,6 +27,7 @@ from app.models.opportunity import (
     OpportunityStatus,
     OpportunitySyncRun,
     OpportunityTrustStatus,
+    OpportunityType,
     RiskFlagSeverity,
     Skill,
     SyncRunStatus,
@@ -44,10 +46,12 @@ from app.schemas.opportunities import (
     OpportunitySyncRunPublic,
     OpportunitySyncRunList,
 )
+from app.services.bounty_details import upsert_bounty_details
+from app.services.hackathon_details import upsert_hackathon_details
 from app.services.opportunity_mission import is_off_mission_title
+from app.services.opportunity_normalize import canonicalize_application_url, normalize_opportunity_fields
 from app.services.opportunity_prose import normalize_description
 from app.services.opportunity_relevance import (
-    RELEVANCE_HIGH_AT,
     RELEVANCE_REJECT_BELOW,
     normalize_title,
     score_relevance,
@@ -63,6 +67,14 @@ CONNECTOR_SOURCE_TYPES = {
     "greenhouse": OpportunitySourceType.API,
     "ashby": OpportunitySourceType.API,
     "lever": OpportunitySourceType.API,
+    "ethglobal": OpportunitySourceType.HACKATHON_PLATFORM,
+    "colosseum": OpportunitySourceType.HACKATHON_PLATFORM,
+    "devpost": OpportunitySourceType.HACKATHON_PLATFORM,
+    "devfolio": OpportunitySourceType.HACKATHON_PLATFORM,
+    "dorahacks": OpportunitySourceType.HACKATHON_PLATFORM,
+    "encode": OpportunitySourceType.HACKATHON_PLATFORM,
+    "superteam": OpportunitySourceType.COMMUNITY,
+    "manual": OpportunitySourceType.MANUAL,
 }
 
 
@@ -97,13 +109,22 @@ class OpportunityIngestionService:
             id=source.id,
             name=source.name,
             website_url=source.website_url,
+            base_url=source.base_url,
             source_type=_enum_value(source.source_type),
             trust_level=_enum_value(source.trust_level),
             automation_enabled=source.automation_enabled,
-            auto_publish_allowed=source.auto_publish_allowed,
+            auto_publish_allowed=False,
             connector_type=source.connector_type,
             config=source.config or {},
+            sync_frequency_hours=source.sync_frequency_hours,
+            attribution_required=source.attribution_required,
+            admin_notes=source.admin_notes or "",
+            search_profiles=list(source.search_profiles or []),
+            source_role=_enum_value(getattr(source, "source_role", None)) or "direct",
+            capabilities=dict(getattr(source, "capabilities", None) or {}),
             last_checked_at=source.last_checked_at,
+            last_success_at=source.last_success_at,
+            last_failure_at=source.last_failure_at,
             last_error=source.last_error,
             health_status=_enum_value(source.health_status),
             is_active=source.is_active,
@@ -200,6 +221,43 @@ class OpportunityIngestionService:
                     detail=f"{label} board_token must be alphanumeric",
                 )
             return {"board_token": board_token}
+        if connector_type == "ethglobal":
+            from app.services.opportunity_sources.ethglobal import DEFAULT_EVENTS_URL, sanitize_events_url
+
+            events_url = str(config.get("events_url") or DEFAULT_EVENTS_URL).strip()
+            return {"events_url": sanitize_events_url(events_url)}
+        if connector_type == "colosseum":
+            from app.services.opportunity_sources.colosseum import DEFAULT_LISTING_URL, sanitize_listing_url
+
+            listing_url = str(config.get("listing_url") or DEFAULT_LISTING_URL).strip()
+            return {"listing_url": sanitize_listing_url(listing_url)}
+        if connector_type == "devpost":
+            from app.services.opportunity_sources.devpost import DEFAULT_LISTING_URL, sanitize_listing_url
+
+            listing_url = str(config.get("listing_url") or DEFAULT_LISTING_URL).strip()
+            return {"listing_url": sanitize_listing_url(listing_url)}
+        if connector_type == "devfolio":
+            from app.services.opportunity_sources.devfolio import DEFAULT_LISTING_URL, sanitize_listing_url
+
+            listing_url = str(config.get("listing_url") or DEFAULT_LISTING_URL).strip()
+            return {"listing_url": sanitize_listing_url(listing_url)}
+        if connector_type == "dorahacks":
+            from app.services.opportunity_sources.dorahacks import DEFAULT_LISTING_URL, sanitize_listing_url
+
+            listing_url = str(config.get("listing_url") or DEFAULT_LISTING_URL).strip()
+            return {"listing_url": sanitize_listing_url(listing_url)}
+        if connector_type == "encode":
+            from app.services.opportunity_sources.encode import DEFAULT_LISTING_URL, sanitize_listing_url
+
+            listing_url = str(config.get("listing_url") or DEFAULT_LISTING_URL).strip()
+            return {"listing_url": sanitize_listing_url(listing_url)}
+        if connector_type == "superteam":
+            from app.services.opportunity_sources.superteam import DEFAULT_LISTING_URL, sanitize_listing_url
+
+            listing_url = str(config.get("listing_url") or DEFAULT_LISTING_URL).strip()
+            return {"listing_url": sanitize_listing_url(listing_url)}
+        if connector_type == "manual":
+            return dict(config or {})
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Unsupported connector type",
@@ -225,12 +283,17 @@ class OpportunityIngestionService:
         source = OpportunitySource(
             name=payload.name.strip(),
             website_url=website_url,
+            base_url=payload.base_url.strip() if payload.base_url else None,
             source_type=CONNECTOR_SOURCE_TYPES[connector_type],
             trust_level=payload.trust_level,
             automation_enabled=payload.automation_enabled,
-            auto_publish_allowed=payload.auto_publish_allowed,
+            auto_publish_allowed=False,
             connector_type=connector_type,
             config=self._sanitize_config(connector_type, payload.config),
+            sync_frequency_hours=payload.sync_frequency_hours,
+            attribution_required=payload.attribution_required,
+            admin_notes=payload.admin_notes or "",
+            search_profiles=payload.search_profiles or [],
             is_active=payload.is_active,
             health_status=OpportunitySourceHealth.UNKNOWN,
         )
@@ -257,10 +320,22 @@ class OpportunityIngestionService:
             source.trust_level = data["trust_level"]
         if "automation_enabled" in data and data["automation_enabled"] is not None:
             source.automation_enabled = data["automation_enabled"]
-        if "auto_publish_allowed" in data and data["auto_publish_allowed"] is not None:
-            source.auto_publish_allowed = data["auto_publish_allowed"]
+        # Trust-first: ignore attempts to enable auto-publish.
+        if "auto_publish_allowed" in data:
+            source.auto_publish_allowed = False
         if "is_active" in data and data["is_active"] is not None:
             source.is_active = data["is_active"]
+        if "sync_frequency_hours" in data and data["sync_frequency_hours"] is not None:
+            source.sync_frequency_hours = data["sync_frequency_hours"]
+        if "attribution_required" in data and data["attribution_required"] is not None:
+            source.attribution_required = data["attribution_required"]
+        if "admin_notes" in data and data["admin_notes"] is not None:
+            source.admin_notes = data["admin_notes"]
+        if "base_url" in data:
+            base = (data["base_url"] or "").strip() or None
+            source.base_url = validate_http_url(base, "base_url") if base else None
+        if "search_profiles" in data and data["search_profiles"] is not None:
+            source.search_profiles = data["search_profiles"]
         if "config" in data and data["config"] is not None:
             source.config = self._sanitize_config(source.connector_type, data["config"])
         self.db.commit()
@@ -304,18 +379,30 @@ class OpportunityIngestionService:
             ),
         )
 
-    def sync_enabled_sources(self, actor: User | None = None) -> list[OpportunitySyncRunPublic]:
-        sources = self.db.scalars(
-            select(OpportunitySource).where(
-                OpportunitySource.is_active.is_(True),
-                OpportunitySource.automation_enabled.is_(True),
-                OpportunitySource.connector_type.in_(tuple(CONNECTOR_SOURCE_TYPES)),
-            )
-        ).all()
+    def sync_enabled_sources(
+        self,
+        actor: User | None = None,
+        *,
+        source_ids: list[UUID] | None = None,
+    ) -> list[OpportunitySyncRunPublic]:
+        stmt = select(OpportunitySource).where(
+            OpportunitySource.is_active.is_(True),
+            OpportunitySource.automation_enabled.is_(True),
+            OpportunitySource.connector_type.in_(tuple(CONNECTOR_SOURCE_TYPES)),
+            OpportunitySource.connector_type != "manual",
+        )
+        if source_ids:
+            stmt = stmt.where(OpportunitySource.id.in_(source_ids))
+        sources = self.db.scalars(stmt).all()
         return [self.sync_source(source.id, actor=actor) for source in sources]
 
-    def sync_all_enabled(self, actor: User | None = None) -> OpportunitySyncAllResult:
-        runs = self.sync_enabled_sources(actor=actor)
+    def sync_all_enabled(
+        self,
+        actor: User | None = None,
+        *,
+        source_ids: list[UUID] | None = None,
+    ) -> OpportunitySyncAllResult:
+        runs = self.sync_enabled_sources(actor=actor, source_ids=source_ids)
         return OpportunitySyncAllResult(
             runs=runs,
             sources=len(runs),
@@ -336,10 +423,10 @@ class OpportunityIngestionService:
         items: list[RawOpportunity] | None = None,
     ) -> OpportunitySyncRunPublic:
         source = self._get_source(source_id)
-        if source.connector_type not in CONNECTOR_SOURCE_TYPES:
+        if source.connector_type not in CONNECTOR_SOURCE_TYPES or source.connector_type == "manual":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="This source cannot be synced",
+                detail="This source cannot be synced automatically",
             )
         run = OpportunitySyncRun(
             source_id=source.id,
@@ -368,6 +455,7 @@ class OpportunityIngestionService:
             run.status = SyncRunStatus.COMPLETED
             run.completed_at = _utcnow()
             source.last_checked_at = run.completed_at
+            source.last_success_at = run.completed_at
             source.last_error = None
             source.health_status = OpportunitySourceHealth.HEALTHY
             self.db.commit()
@@ -395,6 +483,7 @@ class OpportunityIngestionService:
         )
         self.db.add(run)
         source.last_checked_at = run.completed_at
+        source.last_failure_at = run.completed_at
         source.last_error = detail
         source.health_status = OpportunitySourceHealth.DOWN
         self.db.commit()
@@ -460,10 +549,18 @@ class OpportunityIngestionService:
             }:
                 return "duplicate"
             self._refresh_existing(existing, raw, application_url, hashed)
+            if existing.opportunity_type in {OpportunityType.HACKATHON, OpportunityType.CHALLENGE} or (
+                raw.opportunity_type in {OpportunityType.HACKATHON, OpportunityType.CHALLENGE}
+            ):
+                upsert_hackathon_details(existing, raw)
+            if existing.opportunity_type == OpportunityType.BOUNTY or raw.opportunity_type == OpportunityType.BOUNTY:
+                if existing.opportunity_type != OpportunityType.BOUNTY and raw.opportunity_type == OpportunityType.BOUNTY:
+                    existing.opportunity_type = OpportunityType.BOUNTY
+                upsert_bounty_details(existing, raw)
             ingestion.processing_status = IngestionStatus.PROCESSED
             return "updated"
 
-        url_match = self._find_by_url(application_url)
+        url_match = self._find_by_canonical_url(application_url) or self._find_by_url(application_url)
         if url_match:
             ingestion.opportunity_id = url_match.id
             ingestion.processing_status = IngestionStatus.DUPLICATE
@@ -472,18 +569,33 @@ class OpportunityIngestionService:
         relevance = score_relevance(raw, source.trust_level)
         flags = detect_risk_flags(raw)
         possible_duplicate = self._find_possible_duplicate(title, organization_name)
-
-        opportunity = Opportunity(
-            slug=self.opportunities._ensure_slug(title, None),
+        normalized = normalize_opportunity_fields(
             title=title,
             organization_name=organization_name,
             description=description,
-            requirements=(raw.requirements or "")[:20000],
-            location=(raw.location or "")[:255],
-            region=relevance.region,
-            workplace_type=relevance.workplace_type,
-            opportunity_type=relevance.opportunity_type,
             application_url=application_url,
+            source_url=raw.source_url,
+            location=raw.location or "",
+            workplace_type=relevance.workplace_type,
+            employment_type=relevance.employment_type,
+        )
+
+        opportunity = Opportunity(
+            slug=self.opportunities._ensure_slug(normalized.title, None),
+            title=normalized.title,
+            organization_name=normalized.organization_name,
+            description=normalized.description,
+            requirements=(raw.requirements or "")[:20000],
+            location=normalized.location,
+            location_raw=normalized.location_raw or None,
+            country=normalized.country,
+            region=normalized.region or relevance.region,
+            location_scope=normalized.location_scope,
+            workplace_type=normalized.workplace_type,
+            employment_type=normalized.employment_type,
+            opportunity_type=relevance.opportunity_type,
+            application_url=normalized.application_url,
+            canonical_application_url=normalized.canonical_application_url or None,
             source_url=None,
             deadline=raw.deadline,
             source_id=source.id,
@@ -491,16 +603,21 @@ class OpportunityIngestionService:
             external_id=raw.external_id[:255] if raw.external_id else None,
             content_hash=hashed,
             relevance_score=relevance.score,
+            match_reasons=list(relevance.match_reasons),
+            matched_career_tracks=list(relevance.matched_career_tracks),
             duplicate_of_id=possible_duplicate.id if possible_duplicate else None,
+            duplicate_confidence=(
+                DuplicateMatch.POSSIBLE.value if possible_duplicate else DuplicateMatch.NONE.value
+            ),
             status=OpportunityStatus.DRAFT,
             trust_status=OpportunityTrustStatus.REVIEW_REQUIRED,
             public_badge=OpportunityPublicBadge.NONE,
         )
         self.db.add(opportunity)
         self.db.flush()
-        if raw.source_url:
+        if normalized.source_url:
             try:
-                opportunity.source_url = validate_http_url(raw.source_url, "source_url")
+                opportunity.source_url = validate_http_url(normalized.source_url, "source_url")
             except HTTPException:
                 opportunity.source_url = None
 
@@ -522,6 +639,10 @@ class OpportunityIngestionService:
                 )
             )
         self._attach_taxonomy(opportunity, relevance.career_path_slugs, relevance.skill_slugs)
+        if opportunity.opportunity_type in {OpportunityType.HACKATHON, OpportunityType.CHALLENGE}:
+            upsert_hackathon_details(opportunity, raw)
+        if opportunity.opportunity_type == OpportunityType.BOUNTY:
+            upsert_bounty_details(opportunity, raw)
 
         high_or_critical = any(
             flag.severity in {RiskFlagSeverity.HIGH, RiskFlagSeverity.CRITICAL} for flag in opportunity.risk_flags
@@ -529,7 +650,9 @@ class OpportunityIngestionService:
         if high_or_critical:
             opportunity.trust_status = OpportunityTrustStatus.HIGH_RISK
 
-        if relevance.score < Decimal(RELEVANCE_REJECT_BELOW):
+        if relevance.score < Decimal(RELEVANCE_REJECT_BELOW) and not (
+            raw.opportunity_type is not None and source.trust_level == OpportunitySourceTrustLevel.HIGH
+        ):
             opportunity.status = OpportunityStatus.REJECTED
             ingestion.processing_status = IngestionStatus.REJECTED
             ingestion.opportunity_id = opportunity.id
@@ -537,21 +660,8 @@ class OpportunityIngestionService:
             self._log_ingest(opportunity, "rejected", relevance, flags)
             return "rejected"
 
-        auto_publish = (
-            source.auto_publish_allowed
-            and source.trust_level == OpportunitySourceTrustLevel.HIGH
-            and relevance.score >= Decimal(RELEVANCE_HIGH_AT)
-            and not high_or_critical
-            and possible_duplicate is None
-        )
-        if auto_publish:
-            opportunity.status = OpportunityStatus.PUBLISHED
-            opportunity.published_at = _utcnow()
-            opportunity.trust_status = OpportunityTrustStatus.SOURCE_CHECKED
-            opportunity.public_badge = self._badge_for_source(source)
-            self._log_ingest(opportunity, "auto_published", relevance, flags)
-        else:
-            self._log_ingest(opportunity, "review_required", relevance, flags)
+        # Trust-first: never auto-publish external listings. Always enter review.
+        self._log_ingest(opportunity, "review_required", relevance, flags)
 
         ingestion.processing_status = IngestionStatus.PROCESSED
         ingestion.opportunity_id = opportunity.id
@@ -577,6 +687,33 @@ class OpportunityIngestionService:
         return self.db.scalar(
             select(Opportunity).where(func.lower(func.rtrim(Opportunity.application_url, "/")) == target)
         )
+
+    def _find_by_canonical_url(self, url: str) -> Opportunity | None:
+        canonical = canonicalize_application_url(url)
+        if not canonical:
+            return None
+        return self.db.scalar(
+            select(Opportunity).where(Opportunity.canonical_application_url == canonical)
+        )
+
+    def expire_past_deadlines(self, *, stale_days: int = 30) -> dict[str, int]:
+        """Mark published opportunities past deadline as expired. Never deletes."""
+        now = _utcnow()
+        expired = 0
+        rows = list(
+            self.db.scalars(
+                select(Opportunity).where(
+                    Opportunity.status == OpportunityStatus.PUBLISHED,
+                    Opportunity.deadline.is_not(None),
+                    Opportunity.deadline < now,
+                )
+            ).all()
+        )
+        for row in rows:
+            row.status = OpportunityStatus.EXPIRED
+            expired += 1
+        self.db.commit()
+        return {"expired": expired, "stale_flagged": 0}
 
     def _find_possible_duplicate(self, title: str, organization_name: str) -> Opportunity | None:
         org = organization_name.strip().lower()
@@ -635,6 +772,10 @@ class OpportunityIngestionService:
                     "decision": decision,
                     "relevance_score": float(relevance.score),
                     "relevance_breakdown": relevance.breakdown,
+                    "match_reasons": list(getattr(relevance, "match_reasons", []) or []),
+                    "matched_career_tracks": list(
+                        getattr(relevance, "matched_career_tracks", []) or []
+                    ),
                     "flags": [flag[0] for flag in flags],
                 },
             )

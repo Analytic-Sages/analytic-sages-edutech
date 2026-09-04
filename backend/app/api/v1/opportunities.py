@@ -3,7 +3,7 @@ from __future__ import annotations
 import hmac
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status, Body
 
 from app.api.deps import (
     get_opportunity_digest_service,
@@ -14,18 +14,29 @@ from app.api.deps import (
     get_opportunity_service,
     get_opportunity_telegram_service,
     get_current_user_optional,
-    require_admin,
+    require_opportunity_ops,
     require_public_opportunities_hub,
     require_student,
 )
 from app.core.config import Settings, get_settings
-from app.models.opportunity import ExperienceLevel, LocationRegion, OpportunityStatus, OpportunityType, WorkplaceType
+from app.models.opportunity import (
+    BountyCategory,
+    EmploymentType,
+    ExperienceLevel,
+    HackathonEventFormat,
+    LocationRegion,
+    OpportunityStatus,
+    OpportunityType,
+    WorkplaceType,
+)
 from app.models.user import User
 from app.schemas.opportunities import (
     AdminTaxonomy,
     OpportunityAdmin,
     OpportunityAdminList,
     OpportunityAdminOverview,
+    OpportunityBulkPublishRequest,
+    OpportunityBulkPublishResult,
     OpportunityCreate,
     OpportunityDecision,
     OpportunityDiscoverImportRequest,
@@ -44,6 +55,7 @@ from app.schemas.opportunities import (
     OpportunitySourceList,
     OpportunitySourceUpdate,
     OpportunitySyncAllResult,
+    OpportunitySyncRequest,
     OpportunitySyncRunList,
     OpportunitySyncRunPublic,
     OpportunityUpdate,
@@ -72,8 +84,22 @@ def list_opportunities(
     skill: str | None = Query(default=None, max_length=120),
     workplace_type: WorkplaceType | None = Query(default=None),
     experience_level: ExperienceLevel | None = Query(default=None),
+    employment_type: EmploymentType | None = Query(default=None),
     region: LocationRegion | None = Query(default=None),
-    sort: str = Query(default="newest", pattern="^(newest|deadline|featured|closing_soon|matched)$"),
+    event_format: HackathonEventFormat | None = Query(default=None),
+    hackathon_phase: str | None = Query(
+        default=None,
+        pattern="^(open|upcoming|ongoing|ended|unknown)$",
+    ),
+    bounty_category: BountyCategory | None = Query(default=None),
+    bounty_phase: str | None = Query(
+        default=None,
+        pattern="^(open|closing_soon|ended|unknown)$",
+    ),
+    sort: str = Query(
+        default="newest",
+        pattern="^(newest|deadline|featured|closing_soon|matched|hackathon|bounty)$",
+    ),
     limit: int = Query(default=20, ge=1, le=50),
     offset: int = Query(default=0, ge=0),
 ) -> OpportunityListPublic:
@@ -84,7 +110,12 @@ def list_opportunities(
         skill=skill,
         workplace_type=workplace_type,
         experience_level=experience_level,
+        employment_type=employment_type,
         region=region,
+        event_format=event_format,
+        hackathon_phase=hackathon_phase,
+        bounty_category=bounty_category,
+        bounty_phase=bounty_phase,
         sort=sort,
         limit=limit,
         offset=offset,
@@ -112,7 +143,7 @@ def get_opportunity(
 
 @router.get("/admin/opportunities", response_model=OpportunityAdminList)
 def admin_list_opportunities(
-    _: User = Depends(require_admin),
+    _: User = Depends(require_opportunity_ops),
     opportunities: OpportunityService = Depends(get_opportunity_service),
     q: str | None = Query(default=None, max_length=120),
     status_filter: OpportunityStatus | None = Query(default=None, alias="status"),
@@ -131,7 +162,7 @@ def admin_list_opportunities(
 
 @router.get("/admin/opportunities/taxonomy", response_model=AdminTaxonomy)
 def admin_opportunity_taxonomy(
-    _: User = Depends(require_admin),
+    _: User = Depends(require_opportunity_ops),
     opportunities: OpportunityService = Depends(get_opportunity_service),
 ) -> AdminTaxonomy:
     return opportunities.admin_taxonomy()
@@ -139,7 +170,7 @@ def admin_opportunity_taxonomy(
 
 @router.get("/admin/opportunities/overview", response_model=OpportunityAdminOverview)
 def admin_opportunity_overview(
-    _: User = Depends(require_admin),
+    _: User = Depends(require_opportunity_ops),
     ingestion: OpportunityIngestionService = Depends(get_opportunity_ingestion_service),
 ) -> OpportunityAdminOverview:
     return ingestion.overview()
@@ -147,16 +178,17 @@ def admin_opportunity_overview(
 
 @router.post("/admin/opportunities/sync-sources", response_model=OpportunitySyncAllResult)
 def admin_sync_opportunity_sources(
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_opportunity_ops),
     ingestion: OpportunityIngestionService = Depends(get_opportunity_ingestion_service),
+    payload: OpportunitySyncRequest = Body(default_factory=OpportunitySyncRequest),
 ) -> OpportunitySyncAllResult:
-    return ingestion.sync_all_enabled(actor=current_user)
+    return ingestion.sync_all_enabled(actor=current_user, source_ids=payload.source_ids)
 
 
 @router.post("/admin/opportunities/discover", response_model=OpportunityDiscoverResponse)
 def admin_discover_opportunities(
     payload: OpportunityDiscoverRequest,
-    _: User = Depends(require_admin),
+    _: User = Depends(require_opportunity_ops),
     discovery: OpportunityDiscoveryService = Depends(get_opportunity_discovery_service),
 ) -> OpportunityDiscoverResponse:
     return discovery.discover(types=payload.types, query=payload.query)
@@ -165,7 +197,7 @@ def admin_discover_opportunities(
 @router.post("/admin/opportunities/discover/import", response_model=OpportunityDiscoverImportResult)
 def admin_import_discovered_opportunities(
     payload: OpportunityDiscoverImportRequest,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_opportunity_ops),
     discovery: OpportunityDiscoveryService = Depends(get_opportunity_discovery_service),
 ) -> OpportunityDiscoverImportResult:
     return discovery.import_candidates(payload.candidates, current_user)
@@ -173,16 +205,34 @@ def admin_import_discovered_opportunities(
 
 @router.post("/admin/opportunities/reclassify-types", response_model=OpportunityReclassifyResult)
 def admin_reclassify_opportunity_types(
-    _: User = Depends(require_admin),
+    _: User = Depends(require_opportunity_ops),
     discovery: OpportunityDiscoveryService = Depends(get_opportunity_discovery_service),
 ) -> OpportunityReclassifyResult:
     return OpportunityReclassifyResult(updated=discovery.reclassify_drafts())
 
 
+@router.post("/admin/opportunities/bulk-publish", response_model=OpportunityBulkPublishResult)
+def admin_bulk_publish_opportunities(
+    payload: OpportunityBulkPublishRequest,
+    current_user: User = Depends(require_opportunity_ops),
+    opportunities: OpportunityService = Depends(get_opportunity_service),
+    telegram: OpportunityTelegramService = Depends(get_opportunity_telegram_service),
+) -> OpportunityBulkPublishResult:
+    result = opportunities.publish_bulk(
+        current_user,
+        payload.opportunity_ids,
+        notes=payload.notes,
+        include_high_risk=payload.include_high_risk,
+    )
+    for opportunity_id in result.published_ids:
+        telegram.announce_on_publish(opportunity_id)
+    return result
+
+
 @router.post("/admin/opportunities", response_model=OpportunityAdmin, status_code=status.HTTP_201_CREATED)
 def admin_create_opportunity(
     payload: OpportunityCreate,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_opportunity_ops),
     opportunities: OpportunityService = Depends(get_opportunity_service),
 ) -> OpportunityAdmin:
     return opportunities.create(payload, current_user)
@@ -190,7 +240,7 @@ def admin_create_opportunity(
 
 @router.get("/admin/opportunity-sources", response_model=OpportunitySourceList)
 def admin_list_opportunity_sources(
-    _: User = Depends(require_admin),
+    _: User = Depends(require_opportunity_ops),
     ingestion: OpportunityIngestionService = Depends(get_opportunity_ingestion_service),
 ) -> OpportunitySourceList:
     return ingestion.list_sources()
@@ -203,7 +253,7 @@ def admin_list_opportunity_sources(
 )
 def admin_create_opportunity_source(
     payload: OpportunitySourceCreate,
-    _: User = Depends(require_admin),
+    _: User = Depends(require_opportunity_ops),
     ingestion: OpportunityIngestionService = Depends(get_opportunity_ingestion_service),
 ) -> OpportunitySourceAdmin:
     return ingestion.create_source(payload)
@@ -212,7 +262,7 @@ def admin_create_opportunity_source(
 @router.get("/admin/opportunity-sources/{source_id}", response_model=OpportunitySourceAdmin)
 def admin_get_opportunity_source(
     source_id: UUID,
-    _: User = Depends(require_admin),
+    _: User = Depends(require_opportunity_ops),
     ingestion: OpportunityIngestionService = Depends(get_opportunity_ingestion_service),
 ) -> OpportunitySourceAdmin:
     return ingestion.get_source(source_id)
@@ -222,7 +272,7 @@ def admin_get_opportunity_source(
 def admin_update_opportunity_source(
     source_id: UUID,
     payload: OpportunitySourceUpdate,
-    _: User = Depends(require_admin),
+    _: User = Depends(require_opportunity_ops),
     ingestion: OpportunityIngestionService = Depends(get_opportunity_ingestion_service),
 ) -> OpportunitySourceAdmin:
     return ingestion.update_source(source_id, payload)
@@ -231,7 +281,7 @@ def admin_update_opportunity_source(
 @router.post("/admin/opportunity-sources/{source_id}/sync", response_model=OpportunitySyncRunPublic)
 def admin_sync_opportunity_source(
     source_id: UUID,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_opportunity_ops),
     ingestion: OpportunityIngestionService = Depends(get_opportunity_ingestion_service),
 ) -> OpportunitySyncRunPublic:
     return ingestion.sync_source(source_id, actor=current_user)
@@ -240,7 +290,7 @@ def admin_sync_opportunity_source(
 @router.get("/admin/opportunity-sources/{source_id}/sync-runs", response_model=OpportunitySyncRunList)
 def admin_list_opportunity_sync_runs(
     source_id: UUID,
-    _: User = Depends(require_admin),
+    _: User = Depends(require_opportunity_ops),
     ingestion: OpportunityIngestionService = Depends(get_opportunity_ingestion_service),
     limit: int = Query(default=20, ge=1, le=50),
 ) -> OpportunitySyncRunList:
@@ -252,6 +302,7 @@ def internal_sync_opportunities(
     ingestion: OpportunityIngestionService = Depends(get_opportunity_ingestion_service),
     settings: Settings = Depends(get_settings),
     x_opportunity_sync_token: str | None = Header(default=None),
+    payload: OpportunitySyncRequest = Body(default_factory=OpportunitySyncRequest),
 ) -> dict:
     expected = (settings.opportunity_sync_token or "").strip()
     if not expected:
@@ -259,8 +310,21 @@ def internal_sync_opportunities(
     provided = (x_opportunity_sync_token or "").strip()
     if len(provided) != len(expected) or not hmac.compare_digest(provided, expected):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid sync token")
-    runs = ingestion.sync_enabled_sources()
-    return {"runs": [run.model_dump(mode="json") for run in runs]}
+    runs = ingestion.sync_enabled_sources(source_ids=payload.source_ids)
+    expired = ingestion.expire_past_deadlines()
+    return {
+        "runs": [run.model_dump(mode="json") for run in runs],
+        "expiration": expired,
+        "summary": {
+            "sources_attempted": len(runs),
+            "sources_successful": sum(1 for run in runs if run.status == "completed"),
+            "sources_failed": sum(1 for run in runs if run.status == "failed"),
+            "found": sum(run.found for run in runs),
+            "created": sum(run.created for run in runs),
+            "duplicates": sum(run.duplicates for run in runs),
+            "rejected": sum(run.rejected for run in runs),
+        },
+    }
 
 
 @router.post("/internal/opportunities/digest")
@@ -328,7 +392,11 @@ def mark_opportunity_applied(
     return engagement.mark_applied(current_user, opportunity_id)
 
 
-@router.delete("/me/opportunities/{opportunity_id}/save", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/me/opportunities/{opportunity_id}/save",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+)
 def unsave_opportunity(
     opportunity_id: UUID,
     _: None = Depends(require_public_opportunities_hub),
@@ -341,7 +409,7 @@ def unsave_opportunity(
 @router.get("/admin/opportunities/{opportunity_id}", response_model=OpportunityAdmin)
 def admin_get_opportunity(
     opportunity_id: UUID,
-    _: User = Depends(require_admin),
+    _: User = Depends(require_opportunity_ops),
     opportunities: OpportunityService = Depends(get_opportunity_service),
 ) -> OpportunityAdmin:
     return opportunities.get_admin(opportunity_id)
@@ -351,7 +419,7 @@ def admin_get_opportunity(
 def admin_update_opportunity(
     opportunity_id: UUID,
     payload: OpportunityUpdate,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_opportunity_ops),
     opportunities: OpportunityService = Depends(get_opportunity_service),
 ) -> OpportunityAdmin:
     return opportunities.update(opportunity_id, payload, current_user)
@@ -360,7 +428,7 @@ def admin_update_opportunity(
 @router.post("/admin/opportunities/{opportunity_id}/publish", response_model=OpportunityAdmin)
 def admin_publish_opportunity(
     opportunity_id: UUID,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_opportunity_ops),
     opportunities: OpportunityService = Depends(get_opportunity_service),
     telegram: OpportunityTelegramService = Depends(get_opportunity_telegram_service),
     payload: OpportunityDecision = OpportunityDecision(),
@@ -373,7 +441,7 @@ def admin_publish_opportunity(
 @router.post("/admin/opportunities/{opportunity_id}/announce")
 def admin_announce_opportunity(
     opportunity_id: UUID,
-    _: User = Depends(require_admin),
+    _: User = Depends(require_opportunity_ops),
     telegram: OpportunityTelegramService = Depends(get_opportunity_telegram_service),
     force: bool = Query(default=False),
 ) -> dict:
@@ -383,7 +451,7 @@ def admin_announce_opportunity(
 @router.post("/admin/opportunities/{opportunity_id}/review-assist", response_model=OpportunityReviewAssistPublic)
 def admin_review_assist(
     opportunity_id: UUID,
-    _: User = Depends(require_admin),
+    _: User = Depends(require_opportunity_ops),
     assist: OpportunityReviewAssistService = Depends(get_opportunity_review_assist_service),
 ) -> OpportunityReviewAssistPublic:
     return assist.review(opportunity_id)
@@ -391,7 +459,7 @@ def admin_review_assist(
 
 @router.post("/admin/opportunities/digest")
 def admin_send_opportunity_digest(
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_opportunity_ops),
     digest: OpportunityDigestService = Depends(get_opportunity_digest_service),
     force: bool = Query(default=False),
 ) -> dict:
@@ -401,7 +469,7 @@ def admin_send_opportunity_digest(
 @router.post("/admin/opportunities/{opportunity_id}/unpublish", response_model=OpportunityAdmin)
 def admin_unpublish_opportunity(
     opportunity_id: UUID,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_opportunity_ops),
     opportunities: OpportunityService = Depends(get_opportunity_service),
     payload: OpportunityDecision = OpportunityDecision(),
 ) -> OpportunityAdmin:
@@ -411,7 +479,7 @@ def admin_unpublish_opportunity(
 @router.post("/admin/opportunities/{opportunity_id}/reject", response_model=OpportunityAdmin)
 def admin_reject_opportunity(
     opportunity_id: UUID,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_opportunity_ops),
     opportunities: OpportunityService = Depends(get_opportunity_service),
     payload: OpportunityDecision = OpportunityDecision(),
 ) -> OpportunityAdmin:
@@ -421,7 +489,7 @@ def admin_reject_opportunity(
 @router.post("/admin/opportunities/{opportunity_id}/archive", response_model=OpportunityAdmin)
 def admin_archive_opportunity(
     opportunity_id: UUID,
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_opportunity_ops),
     opportunities: OpportunityService = Depends(get_opportunity_service),
     payload: OpportunityDecision = OpportunityDecision(),
 ) -> OpportunityAdmin:

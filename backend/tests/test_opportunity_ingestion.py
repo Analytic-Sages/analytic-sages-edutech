@@ -23,6 +23,7 @@ from app.services.opportunity_sources.base import RawOpportunity
 from app.services.opportunity_sources.ashby import parse_jobs as parse_ashby_jobs
 from app.services.opportunity_sources.greenhouse import parse_jobs
 from app.services.opportunity_sources.lever import parse_jobs as parse_lever_jobs
+from app.services.opportunity_sources.ethglobal import parse_listing
 from app.services.opportunity_sources.rss import parse_feed
 from app.services.seed_opportunities import seed_opportunity_taxonomy
 
@@ -200,6 +201,109 @@ def test_ashby_ranks_engineering_ahead_of_sales():
     assert [item.external_id for item in items] == ["eng", "sales"]
 
 
+ETHGLOBAL_LISTING_HTML = """
+<html><body>
+<h2>Featured 3</h2>
+<a href="/events/tokyo2026">
+  <div class="uppercase text-xs font-semibold tracking-wider">September</div>
+  <span class="">25</span><span class="">27</span>
+  <h2>ETHGlobal Tokyo 2026</h2>
+  <span class="">Tokyo<!-- -->, <!-- -->Japan</span>
+  <span class="">IRL Hackathon</span>
+</a>
+<a href="/events/ethconf2027">
+  <h2>ETHConf 2027</h2>
+  <span class="">Conference</span>
+</a>
+<h2>Upcoming 8</h2>
+<a href="/events/ethonline2026">
+  <div class="uppercase text-xs font-semibold tracking-wider">September</div>
+  <span class="">4</span><span class="">16</span>
+  <h2>ETHOnline 2026</h2>
+  <span class="">Online</span>
+  <span class="">Async Hackathon</span>
+</a>
+<a href="/events/happy-hour-tokyo">
+  <h2>ETHGlobal Happy Hour Tokyo</h2>
+  <span class="">Meetup</span>
+</a>
+<a href="/events/tokyo2026">
+  <h2>ETHGlobal Tokyo 2026</h2>
+  <span class="">IRL Hackathon</span>
+</a>
+<a href="/events/cannes">
+  <h2>ETHGlobal Cannes 2026</h2>
+  <span class="">Hackathon</span>
+</a>
+<h2>Past 323</h2>
+<a href="/events/lisbon">
+  <h2>ETHGlobal Lisbon 2026</h2>
+  <span class="">Hackathon</span>
+</a>
+</body></html>
+"""
+
+
+def test_ethglobal_parser_keeps_upcoming_hackathons_only():
+    source = OpportunitySource(name="ETHGlobal", connector_type="ethglobal", config={})
+    items = parse_listing(ETHGLOBAL_LISTING_HTML, source)
+    slugs = [item.external_id for item in items]
+    assert slugs == ["tokyo2026", "ethonline2026", "cannes"]
+    assert all(item.opportunity_type.value == "hackathon" for item in items)
+    tokyo = items[0]
+    assert tokyo.title == "ETHGlobal Tokyo 2026"
+    assert tokyo.application_url == "https://ethglobal.com/events/tokyo2026"
+    assert tokyo.location == "Tokyo, Japan"
+    assert tokyo.workplace_type.value == "onsite"
+    assert tokyo.raw_data["ethglobal_type"] == "IRL Hackathon"
+    assert items[1].workplace_type.value == "remote"
+    assert items[1].location == "Online"
+    assert "lisbon" not in slugs
+    assert "ethconf2027" not in slugs
+    assert "happy-hour-tokyo" not in slugs
+
+
+def test_ethglobal_ingest_lands_as_draft_hackathon():
+    _seed()
+    source_name = f"ETHG {uuid.uuid4().hex[:8]}"
+    admin_email = f"admin-ethg-{uuid.uuid4()}@example.com"
+    admin = _make_user(admin_email, UserRole.ADMIN)
+    try:
+        created = client.post(
+            "/api/v1/admin/opportunity-sources",
+            headers=_auth(admin),
+            json={
+                "name": source_name,
+                "website_url": "https://ethglobal.com/events",
+                "connector_type": "ethglobal",
+                "trust_level": "high",
+                "auto_publish_allowed": False,
+                "config": {},
+            },
+        )
+        assert created.status_code == 201, created.text
+        source_id = created.json()["id"]
+        assert created.json()["config"]["events_url"] == "https://ethglobal.com/events"
+        source = OpportunitySource(name="ETHGlobal", connector_type="ethglobal", config={})
+        items = parse_listing(ETHGLOBAL_LISTING_HTML, source)
+        connector = MagicMock()
+        connector.fetch.return_value = items
+        with patch("app.services.opportunity_ingestion.get_connector", return_value=connector):
+            synced = client.post(f"/api/v1/admin/opportunity-sources/{source_id}/sync", headers=_auth(admin))
+        assert synced.status_code == 200, synced.text
+        assert synced.json()["status"] == "completed"
+        assert synced.json()["created"] == 3
+        listed = client.get("/api/v1/admin/opportunities", headers=_auth(admin), params={"q": "ETHGlobal Tokyo"})
+        match = next(item for item in listed.json()["items"] if item["title"] == "ETHGlobal Tokyo 2026")
+        assert match["status"] == "draft"
+        assert match["opportunity_type"] == "hackathon"
+        assert match["application_url"] == "https://ethglobal.com/events/tokyo2026"
+        assert match["is_manual"] is False
+    finally:
+        _cleanup_source(source_name)
+        _cleanup_user(admin_email)
+
+
 def test_recruiter_title_is_off_mission_even_with_intelligence():
     assert is_off_mission_title("Senior Technical Recruiter – Cybersecurity & Threat Intelligence")
     assert is_off_mission_title("Account Director, Defence and Intel")
@@ -229,6 +333,18 @@ def test_official_sources_are_seeded():
         assert "OpenZeppelin" in by_name
         assert "Phantom" in by_name
         assert by_name["Phantom"]["connector_type"] == "ashby"
+        assert "ETHGlobal" in by_name
+        assert by_name["ETHGlobal"]["connector_type"] == "ethglobal"
+        assert by_name["ETHGlobal"]["auto_publish_allowed"] is False
+        assert by_name["ETHGlobal"]["config"]["events_url"] == "https://ethglobal.com/events"
+        assert by_name["Colosseum"]["connector_type"] == "colosseum"
+        assert by_name["Devpost Blockchain"]["connector_type"] == "devpost"
+        assert by_name["Devfolio"]["connector_type"] == "devfolio"
+        assert by_name["DoraHacks"]["connector_type"] == "dorahacks"
+        assert by_name["Encode Club"]["connector_type"] == "encode"
+        assert by_name["Superteam Earn"]["connector_type"] == "superteam"
+        assert by_name["Superteam Earn"]["auto_publish_allowed"] is False
+        assert by_name["Superteam Earn"]["config"]["listing_url"] == "https://superteam.fun/api/listings"
     finally:
         _cleanup_user(admin_email)
 
@@ -476,7 +592,8 @@ def test_high_risk_does_not_auto_publish():
         _cleanup_user(admin_email)
 
 
-def test_auto_publish_only_when_all_gates_pass():
+def test_never_auto_publishes_even_when_flag_set():
+    """Trust-first: external ingest always enters review, never public publish."""
     _seed()
     source_name = f"RSS {uuid.uuid4().hex[:8]}"
     admin_email = f"admin-auto-{uuid.uuid4()}@example.com"
@@ -493,6 +610,7 @@ def test_auto_publish_only_when_all_gates_pass():
                 "config": {"feed_url": "https://example.com/feed.xml"},
             },
         )
+        assert created.json()["auto_publish_allowed"] is False
         source_id = created.json()["id"]
         raw = RawOpportunity(
             external_id="auto-1",
@@ -506,12 +624,13 @@ def test_auto_publish_only_when_all_gates_pass():
         with patch("app.services.opportunity_ingestion.get_connector", return_value=connector):
             synced = client.post(f"/api/v1/admin/opportunity-sources/{source_id}/sync", headers=_auth(admin))
         assert synced.json()["created"] == 1
-        listed = client.get("/api/v1/admin/opportunities", headers=_auth(admin))
+        listed = client.get("/api/v1/admin/opportunities", headers=_auth(admin), params={"review": True})
         match = next(item for item in listed.json()["items"] if item["external_id"] == "auto-1")
-        assert match["status"] == "published"
-        assert match["trust_status"] == "source_checked"
+        assert match["status"] == "draft"
+        assert match["trust_status"] in {"review_required", "high_risk"}
+        assert match.get("match_reasons") is not None
         public = client.get("/api/v1/opportunities")
-        assert any(item["id"] == match["id"] for item in public.json()["items"])
+        assert all(item["id"] != match["id"] for item in public.json()["items"])
     finally:
         _cleanup_source(source_name)
         _cleanup_user(admin_email)

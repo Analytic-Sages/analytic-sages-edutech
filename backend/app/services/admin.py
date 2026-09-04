@@ -55,15 +55,18 @@ class AdminService:
 
         users_total = self._count(User)
         students_total = self._count(User, User.role == UserRole.STUDENT)
+        staff_total = self._count(User, User.role != UserRole.STUDENT)
         users_verified = self._count(User, User.email_verified.is_(True))
         signups_24h = self._count(User, User.created_at >= now - timedelta(hours=24))
         signups_7d = self._count(User, User.created_at >= now - timedelta(days=7))
         payments_confirmed = self._count(Payment, Payment.status == PaymentStatus.CONFIRMED)
         payments_pending = self._count(Payment, Payment.status.in_(PENDING_STATUSES))
+        staff_users = self._list_staff_users(limit=24)
 
         return AdminOverview(
             users_total=users_total,
             students_total=students_total,
+            staff_total=staff_total,
             users_verified=users_verified,
             signups_24h=signups_24h,
             signups_7d=signups_7d,
@@ -73,6 +76,8 @@ class AdminService:
             featured_cohort=self._cohort_summary(featured) if featured else None,
             recent_signups=self._user_rows(self._list_users(limit=8), featured_member_ids),
             recent_payments=self._payment_rows(self._list_payments(limit=8)),
+            staff_users=self._user_rows(staff_users, featured_member_ids),
+            roles=self._enum_counts(User.role, [role.value for role in UserRole]),
         )
 
     def analytics(self) -> AdminAnalytics:
@@ -203,6 +208,16 @@ class AdminService:
         return list(
             self.db.scalars(
                 select(User).order_by(User.created_at.desc()).limit(self._clamp(limit))
+            ).all()
+        )
+
+    def _list_staff_users(self, *, limit: int) -> list[User]:
+        return list(
+            self.db.scalars(
+                select(User)
+                .where(User.role != UserRole.STUDENT)
+                .order_by(User.role.asc(), User.created_at.desc())
+                .limit(self._clamp(limit))
             ).all()
         )
 

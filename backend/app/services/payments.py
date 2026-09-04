@@ -9,8 +9,10 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.billing import ObligationStatus
 from app.core.config import Settings
 from app.core.payments import EnrollmentStatus, PaymentProviderName, PaymentStatus
+from app.models.billing import PaymentObligation
 from app.models.classroom import Cohort, CohortMember, CohortMemberRole, CohortStatus
 from app.models.course import Course
 from app.models.enrollment import Enrollment
@@ -20,7 +22,11 @@ from app.payments.base import CheckoutRequest as ProviderCheckoutRequest
 from app.payments.base import WebhookEvent
 from app.payments.factory import get_payment_provider
 from app.schemas.payments import CheckoutResponse
+from app.services.billing_accounts import BillingAccountService
+from app.services.billing_obligations import PaymentObligationService
+from app.services.billing_reconciliation import BillingReconciliationService
 from app.services.email import EmailService
+from app.services.tuition_plans import TuitionPlanService, to_major_int
 
 logger = logging.getLogger(__name__)
 
@@ -43,14 +49,54 @@ class PaymentService:
         provider_name: PaymentProviderName,
         course_id: UUID | None = None,
         cohort_id: UUID | None = None,
+        tuition_plan_id: UUID | None = None,
     ) -> CheckoutResponse:
         if cohort_id:
-            return self._checkout_cohort(user=user, cohort_id=cohort_id, provider_name=provider_name)
+            return self._checkout_cohort(
+                user=user,
+                cohort_id=cohort_id,
+                provider_name=provider_name,
+                tuition_plan_id=tuition_plan_id,
+            )
         if course_id:
             return self._checkout_course(user=user, course_id=course_id, provider_name=provider_name)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Provide course_id or cohort_id",
+        )
+
+    def create_obligation_checkout(
+        self,
+        *,
+        user: User,
+        obligation: PaymentObligation,
+        provider_name: PaymentProviderName,
+    ) -> CheckoutResponse:
+        account = obligation.billing_account
+        title = obligation.description or "Tuition installment"
+        if account.cohort_id:
+            cohort = self.db.get(Cohort, account.cohort_id)
+            if cohort:
+                title = f"{cohort.name} — {obligation.description}"
+        return self._create_payment_session(
+            user=user,
+            provider_name=provider_name,
+            amount=to_major_int(obligation.amount_due),
+            currency=obligation.currency,
+            title=title,
+            course_id=account.course_id,
+            cohort_id=account.cohort_id,
+            billing_account_id=account.id,
+            payment_obligation_id=obligation.id,
+            metadata={
+                "user_id": str(user.id),
+                "cohort_id": str(account.cohort_id) if account.cohort_id else None,
+                "course_id": str(account.course_id) if account.course_id else None,
+                "billing_account_id": str(account.id),
+                "payment_obligation_id": str(obligation.id),
+                "kind": "tuition_obligation",
+                "sequence_number": obligation.sequence_number,
+            },
         )
 
     def _checkout_course(
@@ -107,6 +153,7 @@ class PaymentService:
         user: User,
         cohort_id: UUID,
         provider_name: PaymentProviderName,
+        tuition_plan_id: UUID | None = None,
     ) -> CheckoutResponse:
         cohort = self.db.get(Cohort, cohort_id)
         if not cohort:
@@ -125,22 +172,99 @@ class PaymentService:
                 detail="Registration for this cohort has closed",
             )
 
-        if cohort.price <= 0:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="This cohort is not priced for online checkout yet",
-            )
-
         member = self.db.scalar(
             select(CohortMember).where(
                 CohortMember.cohort_id == cohort.id,
                 CohortMember.user_id == user.id,
             )
         )
+
+        plans_enabled = self.settings.billing_plans_enabled
+        available_plans = (
+            TuitionPlanService(self.db).list_plans_for_cohort(cohort_id=cohort.id)
+            if plans_enabled
+            else []
+        )
+
+        if plans_enabled and available_plans:
+            if member:
+                # Returning installment payers already have a seat.
+                accounts = BillingAccountService(self.db)
+                open_accounts = [
+                    a
+                    for a in accounts.list_for_student(user.id)
+                    if a.cohort_id == cohort.id
+                ]
+                if not open_accounts:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="You are already registered for this cohort",
+                    )
+                account = accounts.get_account(open_accounts[0].id, student_id=user.id)
+                payable = next(
+                    (
+                        o
+                        for o in account.obligations
+                        if o.status
+                        in {
+                            ObligationStatus.OPEN,
+                            ObligationStatus.PAST_DUE,
+                            ObligationStatus.PROCESSING,
+                        }
+                    ),
+                    None,
+                )
+                if not payable:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="No open tuition installment to pay",
+                    )
+                return self.create_obligation_checkout(
+                    user=user, obligation=payable, provider_name=provider_name
+                )
+
+            if not tuition_plan_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Select a tuition plan to continue checkout",
+                )
+            if tuition_plan_id not in {p.id for p in available_plans}:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Tuition plan is not available for this cohort",
+                )
+            account = BillingAccountService(self.db).create_account(
+                student=user,
+                tuition_plan_id=tuition_plan_id,
+                cohort_id=cohort.id,
+                actor=user,
+            )
+            first = next(
+                (o for o in account.obligations if o.sequence_number == 1),
+                None,
+            )
+            if not first:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Billing account has no obligations",
+                )
+            first = PaymentObligationService(self.db).get_payable_obligation(
+                first.id, student_id=user.id
+            )
+            return self.create_obligation_checkout(
+                user=user, obligation=first, provider_name=provider_name
+            )
+
         if member:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="You are already registered for this cohort",
+            )
+
+        if cohort.price <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This cohort is not priced for online checkout yet",
             )
 
         return self._create_payment_session(
@@ -171,6 +295,8 @@ class PaymentService:
         course_id: UUID | None,
         cohort_id: UUID | None,
         metadata: dict,
+        billing_account_id: UUID | None = None,
+        payment_obligation_id: UUID | None = None,
     ) -> CheckoutResponse:
         order_id = f"ord-{secrets.token_hex(12)}"
         provider = get_payment_provider(provider_name, self.settings)
@@ -196,6 +322,8 @@ class PaymentService:
             user_id=user.id,
             course_id=course_id,
             cohort_id=cohort_id,
+            billing_account_id=billing_account_id,
+            payment_obligation_id=payment_obligation_id,
             provider=session.provider,
             provider_payment_id=session.provider_payment_id,
             amount=amount,
@@ -207,6 +335,13 @@ class PaymentService:
             metadata_json={**(session.metadata or {}), **metadata},
         )
         self.db.add(payment)
+        if payment_obligation_id:
+            obligation = self.db.get(PaymentObligation, payment_obligation_id)
+            if obligation and obligation.status in {
+                ObligationStatus.OPEN,
+                ObligationStatus.PAST_DUE,
+            }:
+                obligation.status = ObligationStatus.PROCESSING
         self.db.commit()
         self.db.refresh(payment)
 
@@ -241,6 +376,22 @@ class PaymentService:
         if not payment:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
 
+        reconciliation = BillingReconciliationService(self.db)
+        event_key = (
+            f"{event.order_id}:{event.status.value}:"
+            f"{event.provider_payment_id or payment.provider_payment_id or 'none'}"
+        )
+        is_new = reconciliation.record_webhook_event(
+            provider=event.provider.value,
+            event_key=event_key,
+            payment_id=payment.id,
+            payload=event.raw if isinstance(event.raw, dict) else None,
+        )
+        if not is_new:
+            self.db.commit()
+            self.db.refresh(payment)
+            return payment
+
         if payment.provider != event.provider and event.provider != PaymentProviderName.MOCK:
             if not (
                 not self.settings.is_production
@@ -256,6 +407,19 @@ class PaymentService:
                 )
 
         if payment.status == PaymentStatus.CONFIRMED:
+            if event.status == PaymentStatus.REFUNDED:
+                payment.status = PaymentStatus.REFUNDED
+                payment.metadata_json = {
+                    **(payment.metadata_json or {}),
+                    "last_webhook": event.raw,
+                }
+                from app.services.referrals import ReferralCommissionService
+
+                ReferralCommissionService(self.db, self.settings).handle_refunded_payment(payment)
+                self.db.commit()
+                self.db.refresh(payment)
+                return payment
+            self.db.commit()
             return payment
 
         if event.provider_payment_id:
@@ -330,11 +494,22 @@ class PaymentService:
                         )
 
             payment.confirmed_at = datetime.now(UTC)
+            billing_account = reconciliation.reconcile_confirmed_payment(payment)
+
             enrollment = None
-            if payment.course_id:
+            if payment.course_id and not payment.payment_obligation_id:
                 enrollment = self._unlock_enrollment(payment)
             if payment.cohort_id:
-                self._unlock_cohort_membership(payment)
+                should_unlock = True
+                if billing_account is not None:
+                    should_unlock = reconciliation.first_obligation_paid(billing_account)
+                if should_unlock:
+                    self._unlock_cohort_membership(payment)
+
+            from app.services.referrals import ReferralCommissionService
+
+            ReferralCommissionService(self.db, self.settings).handle_successful_payment(payment)
+
             self.db.commit()
             self.db.refresh(payment)
 
@@ -349,7 +524,7 @@ class PaymentService:
                     order_id=payment.order_id,
                     provider=payment.provider.value,
                 )
-                if payment.course_id:
+                if payment.course_id and enrollment is not None:
                     course = self.db.get(Course, payment.course_id)
                     if course:
                         self.email_service.send_enrollment_confirmation(
@@ -357,7 +532,10 @@ class PaymentService:
                             course_title=course.title,
                             course_slug=course.slug,
                         )
-                elif payment.cohort_id:
+                elif payment.cohort_id and (
+                    billing_account is None
+                    or reconciliation.first_obligation_paid(billing_account)
+                ):
                     cohort = self.db.get(Cohort, payment.cohort_id)
                     if cohort:
                         self.email_service.send_enrollment_confirmation(
@@ -367,12 +545,24 @@ class PaymentService:
                             access_path="/classroom",
                         )
             logger.info(
-                "Payment confirmed order=%s enrollment=%s cohort=%s",
+                "Payment confirmed order=%s enrollment=%s cohort=%s obligation=%s",
                 payment.order_id,
                 enrollment.id if enrollment else None,
                 payment.cohort_id,
+                payment.payment_obligation_id,
             )
             return payment
+
+        if event.status in {PaymentStatus.FAILED, PaymentStatus.EXPIRED}:
+            if payment.payment_obligation_id:
+                obligation = self.db.get(PaymentObligation, payment.payment_obligation_id)
+                if obligation and obligation.status == ObligationStatus.PROCESSING:
+                    obligation.status = ObligationStatus.OPEN
+
+        if event.status == PaymentStatus.REFUNDED:
+            from app.services.referrals import ReferralCommissionService
+
+            ReferralCommissionService(self.db, self.settings).handle_refunded_payment(payment)
 
         self.db.commit()
         self.db.refresh(payment)

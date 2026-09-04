@@ -174,6 +174,8 @@ export function AdminOpportunityForm({ opportunityId }: { opportunityId?: string
     risk_notes?: string[];
     provider?: string | null;
   } | null>(null);
+  const [matchReasons, setMatchReasons] = useState<string[]>([]);
+  const [relevanceScore, setRelevanceScore] = useState<number | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -188,6 +190,8 @@ export function AdminOpportunityForm({ opportunityId }: { opportunityId?: string
           setForm(fromOpportunity(row));
           setStatus(row.status);
           setAssist(row.review_assist || null);
+          setMatchReasons(row.match_reasons || []);
+          setRelevanceScore(row.relevance_score ?? null);
         }
       })
       .catch((err) => {
@@ -498,6 +502,21 @@ export function AdminOpportunityForm({ opportunityId }: { opportunityId?: string
           <Label htmlFor="admin_notes">Internal notes</Label>
           <Textarea id="admin_notes" rows={3} value={form.admin_notes} onChange={(e) => set("admin_notes", e.target.value)} />
         </div>
+
+        {matchReasons.length > 0 || relevanceScore != null ? (
+          <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm">
+            <p className="font-medium text-brand-navy dark:text-foreground">
+              Relevance score: {relevanceScore != null ? relevanceScore : "—"}
+            </p>
+            {matchReasons.length > 0 ? (
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+                {matchReasons.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        ) : null}
 
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={form.featured} onChange={(e) => set("featured", e.target.checked)} />

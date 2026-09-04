@@ -19,6 +19,7 @@ import {
   Sun,
   Users,
   PenLine,
+  Share2,
   type LucideIcon,
 } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
@@ -52,6 +53,7 @@ const navIcons: Record<NavItemId, LucideIcon> = {
   analytics: BarChart3,
   settings: Settings,
   insights: PenLine,
+  referrals: Share2,
 };
 
 type AppSidebarProps = {

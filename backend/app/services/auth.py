@@ -15,6 +15,7 @@ from app.services.email import EmailService
 STAFF_INVITE_ROLES = {
     UserRole.INSTRUCTOR,
     UserRole.OPERATIONS,
+    UserRole.PARTNERSHIPS,
     UserRole.EDITOR,
     UserRole.AUTHOR,
 }
@@ -40,7 +41,12 @@ class AuthService:
         self.security = security
         self.email_service = email_service
 
-    def register(self, payload: RegisterRequest) -> tuple[User, str]:
+    def register(
+        self,
+        payload: RegisterRequest,
+        *,
+        anonymous_visitor_id: str | None = None,
+    ) -> tuple[User, str]:
         existing = self.db.scalar(select(User).where(User.email == payload.email.lower()))
         if existing:
             raise HTTPException(
@@ -57,6 +63,14 @@ class AuthService:
         )
         self.db.add(user)
         self.db.flush()
+
+        from app.core.config import get_settings
+        from app.services.referrals import ReferralAttributionService
+
+        ReferralAttributionService(self.db, get_settings()).lock_for_new_user(
+            user=user,
+            anonymous_visitor_id=anonymous_visitor_id,
+        )
 
         raw_token = self._issue_email_verification_token(user.id)
         self.db.commit()
@@ -220,6 +234,9 @@ class AuthService:
     def invite_operations(self, *, email: str, full_name: str | None) -> StaffInviteResult:
         return self.invite_staff(email=email, full_name=full_name, role=UserRole.OPERATIONS)
 
+    def invite_partnerships(self, *, email: str, full_name: str | None) -> StaffInviteResult:
+        return self.invite_staff(email=email, full_name=full_name, role=UserRole.PARTNERSHIPS)
+
     def invite_editor(self, *, email: str, full_name: str | None) -> StaffInviteResult:
         return self.invite_staff(email=email, full_name=full_name, role=UserRole.EDITOR)
 
@@ -242,6 +259,7 @@ class AuthService:
         user = self.db.scalar(select(User).where(User.email == email_normalized))
         role_labels = {
             UserRole.OPERATIONS: "operations manager",
+            UserRole.PARTNERSHIPS: "grants & partnerships manager",
             UserRole.EDITOR: "editor",
             UserRole.AUTHOR: "author",
             UserRole.INSTRUCTOR: "instructor",
@@ -336,6 +354,7 @@ class AuthService:
         if not user or user.role not in {
             UserRole.INSTRUCTOR,
             UserRole.OPERATIONS,
+            UserRole.PARTNERSHIPS,
             UserRole.EDITOR,
             UserRole.AUTHOR,
         }:
@@ -368,9 +387,11 @@ class AuthService:
         google_id: str,
         email: str,
         full_name: str | None,
+        anonymous_visitor_id: str | None = None,
     ) -> tuple[User, str, str]:
         email_normalized = email.lower()
         user = self.db.scalar(select(User).where(User.google_id == google_id))
+        is_new_user = False
 
         if not user:
             user = self.db.scalar(select(User).where(User.email == email_normalized))
@@ -395,11 +416,21 @@ class AuthService:
                 )
                 self.db.add(user)
                 self.db.flush()
+                is_new_user = True
 
         if not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Account is disabled",
+            )
+
+        if is_new_user:
+            from app.core.config import get_settings
+            from app.services.referrals import ReferralAttributionService
+
+            ReferralAttributionService(self.db, get_settings()).lock_for_new_user(
+                user=user,
+                anonymous_visitor_id=anonymous_visitor_id,
             )
 
         access_token = self.security.create_access_token(

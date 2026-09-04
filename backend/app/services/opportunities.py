@@ -13,11 +13,16 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.opportunity import (
+    BountyCategory,
     CareerPath,
+    EmploymentType,
     ExperienceLevel,
+    HackathonEventFormat,
     LocationRegion,
     Opportunity,
+    OpportunityBountyDetails,
     OpportunityCareerPath,
+    OpportunityHackathonDetails,
     OpportunityPublicBadge,
     OpportunitySkill,
     OpportunitySource,
@@ -33,9 +38,13 @@ from app.models.opportunity import (
 from app.models.user import User
 from app.schemas.opportunities import (
     AdminTaxonomy,
+    BountyDetailsPublic,
+    BountyDetailsWrite,
     CareerPathAdmin,
     CareerPathPublic,
     FilterOption,
+    HackathonDetailsPublic,
+    HackathonDetailsWrite,
     OpportunityAdmin,
     OpportunityAdminList,
     OpportunityCardPublic,
@@ -51,6 +60,14 @@ from app.schemas.opportunities import (
     SourcePublic,
     TaxonomyOption,
 )
+from app.services.bounty_dates import PHASE_RANK as BOUNTY_PHASE_RANK
+from app.services.bounty_dates import BountyPhase, closes_in_days
+from app.services.bounty_details import refresh_derived_phase as refresh_bounty_phase
+from app.services.bounty_details import upsert_bounty_details
+from app.services.bounty_normalize import BountyDetailsPayload
+from app.services.hackathon_dates import PHASE_RANK, HackathonPhase, registration_closes_in_days
+from app.services.hackathon_details import refresh_derived_phase, upsert_hackathon_details
+from app.services.hackathon_normalize import HackathonDetailsPayload
 from app.services.insights import slugify
 from app.services.opportunity_prose import normalize_description, normalize_optional
 from app.services.opportunity_urls import validate_http_url
@@ -76,6 +93,7 @@ TYPE_LABELS = {
     OpportunityType.HACKATHON: "Hackathons",
     OpportunityType.GRANT: "Grants",
     OpportunityType.BOUNTY: "Bounties",
+    OpportunityType.CHALLENGE: "Challenges",
     OpportunityType.RESEARCH: "Research",
     OpportunityType.OTHER: "Other",
 }
@@ -175,9 +193,23 @@ class OpportunityService:
 
     def _visible_now(self, now: datetime | None = None):
         current = now or self._utcnow()
+        not_ended_hackathon = ~exists(
+            select(OpportunityHackathonDetails.opportunity_id).where(
+                OpportunityHackathonDetails.opportunity_id == Opportunity.id,
+                OpportunityHackathonDetails.derived_phase == HackathonPhase.ENDED.value,
+            )
+        )
+        not_ended_bounty = ~exists(
+            select(OpportunityBountyDetails.opportunity_id).where(
+                OpportunityBountyDetails.opportunity_id == Opportunity.id,
+                OpportunityBountyDetails.derived_phase == BountyPhase.ENDED.value,
+            )
+        )
         return and_(
             Opportunity.status == OpportunityStatus.PUBLISHED,
             or_(Opportunity.deadline.is_(None), Opportunity.deadline >= current),
+            not_ended_hackathon,
+            not_ended_bounty,
         )
 
     def _detail_load(self):
@@ -186,7 +218,136 @@ class OpportunityService:
             selectinload(Opportunity.skill_links).selectinload(OpportunitySkill.skill),
             selectinload(Opportunity.source),
             selectinload(Opportunity.risk_flags),
+            selectinload(Opportunity.hackathon_details),
+            selectinload(Opportunity.bounty_details),
         )
+
+    def _hackathon_public(self, opportunity: Opportunity) -> HackathonDetailsPublic | None:
+        details = opportunity.hackathon_details
+        if details is None:
+            if opportunity.opportunity_type not in {
+                OpportunityType.HACKATHON,
+                OpportunityType.CHALLENGE,
+            }:
+                return None
+            return None
+        closes = registration_closes_in_days(
+            details.registration_deadline,
+            fallback_deadline=opportunity.deadline,
+        )
+        return HackathonDetailsPublic(
+            short_description=details.short_description,
+            registration_url=details.registration_url,
+            website_url=details.website_url,
+            registration_open_at=details.registration_open_at,
+            registration_deadline=details.registration_deadline,
+            start_at=details.start_at,
+            end_at=details.end_at,
+            submission_deadline=details.submission_deadline,
+            event_format=_enum_value(details.event_format),
+            prize_pool_amount=details.prize_pool_amount,
+            prize_currency=details.prize_currency,
+            prize_pool_raw=details.prize_pool_raw,
+            team_size_min=details.team_size_min,
+            team_size_max=details.team_size_max,
+            tags=[str(t) for t in (details.tags or [])],
+            tracks=[str(t) for t in (details.tracks or [])],
+            derived_phase=details.derived_phase,
+            registration_closes_in_days=closes,
+        )
+
+    def _apply_hackathon_write(
+        self,
+        opportunity: Opportunity,
+        payload: HackathonDetailsWrite | None,
+    ) -> None:
+        if payload is None:
+            return
+        if opportunity.opportunity_type not in {
+            OpportunityType.HACKATHON,
+            OpportunityType.CHALLENGE,
+        }:
+            return
+        details_payload = HackathonDetailsPayload(
+            short_description=payload.short_description,
+            registration_url=payload.registration_url,
+            website_url=payload.website_url,
+            registration_open_at=self._aware(payload.registration_open_at),
+            registration_deadline=self._aware(payload.registration_deadline),
+            start_at=self._aware(payload.start_at),
+            end_at=self._aware(payload.end_at),
+            submission_deadline=self._aware(payload.submission_deadline),
+            event_format=payload.event_format,
+            prize_pool_amount=payload.prize_pool_amount,
+            prize_currency=payload.prize_currency,
+            prize_pool_raw=payload.prize_pool_raw,
+            team_size_min=payload.team_size_min,
+            team_size_max=payload.team_size_max,
+            team_required=payload.team_required,
+            individual_allowed=payload.individual_allowed,
+            tags=list(payload.tags or []),
+            tracks=list(payload.tracks or []),
+            technology_focus=payload.technology_focus,
+            opportunity_type=opportunity.opportunity_type,
+        )
+        row = upsert_hackathon_details(opportunity, payload=details_payload)
+        if row is not None:
+            refresh_derived_phase(row)
+
+    def _bounty_public(self, opportunity: Opportunity) -> BountyDetailsPublic | None:
+        details = opportunity.bounty_details
+        if details is None:
+            return None
+        return BountyDetailsPublic(
+            short_description=details.short_description,
+            listing_url=details.listing_url,
+            reward_amount=details.reward_amount,
+            reward_token=details.reward_token,
+            reward_currency=details.reward_currency,
+            reward_raw=details.reward_raw,
+            category=_enum_value(details.category),
+            opens_at=details.opens_at,
+            deadline=details.deadline,
+            winners_announced=details.winners_announced,
+            skills=[str(s) for s in (details.skills or [])],
+            tags=[str(t) for t in (details.tags or [])],
+            chain_focus=details.chain_focus,
+            derived_phase=details.derived_phase,
+            closes_in_days=closes_in_days(
+                details.deadline,
+                fallback_deadline=opportunity.deadline,
+            ),
+        )
+
+    def _apply_bounty_write(
+        self,
+        opportunity: Opportunity,
+        payload: BountyDetailsWrite | None,
+    ) -> None:
+        if payload is None:
+            return
+        if opportunity.opportunity_type != OpportunityType.BOUNTY:
+            return
+        details_payload = BountyDetailsPayload(
+            short_description=payload.short_description,
+            listing_url=payload.listing_url,
+            reward_amount=payload.reward_amount,
+            reward_token=payload.reward_token,
+            reward_currency=payload.reward_currency,
+            reward_raw=payload.reward_raw,
+            reward_min=payload.reward_min,
+            reward_max=payload.reward_max,
+            category=payload.category,
+            opens_at=self._aware(payload.opens_at),
+            deadline=self._aware(payload.deadline),
+            winners_announced=payload.winners_announced,
+            skills=list(payload.skills or []),
+            tags=list(payload.tags or []),
+            chain_focus=payload.chain_focus,
+        )
+        row = upsert_bounty_details(opportunity, payload=details_payload)
+        if row is not None:
+            refresh_bounty_phase(row)
 
     def _career_paths(self, opportunity: Opportunity) -> list[CareerPathPublic]:
         links = sorted(
@@ -254,6 +415,8 @@ class OpportunityService:
             employment_type=_enum_value(opportunity.employment_type) if opportunity.employment_type else None,
             experience_level=_enum_value(opportunity.experience_level),
             location=opportunity.location,
+            location_raw=opportunity.location_raw,
+            location_scope=_enum_value(opportunity.location_scope) if opportunity.location_scope else None,
             country=opportunity.country,
             region=opportunity.region,
             workplace_type=_enum_value(opportunity.workplace_type),
@@ -265,6 +428,17 @@ class OpportunityService:
             application_domain=self._application_domain(opportunity.application_url),
             primary_career_path=primary,
             skills=self._skills(opportunity),
+            source=SourcePublic(
+                id=opportunity.source.id if opportunity.source else None,
+                name=opportunity.source.name if opportunity.source else "Manual",
+                source_type=_enum_value(opportunity.source.source_type)
+                if opportunity.source
+                else "manual",
+            )
+            if opportunity.source or opportunity.is_manual
+            else None,
+            hackathon=self._hackathon_public(opportunity),
+            bounty=self._bounty_public(opportunity),
         )
 
     def _decorate_card(self, card: OpportunityCardPublic, opportunity: Opportunity, user: User | None) -> OpportunityCardPublic:
@@ -326,6 +500,8 @@ class OpportunityService:
             employment_type=_enum_value(opportunity.employment_type) if opportunity.employment_type else None,
             experience_level=_enum_value(opportunity.experience_level),
             location=opportunity.location,
+            location_raw=opportunity.location_raw,
+            location_scope=_enum_value(opportunity.location_scope) if opportunity.location_scope else None,
             country=opportunity.country,
             region=opportunity.region,
             workplace_type=_enum_value(opportunity.workplace_type),
@@ -345,7 +521,10 @@ class OpportunityService:
             is_manual=opportunity.is_manual,
             external_id=opportunity.external_id,
             relevance_score=opportunity.relevance_score,
+            match_reasons=list(opportunity.match_reasons or []),
+            matched_career_tracks=list(opportunity.matched_career_tracks or []),
             duplicate_of_id=opportunity.duplicate_of_id,
+            duplicate_confidence=opportunity.duplicate_confidence,
             created_by=opportunity.created_by,
             approved_by=opportunity.approved_by,
             career_paths=paths,
@@ -362,6 +541,8 @@ class OpportunityService:
             ],
             telegram_announced_at=opportunity.telegram_announced_at,
             review_assist=opportunity.review_assist or {},
+            hackathon=self._hackathon_public(opportunity),
+            bounty=self._bounty_public(opportunity),
             created_at=opportunity.created_at,
             updated_at=opportunity.updated_at,
         )
@@ -498,7 +679,12 @@ class OpportunityService:
         skill: str | None = None,
         workplace_type: WorkplaceType | None = None,
         experience_level: ExperienceLevel | None = None,
+        employment_type: EmploymentType | None = None,
         region: LocationRegion | None = None,
+        event_format: HackathonEventFormat | None = None,
+        hackathon_phase: str | None = None,
+        bounty_category: BountyCategory | None = None,
+        bounty_phase: str | None = None,
         sort: str = "newest",
         limit: int = 20,
         offset: int = 0,
@@ -541,8 +727,46 @@ class OpportunityService:
             filters.append(Opportunity.workplace_type == workplace_type)
         if experience_level:
             filters.append(Opportunity.experience_level == experience_level)
+        if employment_type:
+            filters.append(Opportunity.employment_type == employment_type)
         if region:
             filters.append(Opportunity.region == region.value)
+        if event_format is not None:
+            filters.append(
+                exists(
+                    select(OpportunityHackathonDetails.opportunity_id).where(
+                        OpportunityHackathonDetails.opportunity_id == Opportunity.id,
+                        OpportunityHackathonDetails.event_format == event_format,
+                    )
+                )
+            )
+        if hackathon_phase:
+            filters.append(
+                exists(
+                    select(OpportunityHackathonDetails.opportunity_id).where(
+                        OpportunityHackathonDetails.opportunity_id == Opportunity.id,
+                        OpportunityHackathonDetails.derived_phase == hackathon_phase,
+                    )
+                )
+            )
+        if bounty_category is not None:
+            filters.append(
+                exists(
+                    select(OpportunityBountyDetails.opportunity_id).where(
+                        OpportunityBountyDetails.opportunity_id == Opportunity.id,
+                        OpportunityBountyDetails.category == bounty_category,
+                    )
+                )
+            )
+        if bounty_phase:
+            filters.append(
+                exists(
+                    select(OpportunityBountyDetails.opportunity_id).where(
+                        OpportunityBountyDetails.opportunity_id == Opportunity.id,
+                        OpportunityBountyDetails.derived_phase == bounty_phase,
+                    )
+                )
+            )
         if career_path:
             try:
                 path_uuid = UUID(career_path)
@@ -594,6 +818,77 @@ class OpportunityService:
                     limit=limit,
                     offset=offset,
                 )
+
+        is_hackathon_feed = opportunity_type in {
+            OpportunityType.HACKATHON,
+            OpportunityType.CHALLENGE,
+        } or sort == "hackathon"
+        if is_hackathon_feed and sort in {"newest", "hackathon", "deadline"}:
+            rows = list(self.db.scalars(query).all())
+
+            def _hackathon_sort_key(row: Opportunity):
+                details = row.hackathon_details
+                phase = HackathonPhase.UNKNOWN
+                if details and details.derived_phase:
+                    try:
+                        phase = HackathonPhase(details.derived_phase)
+                    except ValueError:
+                        phase = HackathonPhase.UNKNOWN
+                reg = None
+                if details and details.registration_deadline:
+                    reg = self._aware(details.registration_deadline)
+                elif row.deadline:
+                    reg = self._aware(row.deadline)
+                return (
+                    PHASE_RANK.get(phase, 99),
+                    reg or datetime.max.replace(tzinfo=UTC),
+                    -(row.published_at.timestamp() if row.published_at else 0),
+                )
+
+            rows.sort(key=_hackathon_sort_key)
+            total = len(rows)
+            page = rows[offset : offset + limit]
+            return OpportunityListPublic(
+                items=[self._decorate_card(self._card(row), row, user) for row in page],
+                total=total,
+                limit=limit,
+                offset=offset,
+            )
+
+        is_bounty_feed = opportunity_type == OpportunityType.BOUNTY or sort == "bounty"
+        if is_bounty_feed and sort in {"newest", "bounty", "deadline"}:
+            rows = list(self.db.scalars(query).all())
+
+            def _bounty_sort_key(row: Opportunity):
+                details = row.bounty_details
+                phase = BountyPhase.UNKNOWN
+                if details and details.derived_phase:
+                    try:
+                        phase = BountyPhase(details.derived_phase)
+                    except ValueError:
+                        phase = BountyPhase.UNKNOWN
+                due = None
+                if details and details.deadline:
+                    due = self._aware(details.deadline)
+                elif row.deadline:
+                    due = self._aware(row.deadline)
+                reward = float(details.reward_amount) if details and details.reward_amount is not None else 0.0
+                return (
+                    BOUNTY_PHASE_RANK.get(phase, 99),
+                    due or datetime.max.replace(tzinfo=UTC),
+                    -reward,
+                )
+
+            rows.sort(key=_bounty_sort_key)
+            total = len(rows)
+            page = rows[offset : offset + limit]
+            return OpportunityListPublic(
+                items=[self._decorate_card(self._card(row), row, user) for row in page],
+                total=total,
+                limit=limit,
+                offset=offset,
+            )
+
         if sort == "deadline":
             query = query.order_by(
                 Opportunity.deadline.asc().nullslast(),
@@ -846,6 +1141,8 @@ class OpportunityService:
                 detail="An opportunity with this slug already exists",
             ) from exc
         self._replace_taxonomy(opportunity, payload.career_path_ids, payload.skill_ids)
+        self._apply_hackathon_write(opportunity, payload.hackathon)
+        self._apply_bounty_write(opportunity, payload.bounty)
         self._log(opportunity, VerificationEventType.CREATED, VerificationEventResult.RECORDED, actor)
         self.db.commit()
         return self.get_admin(opportunity.id)
@@ -856,6 +1153,8 @@ class OpportunityService:
         data = payload.model_dump(exclude_unset=True)
         career_path_ids = data.pop("career_path_ids", None)
         skill_ids = data.pop("skill_ids", None)
+        hackathon_data = data.pop("hackathon", None)
+        bounty_data = data.pop("bounty", None)
         application_url = data.pop("application_url", None)
         source_url = data.pop("source_url", None)
         if "slug" in data:
@@ -884,6 +1183,16 @@ class OpportunityService:
         self._apply_urls(opportunity, application_url, source_url)
         if career_path_ids is not None or skill_ids is not None:
             self._replace_taxonomy(opportunity, career_path_ids, skill_ids)
+        if "hackathon" in payload.model_fields_set:
+            self._apply_hackathon_write(
+                opportunity,
+                HackathonDetailsWrite.model_validate(hackathon_data) if hackathon_data else None,
+            )
+        if "bounty" in payload.model_fields_set:
+            self._apply_bounty_write(
+                opportunity,
+                BountyDetailsWrite.model_validate(bounty_data) if bounty_data else None,
+            )
         self._log(opportunity, VerificationEventType.UPDATED, VerificationEventResult.RECORDED, actor)
         try:
             self.db.commit()
@@ -895,25 +1204,48 @@ class OpportunityService:
             ) from exc
         return self.get_admin(opportunity.id)
 
-    def _assert_can_publish(self, opportunity: Opportunity) -> None:
+    def _publish_block_reason(
+        self,
+        opportunity: Opportunity,
+        *,
+        skip_high_risk: bool = False,
+    ) -> str | None:
+        if opportunity.status == OpportunityStatus.ARCHIVED:
+            return "Archived"
+        if opportunity.status == OpportunityStatus.PUBLISHED:
+            return "Already published"
+        if opportunity.status == OpportunityStatus.REJECTED:
+            return "Rejected"
+        if skip_high_risk and opportunity.trust_status == OpportunityTrustStatus.HIGH_RISK:
+            return "High risk — review individually"
         if not opportunity.title.strip() or not opportunity.organization_name.strip():
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Title and organization are required")
-        if not opportunity.description.strip():
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Description is required to publish")
+            return "Missing title or organization"
+        if not (opportunity.description or "").strip():
+            return "Missing description"
         if not opportunity.application_url:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Application URL is required")
+            return "Missing application URL"
         deadline = self._aware(opportunity.deadline)
         if deadline is not None and deadline < self._utcnow():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot publish an opportunity whose deadline has already passed",
-            )
+            return "Deadline already passed"
+        return None
+
+    def _assert_can_publish(self, opportunity: Opportunity) -> None:
+        reason = self._publish_block_reason(opportunity, skip_high_risk=False)
+        if reason:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=reason)
 
     def publish(self, opportunity_id: UUID, actor: User, notes: str | None = None) -> OpportunityAdmin:
         opportunity = self._get(opportunity_id)
-        if opportunity.status == OpportunityStatus.ARCHIVED:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Archived opportunities cannot be published")
         self._assert_can_publish(opportunity)
+        self._apply_publish(opportunity, actor, notes=notes)
+        self.db.commit()
+        from app.services.opportunity_publish import emit_opportunity_published
+
+        emit_opportunity_published(opportunity)
+        logger.info("opportunity_published id=%s slug=%s actor=%s", opportunity.id, opportunity.slug, actor.id)
+        return self.get_admin(opportunity.id)
+
+    def _apply_publish(self, opportunity: Opportunity, actor: User, notes: str | None = None) -> None:
         opportunity.status = OpportunityStatus.PUBLISHED
         if opportunity.published_at is None:
             opportunity.published_at = self._utcnow()
@@ -936,9 +1268,73 @@ class OpportunityService:
             actor,
             notes=notes,
         )
+
+    def publish_bulk(
+        self,
+        actor: User,
+        opportunity_ids: list[UUID],
+        *,
+        notes: str | None = None,
+        include_high_risk: bool = False,
+    ):
+        from app.schemas.opportunities import (
+            OpportunityBulkPublishResult,
+            OpportunityBulkPublishSkipped,
+        )
+        from app.services.opportunity_publish import emit_opportunity_published
+
+        if not opportunity_ids:
+            return OpportunityBulkPublishResult()
+        # Preserve order, drop duplicates
+        seen: set[UUID] = set()
+        ordered: list[UUID] = []
+        for oid in opportunity_ids[:50]:
+            if oid in seen:
+                continue
+            seen.add(oid)
+            ordered.append(oid)
+
+        published_ids: list[UUID] = []
+        skipped_items: list[OpportunityBulkPublishSkipped] = []
+        published_rows: list[Opportunity] = []
+
+        for oid in ordered:
+            opportunity = self.db.scalar(
+                select(Opportunity).options(*self._detail_load()).where(Opportunity.id == oid)
+            )
+            if opportunity is None:
+                skipped_items.append(
+                    OpportunityBulkPublishSkipped(id=oid, title="(missing)", reason="Not found")
+                )
+                continue
+            reason = self._publish_block_reason(
+                opportunity,
+                skip_high_risk=not include_high_risk,
+            )
+            if reason:
+                skipped_items.append(
+                    OpportunityBulkPublishSkipped(
+                        id=opportunity.id,
+                        title=opportunity.title,
+                        reason=reason,
+                    )
+                )
+                continue
+            self._apply_publish(opportunity, actor, notes=notes)
+            published_ids.append(opportunity.id)
+            published_rows.append(opportunity)
+
         self.db.commit()
-        logger.info("opportunity_published id=%s slug=%s actor=%s", opportunity.id, opportunity.slug, actor.id)
-        return self.get_admin(opportunity.id)
+        for row in published_rows:
+            emit_opportunity_published(row)
+            logger.info("opportunity_published_bulk id=%s slug=%s actor=%s", row.id, row.slug, actor.id)
+
+        return OpportunityBulkPublishResult(
+            published=len(published_ids),
+            skipped=len(skipped_items),
+            published_ids=published_ids,
+            skipped_items=skipped_items,
+        )
 
     def unpublish(self, opportunity_id: UUID, actor: User, notes: str | None = None) -> OpportunityAdmin:
         opportunity = self._get(opportunity_id)

@@ -1,0 +1,31 @@
+# Optional scheduled sync for Opportunities Hub.
+# Requires OPPORTUNITY_SYNC_TOKEN and PUBLIC_API_URL repository secrets.
+# Disabled by default (workflow_dispatch only) until secrets are configured.
+# To enable cron: uncomment the schedule block.
+
+name: Opportunities sync
+
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: "0 */6 * * *"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync active opportunity sources
+        env:
+          PUBLIC_API_URL: ${{ secrets.PUBLIC_API_URL }}
+          OPPORTUNITY_SYNC_TOKEN: ${{ secrets.OPPORTUNITY_SYNC_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PUBLIC_API_URL:-}" ] || [ -z "${OPPORTUNITY_SYNC_TOKEN:-}" ]; then
+            echo "Secrets PUBLIC_API_URL / OPPORTUNITY_SYNC_TOKEN not set; skipping."
+            exit 0
+          fi
+          curl -fsS -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-Opportunity-Sync-Token: ${OPPORTUNITY_SYNC_TOKEN}" \
+            -d '{}' \
+            "${PUBLIC_API_URL%/}/api/v1/internal/opportunities/sync"

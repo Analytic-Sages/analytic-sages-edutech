@@ -37,6 +37,7 @@ class Course(Base):
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="NGN")
     delivery_type: Mapped[str] = mapped_column(String(32), nullable=False, default="self_paced")
     is_free: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    referral_commission_eligible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     certificate_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     published: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(

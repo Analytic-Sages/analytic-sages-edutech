@@ -84,6 +84,19 @@ class Settings(BaseSettings):
     # Public opportunities hub. Off until go-live so listings stay staff-only.
     opportunities_public: bool = False
 
+    # Cohort tuition plans / installments. Off keeps legacy one-time checkout.
+    billing_plans_enabled: bool = False
+
+    # Referral Partner Program (learner course/programme referrals — not opportunities staff)
+    default_referral_commission_rate: str = "0.07"
+    referral_attribution_days: int = 30
+    commission_hold_days: int = 14
+    minimum_payout_amount: str = "10000"
+    minimum_payout_currency: str = "NGN"
+    referral_default_redirect_path: str = "/programs"
+    # Optional header token for POST /api/v1/internal/referrals/release-commissions
+    referral_release_token: str | None = None
+
     # Telegram Bot API. Leave empty to skip announcements on publish.
     telegram_bot_token: str | None = None
     telegram_channel_id: str | None = None

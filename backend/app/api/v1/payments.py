@@ -55,6 +55,7 @@ def create_checkout(
         course_id=payload.course_id,
         cohort_id=payload.cohort_id,
         provider_name=payload.provider,
+        tuition_plan_id=payload.tuition_plan_id,
     )
 
 

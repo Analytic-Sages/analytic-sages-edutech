@@ -63,9 +63,15 @@ class AdminFeaturedCohort(BaseModel):
     starts_at: datetime | None
 
 
+class AdminNamedCount(BaseModel):
+    name: str
+    value: int
+
+
 class AdminOverview(BaseModel):
     users_total: int
     students_total: int
+    staff_total: int = 0
     users_verified: int
     signups_24h: int
     signups_7d: int
@@ -75,15 +81,12 @@ class AdminOverview(BaseModel):
     featured_cohort: AdminFeaturedCohort | None
     recent_signups: list[AdminUserRow]
     recent_payments: list[AdminPaymentRow]
+    staff_users: list[AdminUserRow] = Field(default_factory=list)
+    roles: list[AdminNamedCount] = Field(default_factory=list)
 
 
 class AdminCountPoint(BaseModel):
     label: str
-    value: int
-
-
-class AdminNamedCount(BaseModel):
-    name: str
     value: int
 
 

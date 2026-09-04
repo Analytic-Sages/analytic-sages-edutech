@@ -31,6 +31,7 @@ from app.schemas.auth import (
 )
 from app.services.auth import AuthService
 from app.services.google_oauth import GoogleOAuthService
+from app.services.referrals import VISITOR_COOKIE
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -72,7 +73,8 @@ def register(
     rate_limiter=Depends(get_rate_limiter),
 ) -> MessageResponse:
     enforce_rate_limit(rate_limiter, request, scope="auth-register")
-    user, raw_token = auth_service.register(payload)
+    visitor_id = request.cookies.get(VISITOR_COOKIE)
+    user, raw_token = auth_service.register(payload, anonymous_visitor_id=visitor_id)
     background_tasks.add_task(
         auth_service.email_service.send_verification_email,
         email=user.email,
@@ -277,6 +279,7 @@ def google_login_start(
 
 @router.get("/google/callback")
 def google_login_callback(
+    request: Request,
     code: str | None = None,
     state: str | None = None,
     error: str | None = None,
@@ -314,10 +317,12 @@ def google_login_callback(
             detail="Google email is not verified",
         )
 
+    visitor_id = request.cookies.get(VISITOR_COOKIE)
     user, access_token, refresh_token = auth_service.login_with_google(
         google_id=str(google_id),
         email=str(email),
         full_name=profile.get("name"),
+        anonymous_visitor_id=visitor_id,
     )
     next_path = _post_login_path(user.role, next_path)
 
@@ -355,10 +360,12 @@ def google_mock_login(
 
     enforce_rate_limit(rate_limiter, request, scope="auth-google-mock")
     google_id = f"mock-google-{payload.email.lower()}"
+    visitor_id = request.cookies.get(VISITOR_COOKIE)
     user, access_token, refresh_token = auth_service.login_with_google(
         google_id=google_id,
         email=payload.email,
         full_name=payload.full_name,
+        anonymous_visitor_id=visitor_id,
     )
     security.set_refresh_cookie(response, refresh_token)
     return auth_service.build_auth_response(user, access_token)

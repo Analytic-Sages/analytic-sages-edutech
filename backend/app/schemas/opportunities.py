@@ -8,8 +8,10 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.models.opportunity import (
+    BountyCategory,
     EmploymentType,
     ExperienceLevel,
+    HackathonEventFormat,
     LocationRegion,
     OpportunityPublicBadge,
     OpportunitySourceTrustLevel,
@@ -49,6 +51,85 @@ class SourcePublic(BaseModel):
     source_type: str
 
 
+class HackathonDetailsPublic(BaseModel):
+    short_description: str | None = None
+    registration_url: str | None = None
+    website_url: str | None = None
+    registration_open_at: datetime | None = None
+    registration_deadline: datetime | None = None
+    start_at: datetime | None = None
+    end_at: datetime | None = None
+    submission_deadline: datetime | None = None
+    event_format: str = "unknown"
+    prize_pool_amount: Decimal | None = None
+    prize_currency: str | None = None
+    prize_pool_raw: str | None = None
+    team_size_min: int | None = None
+    team_size_max: int | None = None
+    tags: list[str] = Field(default_factory=list)
+    tracks: list[str] = Field(default_factory=list)
+    derived_phase: str | None = None
+    registration_closes_in_days: int | None = None
+
+
+class HackathonDetailsWrite(BaseModel):
+    short_description: str | None = Field(default=None, max_length=500)
+    registration_url: str | None = Field(default=None, max_length=500)
+    website_url: str | None = Field(default=None, max_length=500)
+    registration_open_at: datetime | None = None
+    registration_deadline: datetime | None = None
+    start_at: datetime | None = None
+    end_at: datetime | None = None
+    submission_deadline: datetime | None = None
+    event_format: HackathonEventFormat = HackathonEventFormat.UNKNOWN
+    prize_pool_amount: Decimal | None = None
+    prize_currency: str | None = Field(default=None, max_length=8)
+    prize_pool_raw: str | None = Field(default=None, max_length=255)
+    team_size_min: int | None = Field(default=None, ge=1, le=50)
+    team_size_max: int | None = Field(default=None, ge=1, le=50)
+    team_required: bool = False
+    individual_allowed: bool = True
+    tags: list[str] = Field(default_factory=list, max_length=20)
+    tracks: list[str] = Field(default_factory=list, max_length=20)
+    technology_focus: str | None = Field(default=None, max_length=255)
+
+
+class BountyDetailsPublic(BaseModel):
+    short_description: str | None = None
+    listing_url: str | None = None
+    reward_amount: Decimal | None = None
+    reward_token: str | None = None
+    reward_currency: str | None = None
+    reward_raw: str | None = None
+    category: str = "unknown"
+    opens_at: datetime | None = None
+    deadline: datetime | None = None
+    winners_announced: bool = False
+    skills: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    chain_focus: str | None = None
+    derived_phase: str | None = None
+    closes_in_days: int | None = None
+
+
+class BountyDetailsWrite(BaseModel):
+    short_description: str | None = Field(default=None, max_length=500)
+    listing_url: str | None = Field(default=None, max_length=500)
+    reward_amount: Decimal | None = None
+    reward_token: str | None = Field(default=None, max_length=32)
+    reward_currency: str | None = Field(default=None, max_length=8)
+    reward_raw: str | None = Field(default=None, max_length=255)
+    reward_min: Decimal | None = None
+    reward_max: Decimal | None = None
+    category: BountyCategory = BountyCategory.UNKNOWN
+    opens_at: datetime | None = None
+    deadline: datetime | None = None
+    winners_announced: bool = False
+    skills: list[str] = Field(default_factory=list, max_length=20)
+    tags: list[str] = Field(default_factory=list, max_length=20)
+    chain_focus: str | None = Field(default=None, max_length=120)
+
+
 class OpportunityCardPublic(BaseModel):
     id: UUID
     slug: str
@@ -58,6 +139,8 @@ class OpportunityCardPublic(BaseModel):
     employment_type: str | None = None
     experience_level: str
     location: str
+    location_raw: str | None = None
+    location_scope: str | None = None
     country: str | None = None
     region: str | None = None
     workplace_type: str
@@ -69,9 +152,12 @@ class OpportunityCardPublic(BaseModel):
     application_domain: str | None = None
     primary_career_path: CareerPathPublic | None = None
     skills: list[SkillPublic] = Field(default_factory=list)
+    source: SourcePublic | None = None
     saved: bool = False
     applied: bool = False
     match_score: float | None = None
+    hackathon: HackathonDetailsPublic | None = None
+    bounty: BountyDetailsPublic | None = None
 
 
 class OpportunityPublic(OpportunityCardPublic):
@@ -82,7 +168,6 @@ class OpportunityPublic(OpportunityCardPublic):
     application_url: str
     source_url: str | None = None
     career_paths: list[CareerPathPublic] = Field(default_factory=list)
-    source: SourcePublic | None = None
     updated_at: datetime
     similar: list[OpportunityCardPublic] = Field(default_factory=list)
 
@@ -140,6 +225,8 @@ class OpportunityWriteBase(BaseModel):
     admin_notes: str = Field(default="", max_length=4000)
     career_path_ids: list[UUID] = Field(default_factory=list)
     skill_ids: list[UUID] = Field(default_factory=list)
+    hackathon: HackathonDetailsWrite | None = None
+    bounty: BountyDetailsWrite | None = None
 
     @field_validator(
         "responsibilities",
@@ -196,6 +283,8 @@ class OpportunityUpdate(BaseModel):
     admin_notes: str | None = Field(default=None, max_length=4000)
     career_path_ids: list[UUID] | None = None
     skill_ids: list[UUID] | None = None
+    hackathon: HackathonDetailsWrite | None = None
+    bounty: BountyDetailsWrite | None = None
 
     @field_validator(
         "responsibilities",
@@ -215,6 +304,25 @@ class OpportunityUpdate(BaseModel):
 
 class OpportunityDecision(BaseModel):
     notes: str | None = Field(default=None, max_length=2000)
+
+
+class OpportunityBulkPublishRequest(BaseModel):
+    opportunity_ids: list[UUID] = Field(default_factory=list, max_length=50)
+    notes: str | None = Field(default=None, max_length=2000)
+    include_high_risk: bool = False
+
+
+class OpportunityBulkPublishSkipped(BaseModel):
+    id: UUID
+    title: str
+    reason: str
+
+
+class OpportunityBulkPublishResult(BaseModel):
+    published: int = 0
+    skipped: int = 0
+    published_ids: list[UUID] = Field(default_factory=list)
+    skipped_items: list[OpportunityBulkPublishSkipped] = Field(default_factory=list)
 
 
 class CareerPathAdmin(BaseModel):
@@ -292,7 +400,12 @@ class OpportunityAdmin(BaseModel):
     is_manual: bool = True
     external_id: str | None = None
     relevance_score: Decimal | None = None
+    match_reasons: list[str] = Field(default_factory=list)
+    matched_career_tracks: list[str] = Field(default_factory=list)
     duplicate_of_id: UUID | None = None
+    duplicate_confidence: str | None = None
+    location_raw: str | None = None
+    location_scope: str | None = None
     created_by: UUID | None
     approved_by: UUID | None
     career_paths: list[CareerPathAdmin] = Field(default_factory=list)
@@ -300,6 +413,8 @@ class OpportunityAdmin(BaseModel):
     risk_flags: list[RiskFlagAdmin] = Field(default_factory=list)
     telegram_announced_at: datetime | None = None
     review_assist: dict[str, Any] = Field(default_factory=dict)
+    hackathon: HackathonDetailsPublic | None = None
+    bounty: BountyDetailsPublic | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -358,17 +473,30 @@ class OpportunitySyncAllResult(BaseModel):
     published: bool = False
 
 
+class OpportunitySyncRequest(BaseModel):
+    source_ids: list[UUID] | None = None
+
+
 class OpportunitySourceAdmin(BaseModel):
     id: UUID
     name: str
     website_url: str | None
+    base_url: str | None = None
     source_type: str
     trust_level: str
     automation_enabled: bool
-    auto_publish_allowed: bool
+    auto_publish_allowed: bool = False
     connector_type: str
     config: dict[str, Any] = Field(default_factory=dict)
+    sync_frequency_hours: int = 6
+    attribution_required: bool = True
+    admin_notes: str = ""
+    search_profiles: list[Any] = Field(default_factory=list)
+    source_role: str = "direct"
+    capabilities: dict[str, Any] = Field(default_factory=dict)
     last_checked_at: datetime | None = None
+    last_success_at: datetime | None = None
+    last_failure_at: datetime | None = None
     last_error: str | None = None
     health_status: str
     is_active: bool
@@ -388,14 +516,32 @@ class OpportunitySourceList(BaseModel):
 class OpportunitySourceCreate(BaseModel):
     name: str = Field(min_length=2, max_length=160)
     website_url: str | None = Field(default=None, max_length=500)
+    base_url: str | None = Field(default=None, max_length=500)
     trust_level: OpportunitySourceTrustLevel = OpportunitySourceTrustLevel.MEDIUM
     automation_enabled: bool = True
     auto_publish_allowed: bool = False
-    connector_type: Literal["rss", "greenhouse", "ashby", "lever"]
+    connector_type: Literal[
+        "rss",
+        "greenhouse",
+        "ashby",
+        "lever",
+        "ethglobal",
+        "colosseum",
+        "devpost",
+        "devfolio",
+        "dorahacks",
+        "encode",
+        "superteam",
+        "manual",
+    ]
     config: dict[str, Any] = Field(default_factory=dict)
+    sync_frequency_hours: int = Field(default=6, ge=1, le=168)
+    attribution_required: bool = True
+    admin_notes: str = ""
+    search_profiles: list[Any] = Field(default_factory=list)
     is_active: bool = True
 
-    @field_validator("website_url", mode="before")
+    @field_validator("website_url", "base_url", mode="before")
     @classmethod
     def _empty_website(cls, value: object) -> str | None:
         if value is None:
@@ -407,10 +553,15 @@ class OpportunitySourceCreate(BaseModel):
 class OpportunitySourceUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=160)
     website_url: str | None = Field(default=None, max_length=500)
+    base_url: str | None = Field(default=None, max_length=500)
     trust_level: OpportunitySourceTrustLevel | None = None
     automation_enabled: bool | None = None
     auto_publish_allowed: bool | None = None
     is_active: bool | None = None
+    sync_frequency_hours: int | None = Field(default=None, ge=1, le=168)
+    attribution_required: bool | None = None
+    admin_notes: str | None = None
+    search_profiles: list[Any] | None = None
     config: dict[str, Any] | None = None
 
 

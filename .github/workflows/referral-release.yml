@@ -1,0 +1,23 @@
+name: Referral commission hold release
+
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: "0 6 * * *"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Release held referral commissions
+        env:
+          API_URL: ${{ secrets.API_URL }}
+          REFERRAL_RELEASE_TOKEN: ${{ secrets.REFERRAL_RELEASE_TOKEN }}
+        run: |
+          if [ -z "$API_URL" ] || [ -z "$REFERRAL_RELEASE_TOKEN" ]; then
+            echo "API_URL or REFERRAL_RELEASE_TOKEN not configured; skipping"
+            exit 0
+          fi
+          curl -fsS -X POST \
+            -H "X-Referral-Release-Token: ${REFERRAL_RELEASE_TOKEN}" \
+            "${API_URL%/}/api/v1/internal/referrals/release-commissions"

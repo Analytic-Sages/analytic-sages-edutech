@@ -511,11 +511,148 @@ export function createCheckout(courseId: string, provider: PaymentProvider) {
   });
 }
 
-export function createCohortCheckout(cohortId: string, provider: PaymentProvider) {
+export function createCohortCheckout(
+  cohortId: string,
+  provider: PaymentProvider,
+  tuitionPlanId?: string,
+) {
   return apiFetch<CheckoutResponse>("/api/v1/checkout", {
     method: "POST",
-    body: JSON.stringify({ cohort_id: cohortId, provider }),
+    body: JSON.stringify({
+      cohort_id: cohortId,
+      provider,
+      ...(tuitionPlanId ? { tuition_plan_id: tuitionPlanId } : {}),
+    }),
   });
+}
+
+export type TuitionPlanSchedule = {
+  id: string;
+  sequence_number: number;
+  label: string | null;
+  amount: string;
+  due_rule: string;
+  due_date: string | null;
+  week_number: number | null;
+  offset_days: number | null;
+};
+
+export type TuitionPlanPublic = {
+  id: string;
+  course_id: string | null;
+  cohort_id: string | null;
+  name: string;
+  description: string | null;
+  plan_type: string;
+  base_currency: string;
+  base_amount: string;
+  number_of_installments: number;
+  active: boolean;
+  sort_order: number;
+  schedules: TuitionPlanSchedule[];
+};
+
+export type ObligationPublic = {
+  id: string;
+  sequence_number: number;
+  description: string;
+  amount_due: string;
+  currency: string;
+  due_date: string | null;
+  status: string;
+  paid_amount: string;
+  paid_at: string | null;
+};
+
+export type BillingAccountPublic = {
+  id: string;
+  student_id: string;
+  course_id: string | null;
+  cohort_id: string | null;
+  tuition_plan_id: string;
+  currency: string;
+  total_amount: string;
+  discount_amount: string;
+  scholarship_amount: string;
+  final_amount_due: string;
+  amount_paid: string;
+  amount_outstanding: string;
+  billing_status: string;
+  created_at: string;
+  obligations: ObligationPublic[];
+  tuition_plan?: TuitionPlanPublic | null;
+};
+
+export function listBillingPlans(cohortId: string) {
+  return apiFetch<TuitionPlanPublic[]>(
+    `/api/v1/billing/plans?cohort_id=${encodeURIComponent(cohortId)}`,
+    { auth: false },
+  );
+}
+
+export function getMyBillingAccounts() {
+  return apiFetch<BillingAccountPublic[]>("/api/v1/billing/me");
+}
+
+export function getMyBillingAccount(accountId: string) {
+  return apiFetch<BillingAccountPublic>(
+    `/api/v1/billing/me/accounts/${encodeURIComponent(accountId)}`,
+  );
+}
+
+export function payBillingObligation(obligationId: string, provider: PaymentProvider) {
+  return apiFetch<CheckoutResponse>(
+    `/api/v1/billing/me/obligations/${encodeURIComponent(obligationId)}/pay`,
+    {
+      method: "POST",
+      body: JSON.stringify({ provider }),
+    },
+  );
+}
+
+export function getAdminBillingAccounts(params?: { status?: string; cohortId?: string }) {
+  const qs = new URLSearchParams();
+  if (params?.status) qs.set("status", params.status);
+  if (params?.cohortId) qs.set("cohort_id", params.cohortId);
+  const suffix = qs.toString() ? `?${qs}` : "";
+  return apiFetch<BillingAccountPublic[]>(`/api/v1/admin/billing/accounts${suffix}`);
+}
+
+export function getAdminBillingAccount(accountId: string) {
+  return apiFetch<BillingAccountPublic>(
+    `/api/v1/admin/billing/accounts/${encodeURIComponent(accountId)}`,
+  );
+}
+
+export function patchAdminBillingAccount(
+  accountId: string,
+  payload: { billing_status: string; note?: string },
+) {
+  return apiFetch<BillingAccountPublic>(
+    `/api/v1/admin/billing/accounts/${encodeURIComponent(accountId)}`,
+    { method: "PATCH", body: JSON.stringify(payload) },
+  );
+}
+
+export function waiveAdminObligation(obligationId: string, note?: string) {
+  return apiFetch<BillingAccountPublic>(
+    `/api/v1/admin/billing/obligations/${encodeURIComponent(obligationId)}/waive`,
+    { method: "POST", body: JSON.stringify({ note }) },
+  );
+}
+
+export function extendAdminObligation(
+  obligationId: string,
+  dueDate: string,
+  note?: string,
+) {
+  return apiFetch<BillingAccountPublic>(
+    `/api/v1/admin/billing/obligations/${encodeURIComponent(obligationId)}/extend`,
+    {
+      method: "POST",
+      body: JSON.stringify({ due_date: dueDate, note }),
+    },
+  );
 }
 
 export function getPayment(orderId: string) {
@@ -994,6 +1131,7 @@ export type AdminFeaturedCohort = {
 export type AdminOverview = {
   users_total: number;
   students_total: number;
+  staff_total?: number;
   users_verified: number;
   signups_24h: number;
   signups_7d: number;
@@ -1007,6 +1145,8 @@ export type AdminOverview = {
   featured_cohort: AdminFeaturedCohort | null;
   recent_signups: AdminUserRow[];
   recent_payments: AdminPaymentRow[];
+  staff_users?: AdminUserRow[];
+  roles?: AdminNamedCount[];
 };
 
 export type AdminCohortDetail = {
@@ -1140,4 +1280,189 @@ export function acceptStaffInvite(token: string, password: string) {
     auth: false,
     body: JSON.stringify({ token, password }),
   });
+}
+
+/* --- Referral Partner Program --- */
+
+export type PartnerPublic = {
+  id: string;
+  status: "pending" | "active" | "suspended" | "rejected";
+  referral_code: string | null;
+  display_name: string;
+  social_handle: string | null;
+  promotion_channels: string | null;
+  created_at: string;
+  approved_at: string | null;
+};
+
+export type PartnerDashboard = {
+  clicks: number;
+  registrations: number;
+  paid_enrollments: number;
+  conversion_rate: number;
+  pending_commission: string;
+  available_balance: string;
+  total_paid_out: string;
+  currency: string;
+  referral_code: string | null;
+  status: string;
+  display_name: string;
+  minimum_payout: string;
+  commission_rate: string;
+  hold_days: number;
+  referral_link: string | null;
+};
+
+export type PartnerConversionRow = {
+  id: string;
+  programme: string;
+  learner_label: string;
+  eligible_amount: string;
+  commission_amount: string;
+  currency: string;
+  status: string;
+  created_at: string;
+};
+
+export type PartnerPayoutRow = {
+  id: string;
+  amount: string;
+  currency: string;
+  status: string;
+  requested_at: string;
+  processed_at: string | null;
+  admin_note: string | null;
+};
+
+export type AdminReferralOverview = {
+  total_partners: number;
+  active_partners: number;
+  pending_applications: number;
+  total_clicks: number;
+  total_registrations: number;
+  total_paid_enrollments: number;
+  commission_pending: string;
+  commission_available: string;
+  commission_paid: string;
+  currency: string;
+};
+
+export type AdminConversionRow = {
+  id: string;
+  partner_name: string;
+  learner_email: string;
+  programme: string;
+  payment_id: string;
+  eligible_amount: string;
+  commission_amount: string;
+  currency: string;
+  status: string;
+  created_at: string;
+};
+
+export type LeaderboardEntry = {
+  rank: number;
+  display_name: string;
+  successful_enrollments: number;
+};
+
+export function trackReferral(code: string, landingPath?: string, destination?: string) {
+  return apiFetch<{ ok: boolean; redirect_path: string; anonymous_visitor_id: string }>(
+    "/api/v1/referrals/track",
+    {
+      method: "POST",
+      auth: false,
+      body: JSON.stringify({
+        code,
+        landing_path: landingPath || null,
+        destination: destination || null,
+      }),
+    }
+  );
+}
+
+export function getReferralLeaderboard(period: "all" | "monthly" = "all") {
+  return apiFetch<{ period: string; entries: LeaderboardEntry[] }>(
+    `/api/v1/referrals/leaderboard?period=${period}`,
+    { auth: false }
+  );
+}
+
+export function applyReferralPartner(payload: {
+  display_name: string;
+  social_handle?: string;
+  promotion_channels?: string;
+  terms_accepted: boolean;
+}) {
+  return apiFetch<PartnerPublic>("/api/v1/partners/apply", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getMyPartnerProfile() {
+  return apiFetch<PartnerPublic | null>("/api/v1/partner/me");
+}
+
+export function getPartnerDashboard() {
+  return apiFetch<PartnerDashboard>("/api/v1/partner/dashboard");
+}
+
+export function getPartnerConversions() {
+  return apiFetch<PartnerConversionRow[]>("/api/v1/partner/conversions");
+}
+
+export function getPartnerPayouts() {
+  return apiFetch<PartnerPayoutRow[]>("/api/v1/partner/payouts");
+}
+
+export function requestPartnerPayout(amount: string, currency = "NGN", details?: string) {
+  return apiFetch<PartnerPayoutRow>("/api/v1/partner/payouts", {
+    method: "POST",
+    body: JSON.stringify({
+      amount,
+      currency,
+      payment_details_reference: details || null,
+    }),
+  });
+}
+
+export function getAdminReferralOverview() {
+  return apiFetch<AdminReferralOverview>("/api/v1/admin/referrals/overview");
+}
+
+export function getAdminReferralPartners(status?: string) {
+  const q = status ? `?status=${encodeURIComponent(status)}` : "";
+  return apiFetch<PartnerPublic[]>(`/api/v1/admin/referrals/partners${q}`);
+}
+
+export function patchAdminReferralPartner(
+  partnerId: string,
+  payload: { status?: string; note?: string; regenerate_code?: boolean }
+) {
+  return apiFetch<PartnerPublic>(`/api/v1/admin/referrals/partners/${partnerId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getAdminReferralConversions(status?: string) {
+  const q = status ? `?status=${encodeURIComponent(status)}` : "";
+  return apiFetch<AdminConversionRow[]>(`/api/v1/admin/referrals/conversions${q}`);
+}
+
+export function getAdminReferralPayouts(status?: string) {
+  const q = status ? `?status=${encodeURIComponent(status)}` : "";
+  return apiFetch<PartnerPayoutRow[]>(`/api/v1/admin/referrals/payouts${q}`);
+}
+
+export function patchAdminReferralPayout(payoutId: string, status: string, note?: string) {
+  return apiFetch<PartnerPayoutRow>(`/api/v1/admin/referrals/payouts/${payoutId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status, note: note || null }),
+  });
+}
+
+export function getAdminReferralReviewQueue() {
+  return apiFetch<AdminConversionRow[]>("/api/v1/admin/referrals/review-queue");
 }

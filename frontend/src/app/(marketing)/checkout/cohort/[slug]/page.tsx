@@ -9,18 +9,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   createCohortCheckout,
   getAccessToken,
+  listBillingPlans,
   listPublicCohorts,
   type PaymentProvider,
   type PublicCohortCard,
+  type TuitionPlanPublic,
 } from "@/lib/api";
 import { formatPrice } from "@/lib/mock-data";
+import { cn } from "@/lib/utils";
 
 const providers: {
   id: PaymentProvider;
   name: string;
   description: string;
   icon: typeof Landmark;
-  recommended?: boolean;
 }[] = [
   {
     id: "paystack",
@@ -50,12 +52,23 @@ function formatDate(iso: string | null) {
   }
 }
 
+function planDueLabel(plan: TuitionPlanPublic) {
+  const second = plan.schedules.find((s) => s.sequence_number === 2);
+  if (!second) return "One payment unlocks your seat.";
+  const when = formatDate(second.due_date);
+  return when
+    ? `Pay the first installment now; second due ${when}.`
+    : "Pay the first installment now; second due later in the program.";
+}
+
 export default function CohortCheckoutPage() {
   const params = useParams<{ slug: string }>();
   const router = useRouter();
   const slug = params.slug;
 
   const [cohort, setCohort] = useState<PublicCohortCard | null>(null);
+  const [plans, setPlans] = useState<TuitionPlanPublic[]>([]);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingProvider, setLoadingProvider] = useState<PaymentProvider | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -63,9 +76,22 @@ export default function CohortCheckoutPage() {
   useEffect(() => {
     let cancelled = false;
     listPublicCohorts()
-      .then((cohorts) => {
-        if (!cancelled) {
-          setCohort(cohorts.find((c) => c.slug === slug) ?? null);
+      .then(async (cohorts) => {
+        const found = cohorts.find((c) => c.slug === slug) ?? null;
+        if (cancelled) return;
+        setCohort(found);
+        if (!found) return;
+        try {
+          const available = await listBillingPlans(found.id);
+          if (!cancelled) {
+            setPlans(available);
+            setSelectedPlanId(available[0]?.id ?? null);
+          }
+        } catch {
+          if (!cancelled) {
+            setPlans([]);
+            setSelectedPlanId(null);
+          }
         }
       })
       .catch(() => {
@@ -79,6 +105,12 @@ export default function CohortCheckoutPage() {
     };
   }, [slug]);
 
+  const selectedPlan = plans.find((p) => p.id === selectedPlanId) ?? null;
+  const displayAmount = selectedPlan
+    ? Number(selectedPlan.schedules.find((s) => s.sequence_number === 1)?.amount ?? selectedPlan.base_amount)
+    : cohort?.price ?? 0;
+  const displayCurrency = selectedPlan?.base_currency ?? cohort?.currency ?? "USD";
+
   async function handleCheckout(provider: PaymentProvider) {
     setError(null);
     if (!getAccessToken()) {
@@ -89,14 +121,22 @@ export default function CohortCheckoutPage() {
       setError("Cohort not found or not open for registration.");
       return;
     }
-    if (cohort.price <= 0) {
+    if (plans.length > 0 && !selectedPlanId) {
+      setError("Select a tuition plan to continue.");
+      return;
+    }
+    if (plans.length === 0 && cohort.price <= 0) {
       setError("This cohort is not open for online payment yet.");
       return;
     }
 
     setLoadingProvider(provider);
     try {
-      const session = await createCohortCheckout(cohort.id, provider);
+      const session = await createCohortCheckout(
+        cohort.id,
+        provider,
+        selectedPlanId ?? undefined,
+      );
       window.location.assign(session.checkout_url);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Checkout failed");
@@ -141,9 +181,57 @@ export default function CohortCheckoutPage() {
           )}
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="font-heading text-3xl font-bold text-brand-navy dark:text-foreground">
-            {formatPrice(cohort.price, cohort.currency)}
-          </p>
+          {plans.length > 0 ? (
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-brand-navy dark:text-foreground">
+                Choose a tuition plan
+              </p>
+              {plans.map((plan) => {
+                const first = plan.schedules.find((s) => s.sequence_number === 1);
+                const selected = plan.id === selectedPlanId;
+                return (
+                  <button
+                    key={plan.id}
+                    type="button"
+                    onClick={() => setSelectedPlanId(plan.id)}
+                    className={cn(
+                      "w-full rounded-lg border px-4 py-3 text-left transition",
+                      selected
+                        ? "border-brand-orange bg-brand-orange/5"
+                        : "hover:border-brand-orange/40",
+                    )}
+                  >
+                    <span className="flex items-baseline justify-between gap-3">
+                      <span className="font-medium">{plan.name}</span>
+                      <span className="font-heading text-lg font-bold text-brand-navy dark:text-foreground">
+                        {formatPrice(Number(plan.base_amount), plan.base_currency)}
+                      </span>
+                    </span>
+                    <span className="mt-1 block text-xs text-muted-foreground">
+                      {plan.description || planDueLabel(plan)}
+                    </span>
+                    {first && plan.number_of_installments > 1 ? (
+                      <span className="mt-1 block text-xs text-muted-foreground">
+                        Due today:{" "}
+                        {formatPrice(Number(first.amount), plan.base_currency)}
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="font-heading text-3xl font-bold text-brand-navy dark:text-foreground">
+              {formatPrice(cohort.price, cohort.currency)}
+            </p>
+          )}
+
+          {plans.length > 0 ? (
+            <p className="font-heading text-2xl font-bold text-brand-navy dark:text-foreground">
+              Pay now: {formatPrice(displayAmount, displayCurrency)}
+            </p>
+          ) : null}
+
           <div className="space-y-1 text-sm text-muted-foreground">
             {formatDate(cohort.registration_deadline) && (
               <p>Registration deadline: {formatDate(cohort.registration_deadline)}</p>
@@ -173,10 +261,7 @@ export default function CohortCheckoutPage() {
                 >
                   <Icon className="size-5 shrink-0 text-brand-orange" />
                   <span className="flex-1">
-                    <span className="block font-medium">
-                      {provider.name}
-                      {provider.recommended ? " · Recommended" : ""}
-                    </span>
+                    <span className="block font-medium">{provider.name}</span>
                     <span className="block text-xs text-muted-foreground">
                       {provider.description}
                     </span>
@@ -188,8 +273,9 @@ export default function CohortCheckoutPage() {
           </div>
 
           <p className="pt-2 text-xs text-muted-foreground">
-            Your seat unlocks after payment is confirmed. That can take a moment after you
-            leave checkout. Then open Classroom to join live sessions.
+            Your seat unlocks after the first confirmed payment. Later installments
+            stay on your Billing page — we do not auto-revoke access for missed
+            later payments in this release.
           </p>
         </CardContent>
       </Card>

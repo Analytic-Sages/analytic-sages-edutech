@@ -7,4 +7,5 @@ class UserRole(str, Enum):
     AUTHOR = "author"
     INSTRUCTOR = "instructor"
     OPERATIONS = "operations"
+    PARTNERSHIPS = "partnerships"
     STUDENT = "student"

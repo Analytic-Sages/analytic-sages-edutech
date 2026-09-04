@@ -7,8 +7,64 @@ export type OpportunityType =
   | "hackathon"
   | "grant"
   | "bounty"
+  | "challenge"
   | "research"
   | "other";
+
+export type HackathonEventFormat = "online" | "in_person" | "hybrid" | "unknown";
+export type HackathonPhase = "open" | "upcoming" | "ongoing" | "ended" | "unknown";
+
+export type HackathonDetails = {
+  short_description?: string | null;
+  registration_url?: string | null;
+  website_url?: string | null;
+  registration_open_at?: string | null;
+  registration_deadline?: string | null;
+  start_at?: string | null;
+  end_at?: string | null;
+  submission_deadline?: string | null;
+  event_format: HackathonEventFormat;
+  prize_pool_amount?: number | null;
+  prize_currency?: string | null;
+  prize_pool_raw?: string | null;
+  team_size_min?: number | null;
+  team_size_max?: number | null;
+  tags?: string[];
+  tracks?: string[];
+  derived_phase?: HackathonPhase | null;
+  registration_closes_in_days?: number | null;
+};
+
+export type BountyCategory =
+  | "bug"
+  | "security"
+  | "development"
+  | "content"
+  | "design"
+  | "research"
+  | "quest"
+  | "other"
+  | "unknown";
+
+export type BountyPhase = "open" | "closing_soon" | "ended" | "unknown";
+
+export type BountyDetails = {
+  short_description?: string | null;
+  listing_url?: string | null;
+  reward_amount?: number | null;
+  reward_token?: string | null;
+  reward_currency?: string | null;
+  reward_raw?: string | null;
+  category: BountyCategory;
+  opens_at?: string | null;
+  deadline?: string | null;
+  winners_announced?: boolean;
+  skills?: string[];
+  tags?: string[];
+  chain_focus?: string | null;
+  derived_phase?: BountyPhase | null;
+  closes_in_days?: number | null;
+};
 
 export type WorkplaceType = "remote" | "hybrid" | "onsite";
 export type LocationRegion =
@@ -49,6 +105,8 @@ export type OpportunityCard = {
   employment_type: string | null;
   experience_level: ExperienceLevel;
   location: string;
+  location_raw?: string | null;
+  location_scope?: string | null;
   country: string | null;
   region: LocationRegion | null;
   workplace_type: WorkplaceType;
@@ -60,9 +118,12 @@ export type OpportunityCard = {
   application_domain: string | null;
   primary_career_path: CareerPathPublic | null;
   skills: SkillPublic[];
+  source?: { id: string | null; name: string; source_type: string } | null;
   saved?: boolean;
   applied?: boolean;
   match_score?: number | null;
+  hackathon?: HackathonDetails | null;
+  bounty?: BountyDetails | null;
 };
 
 export type OpportunityDetail = OpportunityCard & {
@@ -137,7 +198,12 @@ export type OpportunityAdmin = {
   is_manual?: boolean;
   external_id?: string | null;
   relevance_score?: number | null;
+  match_reasons?: string[];
+  matched_career_tracks?: string[];
   duplicate_of_id?: string | null;
+  duplicate_confidence?: string | null;
+  location_raw?: string | null;
+  location_scope?: string | null;
   career_paths: CareerPathPublic[];
   skills: SkillPublic[];
   risk_flags?: OpportunityRiskFlag[];
@@ -242,9 +308,18 @@ export const TYPE_LABELS: Record<OpportunityType, string> = {
   hackathon: "Hackathon",
   grant: "Grant",
   bounty: "Bounty",
+  challenge: "Challenge",
   research: "Research",
   other: "Other",
 };
+
+export const HACKATHON_FORMAT_LABELS: Record<HackathonEventFormat, string> = {
+  online: "Online",
+  in_person: "In person",
+  hybrid: "Hybrid",
+  unknown: "Format TBA",
+};
+
 
 export const WORKPLACE_LABELS: Record<WorkplaceType, string> = {
   remote: "Remote",
@@ -317,8 +392,13 @@ export type OpportunityQuery = {
   career_path?: string;
   skill?: string;
   workplace_type?: WorkplaceType;
+  employment_type?: string;
   region?: LocationRegion;
-  sort?: "newest" | "deadline" | "featured" | "closing_soon" | "matched";
+  event_format?: HackathonEventFormat;
+  hackathon_phase?: HackathonPhase;
+  bounty_category?: BountyCategory;
+  bounty_phase?: BountyPhase;
+  sort?: "newest" | "deadline" | "featured" | "closing_soon" | "matched" | "hackathon" | "bounty";
   limit?: number;
   offset?: number;
 };
@@ -330,7 +410,12 @@ function queryString(params: OpportunityQuery) {
   if (params.career_path) search.set("career_path", params.career_path);
   if (params.skill) search.set("skill", params.skill);
   if (params.workplace_type) search.set("workplace_type", params.workplace_type);
+  if (params.employment_type) search.set("employment_type", params.employment_type);
   if (params.region) search.set("region", params.region);
+  if (params.event_format) search.set("event_format", params.event_format);
+  if (params.hackathon_phase) search.set("hackathon_phase", params.hackathon_phase);
+  if (params.bounty_category) search.set("bounty_category", params.bounty_category);
+  if (params.bounty_phase) search.set("bounty_phase", params.bounty_phase);
   if (params.sort) search.set("sort", params.sort);
   if (params.limit) search.set("limit", String(params.limit));
   if (params.offset) search.set("offset", String(params.offset));
@@ -422,6 +507,27 @@ export function publishAdminOpportunity(id: string, notes?: string) {
   });
 }
 
+export type OpportunityBulkPublishResult = {
+  published: number;
+  skipped: number;
+  published_ids: string[];
+  skipped_items: { id: string; title: string; reason: string }[];
+};
+
+export function bulkPublishAdminOpportunities(
+  opportunityIds: string[],
+  opts?: { notes?: string; includeHighRisk?: boolean },
+) {
+  return apiFetch<OpportunityBulkPublishResult>("/api/v1/admin/opportunities/bulk-publish", {
+    method: "POST",
+    body: JSON.stringify({
+      opportunity_ids: opportunityIds,
+      notes: opts?.notes ?? null,
+      include_high_risk: opts?.includeHighRisk ?? false,
+    }),
+  });
+}
+
 export function unpublishAdminOpportunity(id: string, notes?: string) {
   return apiFetch<OpportunityAdmin>(`/api/v1/admin/opportunities/${encodeURIComponent(id)}/unpublish`, {
     method: "POST",
@@ -453,7 +559,18 @@ export function createAdminOpportunitySource(payload: {
   trust_level: "high" | "medium" | "low";
   automation_enabled: boolean;
   auto_publish_allowed: boolean;
-  connector_type: "rss" | "greenhouse" | "ashby" | "lever";
+  connector_type:
+    | "rss"
+    | "greenhouse"
+    | "ashby"
+    | "lever"
+    | "ethglobal"
+    | "colosseum"
+    | "devpost"
+    | "devfolio"
+    | "dorahacks"
+    | "encode"
+    | "superteam";
   config: Record<string, string>;
   is_active?: boolean;
 }) {
@@ -565,6 +682,7 @@ export const DISCOVERY_TYPES: OpportunityType[] = [
   "internship",
   "fellowship",
   "hackathon",
+  "challenge",
   "grant",
   "bounty",
   "research",

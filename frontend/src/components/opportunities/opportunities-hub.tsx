@@ -40,6 +40,7 @@ export function OpportunitiesHub({
   const [debounced, setDebounced] = useState("");
   const [careerPath, setCareerPath] = useState("");
   const [workplace, setWorkplace] = useState<WorkplaceType | "">("");
+  const [employment, setEmployment] = useState("");
   const [region, setRegion] = useState<LocationRegion | "">("");
   const [sort, setSort] = useState<"newest" | "deadline" | "featured" | "closing_soon" | "matched">("newest");
 
@@ -61,6 +62,7 @@ export function OpportunitiesHub({
       opportunity_type: initialType,
       career_path: careerPath || undefined,
       workplace_type: workplace || undefined,
+      employment_type: employment || undefined,
       region: region || undefined,
       sort,
       limit: 30,
@@ -81,7 +83,7 @@ export function OpportunitiesHub({
     return () => {
       cancelled = true;
     };
-  }, [debounced, initialType, careerPath, workplace, region, sort]);
+  }, [debounced, initialType, careerPath, workplace, employment, region, sort]);
 
   const typeCounts = useMemo(() => {
     const map = new Map((filters?.types || []).map((item) => [item.value, item.count]));
@@ -156,6 +158,17 @@ export function OpportunitiesHub({
                 {item.label}
               </option>
             ))}
+          </select>
+          <select
+            className="h-10 rounded-lg border bg-background px-3 text-sm sm:w-48"
+            value={employment}
+            onChange={(event) => setEmployment(event.target.value)}
+          >
+            <option value="">Any employment</option>
+            <option value="full_time">Full-time</option>
+            <option value="part_time">Part-time</option>
+            <option value="contract">Contract</option>
+            <option value="internship">Internship</option>
           </select>
           <select
             className="h-10 rounded-lg border bg-background px-3 text-sm sm:w-48"

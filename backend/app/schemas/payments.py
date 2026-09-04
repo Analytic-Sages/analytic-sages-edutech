@@ -13,6 +13,7 @@ class CheckoutRequest(BaseModel):
 
     course_id: UUID | None = None
     cohort_id: UUID | None = None
+    tuition_plan_id: UUID | None = None
     provider: PaymentProviderName = Field(
         description="paystack | nowpayments (mock checkout until live keys are set)"
     )
@@ -26,6 +27,8 @@ class CheckoutRequest(BaseModel):
             PaymentProviderName.NOWPAYMENTS,
         }:
             raise ValueError("provider must be paystack or nowpayments")
+        if self.tuition_plan_id and not self.cohort_id:
+            raise ValueError("tuition_plan_id requires cohort_id")
         return self
 
 

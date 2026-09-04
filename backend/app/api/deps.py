@@ -216,10 +216,17 @@ require_admin = require_roles(UserRole.ADMIN)
 require_instructor = require_roles(UserRole.ADMIN, UserRole.INSTRUCTOR)
 require_event_ops = require_roles(UserRole.ADMIN, UserRole.OPERATIONS)
 require_catalog_ops = require_roles(UserRole.ADMIN, UserRole.OPERATIONS)
+require_opportunity_ops = require_roles(
+    UserRole.ADMIN, UserRole.OPERATIONS, UserRole.PARTNERSHIPS
+)
 require_publisher = require_roles(UserRole.ADMIN, UserRole.EDITOR)
 require_writer = require_roles(UserRole.ADMIN, UserRole.EDITOR, UserRole.AUTHOR)
 require_student = require_roles(
-    UserRole.ADMIN, UserRole.INSTRUCTOR, UserRole.OPERATIONS, UserRole.STUDENT
+    UserRole.ADMIN,
+    UserRole.INSTRUCTOR,
+    UserRole.OPERATIONS,
+    UserRole.PARTNERSHIPS,
+    UserRole.STUDENT,
 )
 
 

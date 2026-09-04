@@ -18,7 +18,69 @@ import {
   type OpportunitySourceAdmin,
 } from "@/lib/opportunities";
 
-type ConnectorType = "rss" | "greenhouse" | "ashby" | "lever";
+type ConnectorType =
+  | "rss"
+  | "greenhouse"
+  | "ashby"
+  | "lever"
+  | "ethglobal"
+  | "colosseum"
+  | "devpost"
+  | "devfolio"
+  | "dorahacks"
+  | "encode"
+  | "superteam";
+
+const INGEST_CONNECTORS: ConnectorType[] = [
+  "rss",
+  "greenhouse",
+  "ashby",
+  "lever",
+  "ethglobal",
+  "colosseum",
+  "devpost",
+  "devfolio",
+  "dorahacks",
+  "encode",
+  "superteam",
+];
+
+const LISTING_HINTS: Partial<Record<ConnectorType, string>> = {
+  ethglobal:
+    "Reads https://ethglobal.com/events once. Keeps Hackathon, Async Hackathon, and IRL Hackathon from Featured and Upcoming. Does not open individual event pages.",
+  colosseum:
+    "Reads https://colosseum.com/hackathon once. Keeps open hackathons, challenges, and Eternal. Does not open individual event pages.",
+  devpost:
+    "Reads https://devpost.com/c/blockchain once. Keeps current online and in-person blockchain hackathons. Does not open individual event pages.",
+  devfolio:
+    "Reads the Devfolio open-hackathons listing once and keeps Web3 matches only. Does not open individual event pages.",
+  dorahacks:
+    "Reads https://dorahacks.io/hackathon?status=upcoming once. Their bot challenge can block a sync; items stay drafts. Does not open individual event pages.",
+  encode:
+    "Reads https://www.encodeclub.com/programmes once. Keeps upcoming Hackathon and Bounty programmes only. Does not open individual event pages.",
+  superteam:
+    "Reads Superteam Earn listings once. Hackathons stay hackathons, bounties stay bounties, projects become grants. Does not open individual listing pages.",
+};
+
+function listingConfig(type: ConnectorType): Record<string, string> {
+  if (type === "ethglobal") return { events_url: "https://ethglobal.com/events" };
+  if (type === "colosseum") return { listing_url: "https://colosseum.com/hackathon/__data.json" };
+  if (type === "devpost") return { listing_url: "https://devpost.com/c/blockchain" };
+  if (type === "devfolio")
+    return { listing_url: "https://api.devfolio.co/api/hackathons?filter=application_open&page=1&size=20" };
+  if (type === "dorahacks") return { listing_url: "https://dorahacks.io/hackathon?status=upcoming" };
+  if (type === "encode") return { listing_url: "https://www.encodeclub.com/programmes" };
+  if (type === "superteam") return { listing_url: "https://superteam.fun/api/listings" };
+  return {};
+}
+
+function sourceTarget(source: OpportunitySourceAdmin): string {
+  if (source.connector_type === "rss") return source.config.feed_url || "—";
+  if (source.config.events_url) return source.config.events_url;
+  if (source.config.listing_url) return source.config.listing_url;
+  if (source.config.board_token) return `Board: ${source.config.board_token}`;
+  return "—";
+}
 
 const EMPTY_FORM = {
   name: "",
@@ -67,12 +129,14 @@ export function AdminOpportunitySourcesContent() {
         website_url: form.website_url || null,
         trust_level: form.trust_level,
         automation_enabled: form.automation_enabled,
-        auto_publish_allowed: form.auto_publish_allowed,
+        auto_publish_allowed: false,
         connector_type: form.connector_type,
         config:
           form.connector_type === "rss"
             ? { feed_url: form.feed_url }
-            : { board_token: form.board_token },
+            : form.connector_type in LISTING_HINTS
+              ? listingConfig(form.connector_type)
+              : { board_token: form.board_token },
       });
       setForm(EMPTY_FORM);
       await load();
@@ -99,7 +163,7 @@ export function AdminOpportunitySourcesContent() {
     }
   }
 
-  async function toggle(source: OpportunitySourceAdmin, field: "is_active" | "automation_enabled" | "auto_publish_allowed") {
+  async function toggle(source: OpportunitySourceAdmin, field: "is_active" | "automation_enabled") {
     setError(null);
     try {
       await updateAdminOpportunitySource(source.id, { [field]: !source[field] });
@@ -118,15 +182,13 @@ export function AdminOpportunitySourcesContent() {
     );
   }
 
-  const connectors = rows.filter((row) =>
-    ["rss", "greenhouse", "ashby", "lever"].includes(row.connector_type),
-  );
+  const connectors = rows.filter((row) => INGEST_CONNECTORS.includes(row.connector_type as ConnectorType));
 
   return (
     <div>
       <PageHeader
         title="Opportunity sources"
-        description="Company career boards (Greenhouse, Ashby, Lever, RSS) for jobs. Use Discover for internships, fellowships, hackathons, grants, bounties, and research."
+        description="Official career boards and listing ingest. Synced items always stay drafts until you publish — no auto-publish."
         action={
           <div className="flex flex-wrap gap-2">
             <ButtonLink href="/admin/opportunities/discover" variant="outline">
@@ -178,6 +240,13 @@ export function AdminOpportunitySourcesContent() {
             <option value="greenhouse">Greenhouse public board</option>
             <option value="ashby">Ashby public board</option>
             <option value="lever">Lever public board</option>
+            <option value="ethglobal">ETHGlobal events listing</option>
+            <option value="colosseum">Colosseum hackathon listing</option>
+            <option value="devpost">Devpost blockchain listing</option>
+            <option value="devfolio">Devfolio Web3 listing</option>
+            <option value="dorahacks">DoraHacks hackathon listing</option>
+            <option value="encode">Encode Club programmes</option>
+            <option value="superteam">Superteam Earn listings</option>
           </select>
         </div>
         <div>
@@ -203,6 +272,10 @@ export function AdminOpportunitySourcesContent() {
               onChange={(event) => setForm({ ...form, feed_url: event.target.value })}
               placeholder="https://example.com/jobs.rss"
             />
+          </div>
+        ) : form.connector_type in LISTING_HINTS ? (
+          <div className="md:col-span-2">
+            <p className="text-xs text-muted-foreground">{LISTING_HINTS[form.connector_type]}</p>
           </div>
         ) : (
           <div className="md:col-span-2">
@@ -239,14 +312,9 @@ export function AdminOpportunitySourcesContent() {
           />
           Enable for scheduled / token sync
         </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={form.auto_publish_allowed}
-            onChange={(event) => setForm({ ...form, auto_publish_allowed: event.target.checked })}
-          />
-          Allow auto-publish (strict gates still apply)
-        </label>
+        <p className="text-xs text-muted-foreground md:col-span-2">
+          Auto-publish is disabled platform-wide. Synced listings always enter Pending review.
+        </p>
         <div className="md:col-span-2">
           <Button type="submit" disabled={saving} className="bg-brand-orange text-white hover:bg-brand-orange/90">
             {saving ? "Saving…" : "Add source"}
@@ -258,7 +326,7 @@ export function AdminOpportunitySourcesContent() {
         <EmptyState
           icon={<Rss className="size-5" />}
           title="No ingest sources yet"
-          description="Nansen, Dune, and TRM Labs are seeded on API startup. You can also add another official Greenhouse or Ashby board."
+          description="Official Greenhouse, Ashby, and hackathon listing sources are seeded on API startup. You can also add another official board."
         />
       ) : (
         <div className="space-y-4">
@@ -304,9 +372,7 @@ export function AdminOpportunitySourcesContent() {
                     <Badge variant="outline">{source.trust_level} trust</Badge>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {source.connector_type === "rss"
-                      ? source.config.feed_url
-                      : `Board: ${source.config.board_token || "—"}`}
+                    {sourceTarget(source)}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Last sync: {source.last_checked_at ? new Date(source.last_checked_at).toLocaleString() : "Never"}
@@ -333,8 +399,8 @@ export function AdminOpportunitySourcesContent() {
                   <Button size="sm" variant="outline" onClick={() => toggle(source, "is_active")}>
                     {source.is_active ? "Disable" : "Enable"}
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => toggle(source, "auto_publish_allowed")}>
-                    Auto-publish {source.auto_publish_allowed ? "on" : "off"}
+                  <Button size="sm" variant="outline" onClick={() => toggle(source, "automation_enabled")}>
+                    Automation {source.automation_enabled ? "on" : "off"}
                   </Button>
                 </div>
               </div>

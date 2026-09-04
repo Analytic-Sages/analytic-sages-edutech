@@ -1,4 +1,12 @@
 from app.models.article import Article, AuthorProfile
+from app.models.billing import (
+    BillingAuditEvent,
+    PaymentObligation,
+    PaymentWebhookEvent,
+    StudentBillingAccount,
+    TuitionPlan,
+    TuitionPlanSchedule,
+)
 from app.models.classroom import Cohort, CohortMember, LiveSession
 from app.models.course import Course
 from app.models.enrollment import Enrollment
@@ -10,6 +18,8 @@ from app.models.opportunity import (
     Opportunity,
     OpportunityCareerPath,
     OpportunityDigestRun,
+    OpportunityHackathonDetails,
+    OpportunityBountyDetails,
     OpportunityIngestion,
     OpportunityRiskFlag,
     OpportunitySave,
@@ -21,6 +31,15 @@ from app.models.opportunity import (
     VerificationEvent,
 )
 from app.models.payment import Payment
+from app.models.referral import (
+    PartnerLedgerEntry,
+    PartnerPayoutRequest,
+    ReferralAttribution,
+    ReferralAuditEvent,
+    ReferralClick,
+    ReferralConversion,
+    ReferralPartner,
+)
 from app.models.user import (
     EmailVerificationToken,
     PasswordResetToken,
@@ -38,6 +57,12 @@ __all__ = [
     "Lesson",
     "LessonProgress",
     "Payment",
+    "TuitionPlan",
+    "TuitionPlanSchedule",
+    "StudentBillingAccount",
+    "PaymentObligation",
+    "BillingAuditEvent",
+    "PaymentWebhookEvent",
     "Enrollment",
     "Event",
     "EventRegistration",
@@ -53,6 +78,8 @@ __all__ = [
     "Skill",
     "OpportunitySource",
     "Opportunity",
+    "OpportunityHackathonDetails",
+    "OpportunityBountyDetails",
     "OpportunityCareerPath",
     "OpportunitySkill",
     "VerificationEvent",
@@ -62,4 +89,11 @@ __all__ = [
     "OpportunitySave",
     "UserCareerInterest",
     "OpportunityDigestRun",
+    "ReferralPartner",
+    "ReferralClick",
+    "ReferralAttribution",
+    "ReferralConversion",
+    "PartnerLedgerEntry",
+    "PartnerPayoutRequest",
+    "ReferralAuditEvent",
 ]

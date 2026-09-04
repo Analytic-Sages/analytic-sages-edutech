@@ -12,7 +12,8 @@ export type NavItemId =
   | "payments"
   | "analytics"
   | "settings"
-  | "insights";
+  | "insights"
+  | "referrals";
 
 export type NavItem = {
   title: string;
@@ -27,6 +28,7 @@ export const marketingNav = [
   { title: "Opportunities", href: "/opportunities" },
   { title: "Community", href: "/community" },
   { title: "Insights", href: "/insights" },
+  { title: "Partners", href: "/partners" },
   { title: "About us", href: "/about" },
 ] as const;
 
@@ -34,6 +36,7 @@ export const studentNav: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: "dashboard" },
   { title: "Classroom", href: "/classroom", icon: "classroom" },
   { title: "My Courses", href: "/my-courses", icon: "courses" },
+  { title: "Billing", href: "/dashboard/billing", icon: "payments" },
   { title: "My Events", href: "/my-events", icon: "events" },
   { title: "Opportunities", href: "/opportunities", icon: "opportunities" },
   { title: "Saved", href: "/my-opportunities", icon: "opportunities" },
@@ -46,9 +49,11 @@ export const adminNav: NavItem[] = [
   { title: "Cohort 9", href: "/admin/cohort", icon: "classroom" },
   { title: "Users", href: "/admin/users", icon: "users" },
   { title: "Payments", href: "/admin/payments", icon: "payments" },
+  { title: "Billing", href: "/admin/billing", icon: "payments" },
   { title: "Courses", href: "/admin/courses", icon: "courses" },
   { title: "Events", href: "/admin/events", icon: "events" },
   { title: "Opportunities", href: "/admin/opportunities", icon: "opportunities" },
+  { title: "Referrals", href: "/admin/referrals", icon: "referrals" },
   { title: "Insights", href: "/admin/insights", icon: "insights" },
   { title: "Certificates", href: "/admin/certificates", icon: "certificates" },
   { title: "Analytics", href: "/admin/analytics", icon: "analytics" },
@@ -62,6 +67,10 @@ export const operationsNav: NavItem[] = [
 
 export const editorNav: NavItem[] = [
   { title: "Insights", href: "/admin/insights", icon: "insights" },
+];
+
+export const partnerNav: NavItem[] = [
+  { title: "Overview", href: "/partner", icon: "dashboard" },
 ];
 
 export const studioNav: NavItem[] = [

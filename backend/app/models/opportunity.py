@@ -35,8 +35,35 @@ class OpportunityType(str, enum.Enum):
     HACKATHON = "hackathon"
     GRANT = "grant"
     BOUNTY = "bounty"
+    CHALLENGE = "challenge"
     RESEARCH = "research"
     OTHER = "other"
+
+
+class HackathonEventFormat(str, enum.Enum):
+    ONLINE = "online"
+    IN_PERSON = "in_person"
+    HYBRID = "hybrid"
+    UNKNOWN = "unknown"
+
+
+class BountyCategory(str, enum.Enum):
+    BUG = "bug"
+    SECURITY = "security"
+    DEVELOPMENT = "development"
+    CONTENT = "content"
+    DESIGN = "design"
+    RESEARCH = "research"
+    QUEST = "quest"
+    OTHER = "other"
+    UNKNOWN = "unknown"
+
+
+class OpportunitySourceRole(str, enum.Enum):
+    DIRECT = "direct"
+    DISCOVERY = "discovery"
+    AGGREGATOR = "aggregator"
+    MANUAL = "manual"
 
 
 class EmploymentType(str, enum.Enum):
@@ -61,6 +88,19 @@ class WorkplaceType(str, enum.Enum):
     REMOTE = "remote"
     HYBRID = "hybrid"
     ONSITE = "onsite"
+
+
+class LocationScope(str, enum.Enum):
+    WORLDWIDE = "worldwide"
+    GLOBAL = "global"
+    AFRICA = "africa"
+    EUROPE = "europe"
+    EMEA = "emea"
+    NORTH_AMERICA = "north_america"
+    US_ONLY = "us_only"
+    UK_ONLY = "uk_only"
+    OTHER = "other"
+    UNKNOWN = "unknown"
 
 
 class LocationRegion(str, enum.Enum):
@@ -237,8 +277,31 @@ class OpportunitySource(Base):
     config: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
+    base_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    sync_frequency_hours: Mapped[int] = mapped_column(Integer, nullable=False, default=6)
+    attribution_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    admin_notes: Mapped[str] = mapped_column(Text, nullable=False, default="")
     last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_success_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_failure_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    search_profiles: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    source_role: Mapped[OpportunitySourceRole] = mapped_column(
+        pg_enum(OpportunitySourceRole, name="opportunity_source_role"),
+        nullable=False,
+        default=OpportunitySourceRole.DIRECT,
+    )
+    capabilities: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        nullable=False,
+        server_default=text(
+            "'{\"supports_automation\": false, \"supports_api\": false, "
+            "\"supports_rss\": false, \"supports_search\": false, "
+            "\"requires_review\": true}'::jsonb"
+        ),
+    )
     health_status: Mapped[OpportunitySourceHealth] = mapped_column(
         pg_enum(OpportunitySourceHealth, name="opportunity_source_health"),
         nullable=False,
@@ -294,14 +357,23 @@ class Opportunity(Base):
         default=ExperienceLevel.NOT_SPECIFIED,
     )
     location: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    location_raw: Mapped[str | None] = mapped_column(String(255), nullable=True)
     country: Mapped[str | None] = mapped_column(String(120), nullable=True)
     region: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    location_scope: Mapped[LocationScope | None] = mapped_column(
+        pg_enum(LocationScope, name="location_scope"),
+        nullable=True,
+    )
     workplace_type: Mapped[WorkplaceType] = mapped_column(
         pg_enum(WorkplaceType, name="workplace_type"),
         nullable=False,
         default=WorkplaceType.REMOTE,
+        index=True,
     )
     application_url: Mapped[str] = mapped_column(String(500), nullable=False)
+    canonical_application_url: Mapped[str | None] = mapped_column(
+        String(500), nullable=True, index=True
+    )
     source_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -334,7 +406,14 @@ class Opportunity(Base):
     is_manual: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     external_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    relevance_score: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    relevance_score: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True, index=True)
+    match_reasons: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    matched_career_tracks: Mapped[list[Any]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    duplicate_confidence: Mapped[str | None] = mapped_column(String(20), nullable=True)
     duplicate_of_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("opportunities.id", ondelete="SET NULL"), nullable=True
     )
@@ -361,6 +440,16 @@ class Opportunity(Base):
     source: Mapped[OpportunitySource | None] = relationship()
     creator: Mapped[User | None] = relationship(foreign_keys=[created_by])
     approver: Mapped[User | None] = relationship(foreign_keys=[approved_by])
+    hackathon_details: Mapped[OpportunityHackathonDetails | None] = relationship(
+        back_populates="opportunity",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    bounty_details: Mapped[OpportunityBountyDetails | None] = relationship(
+        back_populates="opportunity",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
     career_path_links: Mapped[list[OpportunityCareerPath]] = relationship(
         back_populates="opportunity",
         cascade="all, delete-orphan",
@@ -378,6 +467,97 @@ class Opportunity(Base):
         cascade="all, delete-orphan",
     )
     duplicate_of: Mapped[Opportunity | None] = relationship(remote_side="Opportunity.id")
+
+
+class OpportunityHackathonDetails(Base):
+    __tablename__ = "opportunity_hackathon_details"
+
+    opportunity_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("opportunities.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    short_description: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    registration_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    website_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    registration_open_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    registration_deadline: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
+    start_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    end_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    submission_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    announcement_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    event_format: Mapped[HackathonEventFormat] = mapped_column(
+        pg_enum(HackathonEventFormat, name="hackathon_event_format"),
+        nullable=False,
+        default=HackathonEventFormat.UNKNOWN,
+    )
+    prize_pool_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    prize_currency: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    prize_pool_raw: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    team_size_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    team_size_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    team_required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    individual_allowed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    tags: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    tracks: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    technology_focus: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    derived_phase: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    last_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    opportunity: Mapped[Opportunity] = relationship(back_populates="hackathon_details")
+
+
+class OpportunityBountyDetails(Base):
+    __tablename__ = "opportunity_bounty_details"
+
+    opportunity_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("opportunities.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    short_description: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    listing_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    reward_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    reward_token: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    reward_currency: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    reward_raw: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    reward_min: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    reward_max: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    category: Mapped[BountyCategory] = mapped_column(
+        pg_enum(BountyCategory, name="bounty_category"),
+        nullable=False,
+        default=BountyCategory.UNKNOWN,
+    )
+    opens_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    winners_announced: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    skills: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    tags: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    chain_focus: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    derived_phase: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    last_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    opportunity: Mapped[Opportunity] = relationship(back_populates="bounty_details")
 
 
 class OpportunityCareerPath(Base):

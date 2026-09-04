@@ -13,6 +13,7 @@ from app.db.enums import pg_enum
 from app.db.session import Base
 
 if TYPE_CHECKING:
+    from app.models.billing import PaymentObligation, StudentBillingAccount
     from app.models.classroom import Cohort
     from app.models.course import Course
     from app.models.user import User
@@ -34,6 +35,18 @@ class Payment(Base):
     )
     cohort_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("cohorts.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    billing_account_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("student_billing_accounts.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    payment_obligation_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("payment_obligations.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
     provider: Mapped[PaymentProviderName] = mapped_column(
         pg_enum(PaymentProviderName, name="payment_provider"),
@@ -65,3 +78,10 @@ class Payment(Base):
     user: Mapped[User] = relationship()
     course: Mapped[Course | None] = relationship(back_populates="payments")
     cohort: Mapped[Cohort | None] = relationship()
+    billing_account: Mapped[StudentBillingAccount | None] = relationship(
+        foreign_keys=[billing_account_id]
+    )
+    payment_obligation: Mapped[PaymentObligation | None] = relationship(
+        back_populates="payments",
+        foreign_keys=[payment_obligation_id],
+    )
