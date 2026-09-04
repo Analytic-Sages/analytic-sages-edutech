@@ -1,4 +1,10 @@
 import { FEATURED_COHORT_SLUG } from "@/lib/auth-redirect";
+import {
+  BDE_COHORT_SLUG,
+  blockchainDataEngineeringProgram,
+  getEngineeringProgramPage,
+  listEngineeringProgramSlugs,
+} from "@/lib/blockchain-data-engineering-program";
 import type { TestimonialVideo } from "@/lib/testimonials";
 import { siteConfig } from "@/config/site";
 
@@ -205,6 +211,13 @@ const cohort9: ProgramPageContent = {
 
 const programPages: ProgramPageContent[] = [cohort9];
 
+export {
+  blockchainDataEngineeringProgram,
+  getEngineeringProgramPage,
+  listEngineeringProgramSlugs,
+  BDE_COHORT_SLUG,
+};
+
 export function getProgramPage(slug: string): ProgramPageContent | undefined {
   return programPages.find(
     (page) => page.pageSlug === slug || page.aliases.includes(slug) || page.cohortSlug === slug,
@@ -212,19 +225,32 @@ export function getProgramPage(slug: string): ProgramPageContent | undefined {
 }
 
 export function listProgramPageSlugs(): string[] {
-  return programPages.flatMap((page) => [page.pageSlug, ...page.aliases]);
+  return [
+    ...programPages.flatMap((page) => [page.pageSlug, ...page.aliases]),
+    ...listEngineeringProgramSlugs(),
+  ];
 }
 
 export function listPublicProgramPaths(): string[] {
-  return [...new Set(programPages.map((page) => page.canonicalPath))];
+  return [
+    ...new Set([
+      ...programPages.map((page) => page.canonicalPath),
+      blockchainDataEngineeringProgram.canonicalPath,
+      blockchainDataEngineeringProgram.curriculumPath,
+    ]),
+  ];
 }
 
 export function getProgramPageHref(cohortApiSlug: string): string | null {
+  const engineering = getEngineeringProgramPage(cohortApiSlug);
+  if (engineering) return `/programs/${engineering.pageSlug}`;
   const page = programPages.find((item) => item.cohortSlug === cohortApiSlug);
   return page ? `/programs/${page.pageSlug}` : null;
 }
 
 export function getProgramPostcard(cohortApiSlug: string): string | null {
+  const engineering = getEngineeringProgramPage(cohortApiSlug);
+  if (engineering) return engineering.postcardImage;
   return programPages.find((item) => item.cohortSlug === cohortApiSlug)?.postcardImage ?? null;
 }
 

@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from app.core.referrals import (
     PartnerPayoutStatus,
     ReferralConversionStatus,
+    ReferralFraudStatus,
     ReferralPartnerStatus,
 )
 
@@ -46,6 +47,17 @@ class PartnerPublic(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class CurrencyBalanceRow(BaseModel):
+    currency: str
+    pending_commission: Decimal
+    available_balance: Decimal
+    total_paid_out: Decimal
+    minimum_payout: Decimal
+    estimated_usd_pending: Decimal | None = None
+    estimated_usd_available: Decimal | None = None
+    estimated_usd_paid_out: Decimal | None = None
+
+
 class PartnerDashboard(BaseModel):
     clicks: int
     registrations: int
@@ -62,6 +74,13 @@ class PartnerDashboard(BaseModel):
     commission_rate: Decimal
     hold_days: int
     referral_link: str | None = None
+    balances_by_currency: list[CurrencyBalanceRow] = Field(default_factory=list)
+    reporting_currency: str = "USD"
+    estimated_usd_pending: Decimal | None = None
+    estimated_usd_available: Decimal | None = None
+    estimated_usd_paid_out: Decimal | None = None
+    estimated_usd_portfolio: Decimal | None = None
+    minimum_payout_thresholds: dict[str, Decimal] = Field(default_factory=dict)
 
 
 class PartnerConversionRow(BaseModel):
@@ -73,6 +92,7 @@ class PartnerConversionRow(BaseModel):
     currency: str
     status: ReferralConversionStatus
     created_at: datetime
+    reporting_usd_equivalent: Decimal | None = None
 
 
 class PartnerPayoutRow(BaseModel):
@@ -89,7 +109,7 @@ class PartnerPayoutRow(BaseModel):
 
 class PartnerPayoutCreate(BaseModel):
     amount: Decimal
-    currency: str = "NGN"
+    currency: str = "USD"
     payment_details_reference: str | None = Field(default=None, max_length=255)
 
 
@@ -104,6 +124,12 @@ class AdminReferralOverview(BaseModel):
     commission_available: Decimal
     commission_paid: Decimal
     currency: str
+    balances_by_currency: list[CurrencyBalanceRow] = Field(default_factory=list)
+    reporting_currency: str = "USD"
+    estimated_usd_pending: Decimal | None = None
+    estimated_usd_available: Decimal | None = None
+    estimated_usd_paid_out: Decimal | None = None
+    estimated_usd_portfolio: Decimal | None = None
 
 
 class AdminPartnerPatch(BaseModel):
@@ -127,7 +153,15 @@ class AdminConversionRow(BaseModel):
     commission_amount: Decimal
     currency: str
     status: ReferralConversionStatus
+    fraud_status: ReferralFraudStatus = ReferralFraudStatus.CLEAR
     created_at: datetime
+    reporting_usd_equivalent: Decimal | None = None
+
+
+class AdminAttributionOverride(BaseModel):
+    referred_user_id: UUID
+    partner_id: UUID
+    note: str | None = Field(default=None, max_length=500)
 
 
 class LeaderboardEntry(BaseModel):

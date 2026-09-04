@@ -7,7 +7,7 @@ export const metadata = isPartnersPublic()
   ? pageMetadata({
       title: "Referral Partners",
       description:
-        "Earn 7% commission referring learners to Analytic Sages paid courses and programmes.",
+        "Connect people to opportunities that matter. Earn 7% commission when referred learners make eligible payments.",
       path: "/partners",
     })
   : { robots: { index: false, follow: false }, title: "Referral Partners" };

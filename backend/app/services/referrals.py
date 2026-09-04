@@ -16,11 +16,17 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.core.payments import PaymentStatus
+from app.core.referral_fx import (
+    estimate_usd,
+    minimum_payout_thresholds,
+    safe_referral_redirect,
+)
 from app.core.referrals import (
     PartnerLedgerEntryType,
     PartnerLedgerStatus,
     PartnerPayoutStatus,
     ReferralConversionStatus,
+    ReferralFraudStatus,
     ReferralPartnerStatus,
     commission_from_payment_amount,
     referral_money,
@@ -251,9 +257,9 @@ class ReferralAttributionService:
         destination: str | None = None,
     ) -> tuple[bool, str]:
         """Record click + first-touch attribution. Returns (ok, redirect_path)."""
-        redirect = destination or self.settings.referral_default_redirect_path
-        if not redirect.startswith("/"):
-            redirect = self.settings.referral_default_redirect_path
+        redirect = safe_referral_redirect(
+            destination, default=self.settings.referral_default_redirect_path
+        )
 
         partner = self.partners.get_active_by_code(code)
         if not partner or not partner.referral_code:
@@ -331,7 +337,16 @@ class ReferralAttributionService:
         if not partner or partner.status != ReferralPartnerStatus.ACTIVE:
             return
         if partner.user_id == user.id:
-            # Self-referral — do not lock
+            # Self-referral — do not lock; audit for admin review
+            self.db.add(
+                ReferralAuditEvent(
+                    actor_id=user.id,
+                    action="attribution.self_referral_blocked",
+                    entity_type="referral_attribution",
+                    entity_id=attr.id,
+                    after_json={"partner_id": str(partner.id)},
+                )
+            )
             return
 
         attr.referred_user_id = user.id
@@ -346,6 +361,79 @@ class ReferralAttributionService:
             )
         )
         # Caller commits with user creation transaction when possible
+
+    def admin_override_lock(
+        self,
+        *,
+        referred_user_id: UUID,
+        partner_id: UUID,
+        actor: User,
+        note: str | None = None,
+    ) -> ReferralAttribution:
+        """Admin-only first-touch override when support must correct attribution."""
+        partner = self.db.get(ReferralPartner, partner_id)
+        if not partner or partner.status != ReferralPartnerStatus.ACTIVE:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Partner must be active",
+            )
+        if partner.user_id == referred_user_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot attribute a partner to themselves",
+            )
+        user = self.db.get(User, referred_user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+        existing = self.db.scalar(
+            select(ReferralAttribution).where(
+                ReferralAttribution.referred_user_id == referred_user_id,
+                ReferralAttribution.locked_at.is_not(None),
+            )
+        )
+        now = datetime.now(UTC)
+        before = None
+        if existing:
+            before = {
+                "partner_id": str(existing.partner_id),
+                "attribution_id": str(existing.id),
+            }
+            existing.partner_id = partner.id
+            existing.referral_code = partner.referral_code or existing.referral_code
+            existing.locked_at = now
+            existing.expires_at = now + timedelta(days=self.settings.referral_attribution_days)
+            attr = existing
+        else:
+            attr = ReferralAttribution(
+                partner_id=partner.id,
+                anonymous_visitor_id=f"admin-override-{referred_user_id}",
+                referred_user_id=referred_user_id,
+                referral_code=partner.referral_code or "ADMIN",
+                attributed_at=now,
+                expires_at=now + timedelta(days=self.settings.referral_attribution_days),
+                locked_at=now,
+            )
+            self.db.add(attr)
+            self.db.flush()
+
+        self.db.add(
+            ReferralAuditEvent(
+                actor_id=actor.id,
+                action="attribution.admin_override",
+                entity_type="referral_attribution",
+                entity_id=attr.id,
+                note=note,
+                before_json=before,
+                after_json={
+                    "partner_id": str(partner.id),
+                    "referred_user_id": str(referred_user_id),
+                },
+            )
+        )
+        self.db.commit()
+        self.db.refresh(attr)
+        return attr
 
     def get_locked_for_user(self, user_id: UUID) -> ReferralAttribution | None:
         return self.db.scalar(
@@ -411,6 +499,17 @@ class ReferralCommissionService:
             if enrollment:
                 enrollment_id = enrollment.id
 
+        currency = payment.currency.upper()
+        usd_eq, fx_rate, fx_at = estimate_usd(
+            amount=commission, currency=currency, settings=self.settings
+        )
+        fraud_flags: dict | None = None
+        fraud_status = ReferralFraudStatus.CLEAR
+        # Light signal: same hashed IP pattern already stored on clicks (admin-only)
+        if partner.user_id == payment.user_id:
+            fraud_status = ReferralFraudStatus.FLAGGED
+            fraud_flags = {"reason": "self_referral"}
+
         conversion = ReferralConversion(
             partner_id=partner.id,
             referred_user_id=payment.user_id,
@@ -422,9 +521,14 @@ class ReferralCommissionService:
             eligible_amount=eligible,
             commission_rate=rate,
             commission_amount=commission,
-            currency=payment.currency.upper(),
+            currency=currency,
             status=ReferralConversionStatus.PENDING,
             available_at=available_at,
+            fraud_status=fraud_status,
+            fraud_flags=fraud_flags,
+            reporting_fx_rate=fx_rate,
+            reporting_fx_timestamp=fx_at if fx_rate is not None else None,
+            reporting_usd_equivalent=usd_eq,
         )
         self.db.add(conversion)
         self.db.flush()
@@ -433,20 +537,24 @@ class ReferralCommissionService:
             partner_id=partner.id,
             entry_type=PartnerLedgerEntryType.COMMISSION,
             amount=commission,
-            currency=payment.currency.upper(),
+            currency=currency,
             reference_type="referral_conversion",
             reference_id=conversion.id,
             status=PartnerLedgerStatus.PENDING,
             description="Referral commission (holding period)",
             available_at=available_at,
+            reporting_fx_rate=fx_rate,
+            reporting_fx_timestamp=fx_at if fx_rate is not None else None,
+            reporting_usd_equivalent=usd_eq,
         )
         self.db.add(ledger)
         logger.info(
-            "referral_commission payment=%s partner=%s amount=%s %s",
+            "referral_commission payment=%s partner=%s amount=%s %s usd_est=%s",
             payment.id,
             partner.id,
             commission,
-            payment.currency,
+            currency,
+            usd_eq,
         )
         return conversion
 
@@ -572,6 +680,18 @@ class ReferralLedgerService:
     def __init__(self, db: Session) -> None:
         self.db = db
 
+    def currencies_for_partner(self, partner_id: UUID) -> list[str]:
+        rows = self.db.scalars(
+            select(PartnerLedgerEntry.currency)
+            .where(PartnerLedgerEntry.partner_id == partner_id)
+            .distinct()
+        ).all()
+        return sorted({str(c).upper() for c in rows})
+
+    def all_ledger_currencies(self) -> list[str]:
+        rows = self.db.scalars(select(PartnerLedgerEntry.currency).distinct()).all()
+        return sorted({str(c).upper() for c in rows})
+
     def available_balance(self, *, partner_id: UUID, currency: str) -> Decimal:
         currency = currency.upper()
         # Positive AVAILABLE commissions/adjustments
@@ -638,14 +758,25 @@ class ReferralLedgerService:
         return referral_money(abs(Decimal(str(self.db.scalar(stmt) or 0))))
 
 
+
 class ReferralPayoutService:
     def __init__(self, db: Session, settings: Settings) -> None:
         self.db = db
         self.settings = settings
         self.ledger = ReferralLedgerService(db)
 
+    def thresholds(self) -> dict[str, Decimal]:
+        return minimum_payout_thresholds(self.settings)
+
+    def minimum_for(self, currency: str) -> Decimal | None:
+        return self.thresholds().get(currency.upper())
+
     @property
     def minimum_amount(self) -> Decimal:
+        thresholds = self.thresholds()
+        legacy = self.settings.minimum_payout_currency.upper()
+        if legacy in thresholds:
+            return thresholds[legacy]
         return referral_money(self.settings.minimum_payout_amount)
 
     @property
@@ -667,18 +798,19 @@ class ReferralPayoutService:
             )
         currency = currency.upper()
         amount = referral_money(amount)
-        if currency != self.minimum_currency:
+        minimum = self.minimum_for(currency)
+        if minimum is None:
+            supported = ", ".join(sorted(self.thresholds().keys())) or "none"
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Payouts are currently only supported in {self.minimum_currency}",
+                detail=f"Payouts are not configured for {currency}. Supported: {supported}",
             )
-        if amount < self.minimum_amount:
+        if amount < minimum:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Minimum payout is {self.minimum_amount} {currency}",
+                detail=f"Minimum payout is {minimum} {currency}",
             )
 
-        # Lock partner row for concurrent request protection
         locked = self.db.scalar(
             select(ReferralPartner)
             .where(ReferralPartner.id == partner.id)
@@ -723,7 +855,9 @@ class ReferralPayoutService:
         self.db.add(payout)
         self.db.flush()
 
-        # Reserve funds (negative amount)
+        usd_eq, fx_rate, fx_at = estimate_usd(
+            amount=amount, currency=currency, settings=self.settings
+        )
         self.db.add(
             PartnerLedgerEntry(
                 partner_id=partner.id,
@@ -734,6 +868,9 @@ class ReferralPayoutService:
                 reference_id=payout.id,
                 status=PartnerLedgerStatus.RESERVED,
                 description="Payout request reserved",
+                reporting_fx_rate=fx_rate,
+                reporting_fx_timestamp=fx_at if fx_rate is not None else None,
+                reporting_usd_equivalent=usd_eq,
             )
         )
         self.db.add(
@@ -813,8 +950,98 @@ class ReferralDashboardService:
         self.settings = settings
         self.ledger = ReferralLedgerService(db)
 
+    def _balance_row(self, *, partner_id: UUID | None, currency: str) -> dict:
+        currency = currency.upper()
+        if partner_id:
+            pending = self.ledger.pending_commission(partner_id=partner_id, currency=currency)
+            available = self.ledger.available_balance(partner_id=partner_id, currency=currency)
+            paid = self.ledger.total_paid_out(partner_id=partner_id, currency=currency)
+        else:
+            pending = referral_money(
+                self.db.scalar(
+                    select(func.coalesce(func.sum(PartnerLedgerEntry.amount), 0)).where(
+                        PartnerLedgerEntry.entry_type == PartnerLedgerEntryType.COMMISSION,
+                        PartnerLedgerEntry.status == PartnerLedgerStatus.PENDING,
+                        PartnerLedgerEntry.currency == currency,
+                    )
+                )
+                or 0
+            )
+            available = referral_money(
+                self.db.scalar(
+                    select(func.coalesce(func.sum(PartnerLedgerEntry.amount), 0)).where(
+                        PartnerLedgerEntry.entry_type == PartnerLedgerEntryType.COMMISSION,
+                        PartnerLedgerEntry.status == PartnerLedgerStatus.AVAILABLE,
+                        PartnerLedgerEntry.currency == currency,
+                    )
+                )
+                or 0
+            )
+            paid = referral_money(
+                self.db.scalar(
+                    select(func.coalesce(func.sum(func.abs(PartnerLedgerEntry.amount)), 0)).where(
+                        PartnerLedgerEntry.entry_type == PartnerLedgerEntryType.PAYOUT,
+                        PartnerLedgerEntry.status == PartnerLedgerStatus.COMPLETED,
+                        PartnerLedgerEntry.currency == currency,
+                    )
+                )
+                or 0
+            )
+        thresholds = minimum_payout_thresholds(self.settings)
+        usd_pending, _, _ = estimate_usd(
+            amount=pending, currency=currency, settings=self.settings
+        )
+        usd_available, _, _ = estimate_usd(
+            amount=available, currency=currency, settings=self.settings
+        )
+        usd_paid, _, _ = estimate_usd(amount=paid, currency=currency, settings=self.settings)
+        return {
+            "currency": currency,
+            "pending_commission": pending,
+            "available_balance": available,
+            "total_paid_out": paid,
+            "minimum_payout": thresholds.get(
+                currency, referral_money(self.settings.minimum_payout_amount)
+            ),
+            "estimated_usd_pending": usd_pending,
+            "estimated_usd_available": usd_available,
+            "estimated_usd_paid_out": usd_paid,
+        }
+
+    def _sum_usd(self, rows: list[dict], key: str) -> Decimal | None:
+        total = Decimal("0")
+        any_rate = False
+        for row in rows:
+            value = row.get(key)
+            if value is not None:
+                total += Decimal(str(value))
+                any_rate = True
+        return referral_money(total) if any_rate else None
+
     def partner_overview(self, partner: ReferralPartner) -> dict:
-        currency = self.settings.minimum_payout_currency.upper()
+        thresholds = minimum_payout_thresholds(self.settings)
+        currencies = self.ledger.currencies_for_partner(partner.id)
+        for ccy in thresholds:
+            if ccy not in currencies:
+                currencies.append(ccy)
+        currencies = sorted(set(currencies))
+        balances = [
+            self._balance_row(partner_id=partner.id, currency=ccy) for ccy in currencies
+        ]
+        primary = next(
+            (b for b in balances if b["available_balance"] > 0),
+            next(
+                (b for b in balances if b["currency"] == "USD"),
+                balances[0] if balances else None,
+            ),
+        )
+        if primary is None:
+            primary = self._balance_row(
+                partner_id=partner.id,
+                currency=self.settings.minimum_payout_currency.upper(),
+            )
+            balances = [primary]
+
         clicks = self.db.scalar(
             select(func.count()).select_from(ReferralClick).where(
                 ReferralClick.partner_id == partner.id
@@ -842,31 +1069,48 @@ class ReferralDashboardService:
         conversion_rate = (
             float(paid_enrollments) / float(registrations) if registrations else 0.0
         )
+        est_pending = self._sum_usd(balances, "estimated_usd_pending")
+        est_available = self._sum_usd(balances, "estimated_usd_available")
+        est_paid = self._sum_usd(balances, "estimated_usd_paid_out")
+        portfolio = None
+        if est_pending is not None or est_available is not None:
+            portfolio = referral_money((est_pending or 0) + (est_available or 0))
         return {
             "clicks": int(clicks),
             "registrations": int(registrations),
             "paid_enrollments": int(paid_enrollments),
             "conversion_rate": round(conversion_rate, 4),
-            "pending_commission": self.ledger.pending_commission(
-                partner_id=partner.id, currency=currency
-            ),
-            "available_balance": self.ledger.available_balance(
-                partner_id=partner.id, currency=currency
-            ),
-            "total_paid_out": self.ledger.total_paid_out(
-                partner_id=partner.id, currency=currency
-            ),
-            "currency": currency,
+            "pending_commission": primary["pending_commission"],
+            "available_balance": primary["available_balance"],
+            "total_paid_out": primary["total_paid_out"],
+            "currency": primary["currency"],
             "referral_code": partner.referral_code,
             "status": partner.status.value,
             "display_name": partner.display_name,
-            "minimum_payout": referral_money(self.settings.minimum_payout_amount),
+            "minimum_payout": primary["minimum_payout"],
             "commission_rate": Decimal(self.settings.default_referral_commission_rate),
             "hold_days": self.settings.commission_hold_days,
+            "balances_by_currency": balances,
+            "reporting_currency": self.settings.reporting_base_currency.upper(),
+            "estimated_usd_pending": est_pending,
+            "estimated_usd_available": est_available,
+            "estimated_usd_paid_out": est_paid,
+            "estimated_usd_portfolio": portfolio,
+            "minimum_payout_thresholds": thresholds,
         }
 
     def admin_overview(self) -> dict:
-        currency = self.settings.minimum_payout_currency.upper()
+        thresholds = minimum_payout_thresholds(self.settings)
+        currencies = self.ledger.all_ledger_currencies()
+        for ccy in thresholds:
+            if ccy not in currencies:
+                currencies.append(ccy)
+        currencies = sorted(set(currencies)) or [self.settings.minimum_payout_currency.upper()]
+        balances = [self._balance_row(partner_id=None, currency=ccy) for ccy in currencies]
+        primary = next(
+            (b for b in balances if b["currency"] == "USD"),
+            balances[0],
+        )
         total_partners = self.db.scalar(select(func.count()).select_from(ReferralPartner)) or 0
         active = self.db.scalar(
             select(func.count()).select_from(ReferralPartner).where(
@@ -889,27 +1133,12 @@ class ReferralDashboardService:
                 ReferralConversion.status != ReferralConversionStatus.VOIDED
             )
         ) or 0
-        pending_c = self.db.scalar(
-            select(func.coalesce(func.sum(PartnerLedgerEntry.amount), 0)).where(
-                PartnerLedgerEntry.entry_type == PartnerLedgerEntryType.COMMISSION,
-                PartnerLedgerEntry.status == PartnerLedgerStatus.PENDING,
-                PartnerLedgerEntry.currency == currency,
-            )
-        ) or 0
-        available_c = self.db.scalar(
-            select(func.coalesce(func.sum(PartnerLedgerEntry.amount), 0)).where(
-                PartnerLedgerEntry.entry_type == PartnerLedgerEntryType.COMMISSION,
-                PartnerLedgerEntry.status == PartnerLedgerStatus.AVAILABLE,
-                PartnerLedgerEntry.currency == currency,
-            )
-        ) or 0
-        paid_c = self.db.scalar(
-            select(func.coalesce(func.sum(func.abs(PartnerLedgerEntry.amount)), 0)).where(
-                PartnerLedgerEntry.entry_type == PartnerLedgerEntryType.PAYOUT,
-                PartnerLedgerEntry.status == PartnerLedgerStatus.COMPLETED,
-                PartnerLedgerEntry.currency == currency,
-            )
-        ) or 0
+        est_pending = self._sum_usd(balances, "estimated_usd_pending")
+        est_available = self._sum_usd(balances, "estimated_usd_available")
+        est_paid = self._sum_usd(balances, "estimated_usd_paid_out")
+        portfolio = None
+        if est_pending is not None or est_available is not None:
+            portfolio = referral_money((est_pending or 0) + (est_available or 0))
         return {
             "total_partners": int(total_partners),
             "active_partners": int(active),
@@ -917,10 +1146,16 @@ class ReferralDashboardService:
             "total_clicks": int(clicks),
             "total_registrations": int(registrations),
             "total_paid_enrollments": int(paid),
-            "commission_pending": referral_money(pending_c),
-            "commission_available": referral_money(available_c),
-            "commission_paid": referral_money(paid_c),
-            "currency": currency,
+            "commission_pending": primary["pending_commission"],
+            "commission_available": primary["available_balance"],
+            "commission_paid": primary["total_paid_out"],
+            "currency": primary["currency"],
+            "balances_by_currency": balances,
+            "reporting_currency": self.settings.reporting_base_currency.upper(),
+            "estimated_usd_pending": est_pending,
+            "estimated_usd_available": est_available,
+            "estimated_usd_paid_out": est_paid,
+            "estimated_usd_portfolio": portfolio,
         }
 
     def leaderboard(self, *, period: str = "all", limit: int = 20) -> list[dict]:

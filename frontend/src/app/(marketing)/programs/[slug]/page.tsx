@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { BlockchainDataEngineeringLanding } from "@/components/marketing/blockchain-data-engineering-landing";
 import { ProgramLandingPage } from "@/components/marketing/program-landing-page";
 import {
+  getEngineeringProgramPage,
   getProgramPage,
   listProgramPageSlugs,
 } from "@/lib/program-pages";
@@ -15,6 +17,16 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
+  const engineering = getEngineeringProgramPage(slug);
+  if (engineering) {
+    return pageMetadata({
+      title: engineering.seoTitle,
+      description: engineering.seoDescription,
+      path: engineering.canonicalPath,
+      image: engineering.postcardImage,
+    });
+  }
+
   const program = getProgramPage(slug);
   if (!program) return { title: "Program" };
 
@@ -28,6 +40,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function CohortProgramPage({ params }: Props) {
   const { slug } = await params;
+  const engineering = getEngineeringProgramPage(slug);
+  if (engineering) {
+    return <BlockchainDataEngineeringLanding program={engineering} />;
+  }
+
   const program = getProgramPage(slug);
   if (!program) notFound();
 

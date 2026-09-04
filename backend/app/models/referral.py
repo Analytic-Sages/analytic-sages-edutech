@@ -24,6 +24,7 @@ from app.core.referrals import (
     PartnerLedgerStatus,
     PartnerPayoutStatus,
     ReferralConversionStatus,
+    ReferralFraudStatus,
     ReferralPartnerStatus,
 )
 from app.db.enums import pg_enum
@@ -183,7 +184,18 @@ class ReferralConversion(Base):
         index=True,
     )
     available_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    fraud_status: Mapped[ReferralFraudStatus] = mapped_column(
+        pg_enum(ReferralFraudStatus, name="referral_fraud_status"),
+        nullable=False,
+        default=ReferralFraudStatus.CLEAR,
+        index=True,
+    )
     fraud_flags: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    reporting_fx_rate: Mapped[Decimal | None] = mapped_column(Numeric(18, 8), nullable=True)
+    reporting_fx_timestamp: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    reporting_usd_equivalent: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -236,6 +248,11 @@ class PartnerLedgerEntry(Base):
     )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     available_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    reporting_fx_rate: Mapped[Decimal | None] = mapped_column(Numeric(18, 8), nullable=True)
+    reporting_fx_timestamp: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    reporting_usd_equivalent: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
     )

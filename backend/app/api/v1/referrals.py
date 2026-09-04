@@ -11,13 +11,19 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_current_user_optional, get_db, require_admin
 from app.core.config import Settings, get_settings
-from app.core.referrals import PartnerPayoutStatus, ReferralConversionStatus, ReferralPartnerStatus
+from app.core.referrals import (
+    PartnerPayoutStatus,
+    ReferralConversionStatus,
+    ReferralFraudStatus,
+    ReferralPartnerStatus,
+)
 from app.core.roles import UserRole
 from app.models.classroom import Cohort
 from app.models.course import Course
 from app.models.referral import PartnerPayoutRequest, ReferralConversion, ReferralPartner
 from app.models.user import User
 from app.schemas.referrals import (
+    AdminAttributionOverride,
     AdminConversionRow,
     AdminPartnerPatch,
     AdminPayoutPatch,
@@ -187,6 +193,25 @@ def partner_dashboard(
     return PartnerDashboard(**data, referral_link=link)
 
 
+def _admin_conversion_row(db: Session, row: ReferralConversion) -> AdminConversionRow:
+    partner = db.get(ReferralPartner, row.partner_id)
+    user = db.get(User, row.referred_user_id)
+    return AdminConversionRow(
+        id=row.id,
+        partner_name=partner.display_name if partner else "—",
+        learner_email=user.email if user else "—",
+        programme=_programme_title(db, row),
+        payment_id=row.payment_id,
+        eligible_amount=row.eligible_amount,
+        commission_amount=row.commission_amount,
+        currency=row.currency,
+        status=row.status,
+        fraud_status=row.fraud_status,
+        created_at=row.created_at,
+        reporting_usd_equivalent=row.reporting_usd_equivalent,
+    )
+
+
 @router.get("/partner/conversions", response_model=list[PartnerConversionRow])
 def partner_conversions(
     partner: ReferralPartner = Depends(_require_partner),
@@ -216,6 +241,7 @@ def partner_conversions(
                 currency=row.currency,
                 status=row.status,
                 created_at=row.created_at,
+                reporting_usd_equivalent=row.reporting_usd_equivalent,
             )
         )
     return out
@@ -300,26 +326,27 @@ def admin_conversions(
     stmt = select(ReferralConversion).order_by(ReferralConversion.created_at.desc()).limit(200)
     if status_filter:
         stmt = stmt.where(ReferralConversion.status == status_filter)
-    rows = list(db.scalars(stmt).all())
-    out: list[AdminConversionRow] = []
-    for row in rows:
-        partner = db.get(ReferralPartner, row.partner_id)
-        user = db.get(User, row.referred_user_id)
-        out.append(
-            AdminConversionRow(
-                id=row.id,
-                partner_name=partner.display_name if partner else "—",
-                learner_email=user.email if user else "—",
-                programme=_programme_title(db, row),
-                payment_id=row.payment_id,
-                eligible_amount=row.eligible_amount,
-                commission_amount=row.commission_amount,
-                currency=row.currency,
-                status=row.status,
-                created_at=row.created_at,
-            )
-        )
-    return out
+    return [_admin_conversion_row(db, row) for row in db.scalars(stmt).all()]
+
+
+@router.post("/admin/referrals/attributions/override")
+def admin_override_attribution(
+    payload: AdminAttributionOverride,
+    admin: User = Depends(require_admin),
+    attribution: ReferralAttributionService = Depends(_attribution),
+) -> dict:
+    attr = attribution.admin_override_lock(
+        referred_user_id=payload.referred_user_id,
+        partner_id=payload.partner_id,
+        actor=admin,
+        note=payload.note,
+    )
+    return {
+        "ok": True,
+        "attribution_id": str(attr.id),
+        "partner_id": str(attr.partner_id),
+        "referred_user_id": str(attr.referred_user_id),
+    }
 
 
 @router.get("/admin/referrals/payouts", response_model=list[PartnerPayoutRow])
@@ -358,30 +385,15 @@ def admin_review_queue(
     rows = list(
         db.scalars(
             select(ReferralConversion)
-            .where(ReferralConversion.status == ReferralConversionStatus.REVIEW_REQUIRED)
+            .where(
+                (ReferralConversion.status == ReferralConversionStatus.REVIEW_REQUIRED)
+                | (ReferralConversion.fraud_status != ReferralFraudStatus.CLEAR)
+            )
             .order_by(ReferralConversion.created_at.desc())
             .limit(100)
         ).all()
     )
-    out: list[AdminConversionRow] = []
-    for row in rows:
-        partner = db.get(ReferralPartner, row.partner_id)
-        user = db.get(User, row.referred_user_id)
-        out.append(
-            AdminConversionRow(
-                id=row.id,
-                partner_name=partner.display_name if partner else "—",
-                learner_email=user.email if user else "—",
-                programme=_programme_title(db, row),
-                payment_id=row.payment_id,
-                eligible_amount=row.eligible_amount,
-                commission_amount=row.commission_amount,
-                currency=row.currency,
-                status=row.status,
-                created_at=row.created_at,
-            )
-        )
-    return out
+    return [_admin_conversion_row(db, row) for row in rows]
 
 
 @router.post("/internal/referrals/release-commissions", response_model=ReleaseCommissionsResponse)

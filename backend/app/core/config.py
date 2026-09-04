@@ -94,8 +94,16 @@ class Settings(BaseSettings):
     default_referral_commission_rate: str = "0.07"
     referral_attribution_days: int = 30
     commission_hold_days: int = 14
+    # Legacy single-currency fallback when MINIMUM_PAYOUT_THRESHOLDS_JSON is unset
     minimum_payout_amount: str = "10000"
     minimum_payout_currency: str = "NGN"
+    # USD-first reporting (informational only — does not rewrite ledger currency)
+    reporting_base_currency: str = "USD"
+    default_global_minimum_payout_usd_equivalent: str = "25"
+    # JSON map e.g. {"USD":"25","USDT":"25","NGN":"40000"} — empty derives from USD equiv + FX
+    minimum_payout_thresholds_json: str | None = None
+    # JSON map of USD per 1 unit e.g. {"USD":"1","NGN":"0.000625"} — empty uses Paystack NGN rate
+    referral_reporting_fx_rates_json: str | None = None
     referral_default_redirect_path: str = "/programs"
     # Optional header token for POST /api/v1/internal/referrals/release-commissions
     referral_release_token: str | None = None

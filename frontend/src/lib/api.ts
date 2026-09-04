@@ -1295,6 +1295,17 @@ export type PartnerPublic = {
   approved_at: string | null;
 };
 
+export type CurrencyBalanceRow = {
+  currency: string;
+  pending_commission: string;
+  available_balance: string;
+  total_paid_out: string;
+  minimum_payout: string;
+  estimated_usd_pending: string | null;
+  estimated_usd_available: string | null;
+  estimated_usd_paid_out: string | null;
+};
+
 export type PartnerDashboard = {
   clicks: number;
   registrations: number;
@@ -1311,6 +1322,13 @@ export type PartnerDashboard = {
   commission_rate: string;
   hold_days: number;
   referral_link: string | null;
+  balances_by_currency: CurrencyBalanceRow[];
+  reporting_currency: string;
+  estimated_usd_pending: string | null;
+  estimated_usd_available: string | null;
+  estimated_usd_paid_out: string | null;
+  estimated_usd_portfolio: string | null;
+  minimum_payout_thresholds: Record<string, string>;
 };
 
 export type PartnerConversionRow = {
@@ -1322,6 +1340,7 @@ export type PartnerConversionRow = {
   currency: string;
   status: string;
   created_at: string;
+  reporting_usd_equivalent: string | null;
 };
 
 export type PartnerPayoutRow = {
@@ -1345,6 +1364,12 @@ export type AdminReferralOverview = {
   commission_available: string;
   commission_paid: string;
   currency: string;
+  balances_by_currency: CurrencyBalanceRow[];
+  reporting_currency: string;
+  estimated_usd_pending: string | null;
+  estimated_usd_available: string | null;
+  estimated_usd_paid_out: string | null;
+  estimated_usd_portfolio: string | null;
 };
 
 export type AdminConversionRow = {
@@ -1357,7 +1382,9 @@ export type AdminConversionRow = {
   commission_amount: string;
   currency: string;
   status: string;
+  fraud_status: string;
   created_at: string;
+  reporting_usd_equivalent: string | null;
 };
 
 export type LeaderboardEntry = {
@@ -1416,7 +1443,7 @@ export function getPartnerPayouts() {
   return apiFetch<PartnerPayoutRow[]>("/api/v1/partner/payouts");
 }
 
-export function requestPartnerPayout(amount: string, currency = "NGN", details?: string) {
+export function requestPartnerPayout(amount: string, currency = "USD", details?: string) {
   return apiFetch<PartnerPayoutRow>("/api/v1/partner/payouts", {
     method: "POST",
     body: JSON.stringify({

@@ -28,7 +28,8 @@ import {
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-function money(value: string, currency: string) {
+function money(value: string | number | null | undefined, currency: string) {
+  if (value == null || value === "") return "—";
   return `${currency} ${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 }
 
@@ -39,13 +40,20 @@ export function PartnerDashboardContent() {
   const [payouts, setPayouts] = useState<PartnerPayoutRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [payoutAmount, setPayoutAmount] = useState("");
+  const [payoutCurrency, setPayoutCurrency] = useState("USD");
   const [payoutNote, setPayoutNote] = useState("");
   const [payoutMsg, setPayoutMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   function reload() {
     return Promise.all([
-      getPartnerDashboard().then(setDash),
+      getPartnerDashboard().then((d) => {
+        setDash(d);
+        const preferred =
+          d.balances_by_currency.find((b) => Number(b.available_balance) > 0)?.currency ||
+          d.currency;
+        setPayoutCurrency(preferred);
+      }),
       getPartnerConversions().then(setConversions),
       getPartnerPayouts().then(setPayouts),
     ]);
@@ -70,7 +78,7 @@ export function PartnerDashboardContent() {
     setPayoutMsg(null);
     setBusy(true);
     try {
-      await requestPartnerPayout(payoutAmount, dash?.currency || "NGN", payoutNote || undefined);
+      await requestPartnerPayout(payoutAmount, payoutCurrency, payoutNote || undefined);
       setPayoutMsg("Payout requested. Admin will review and process manually.");
       setPayoutAmount("");
       await reload();
@@ -138,6 +146,12 @@ export function PartnerDashboardContent() {
   }
 
   const link = dash.referral_link || "";
+  const selectedMin =
+    dash.balances_by_currency.find((b) => b.currency === payoutCurrency)?.minimum_payout ||
+    dash.minimum_payout;
+  const selectedAvailable =
+    dash.balances_by_currency.find((b) => b.currency === payoutCurrency)?.available_balance ||
+    dash.available_balance;
 
   return (
     <div className="space-y-10 p-6">
@@ -153,9 +167,9 @@ export function PartnerDashboardContent() {
           ["Registrations", String(dash.registrations)],
           ["Paid enrollments", String(dash.paid_enrollments)],
           ["Conversion", `${(dash.conversion_rate * 100).toFixed(1)}%`],
-          ["Pending", money(dash.pending_commission, dash.currency)],
-          ["Available", money(dash.available_balance, dash.currency)],
-          ["Paid out", money(dash.total_paid_out, dash.currency)],
+          ["Est. USD pending", money(dash.estimated_usd_pending, dash.reporting_currency)],
+          ["Est. USD available", money(dash.estimated_usd_available, dash.reporting_currency)],
+          ["Est. USD portfolio", money(dash.estimated_usd_portfolio, dash.reporting_currency)],
         ].map(([label, value]) => (
           <div key={label} className="border-b border-border/60 pb-3">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
@@ -163,6 +177,39 @@ export function PartnerDashboardContent() {
           </div>
         ))}
       </div>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold">Balances by currency</h2>
+        <p className="text-sm text-muted-foreground">
+          Ledger balances stay in the payment currency. USD figures are reporting estimates only.
+        </p>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Currency</TableHead>
+              <TableHead>Pending</TableHead>
+              <TableHead>Available</TableHead>
+              <TableHead>Paid out</TableHead>
+              <TableHead>Min payout</TableHead>
+              <TableHead>Est. USD avail.</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {dash.balances_by_currency.map((row) => (
+              <TableRow key={row.currency}>
+                <TableCell className="font-medium">{row.currency}</TableCell>
+                <TableCell>{money(row.pending_commission, row.currency)}</TableCell>
+                <TableCell>{money(row.available_balance, row.currency)}</TableCell>
+                <TableCell>{money(row.total_paid_out, row.currency)}</TableCell>
+                <TableCell>{money(row.minimum_payout, row.currency)}</TableCell>
+                <TableCell>
+                  {money(row.estimated_usd_available, dash.reporting_currency)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </section>
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">My referral link</h2>
@@ -200,6 +247,7 @@ export function PartnerDashboardContent() {
                 <TableHead>Learner</TableHead>
                 <TableHead>Payment</TableHead>
                 <TableHead>Commission</TableHead>
+                <TableHead>Est. USD</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -211,6 +259,9 @@ export function PartnerDashboardContent() {
                   <TableCell>{row.learner_label}</TableCell>
                   <TableCell>{money(row.eligible_amount, row.currency)}</TableCell>
                   <TableCell>{money(row.commission_amount, row.currency)}</TableCell>
+                  <TableCell>
+                    {money(row.reporting_usd_equivalent, dash.reporting_currency)}
+                  </TableCell>
                   <TableCell className="capitalize">{row.status.replaceAll("_", " ")}</TableCell>
                 </TableRow>
               ))}
@@ -222,16 +273,31 @@ export function PartnerDashboardContent() {
       <section className="space-y-4">
         <h2 className="text-lg font-semibold">Payouts</h2>
         <p className="text-sm text-muted-foreground">
-          Minimum payout: {money(dash.minimum_payout, dash.currency)}. Available:{" "}
-          {money(dash.available_balance, dash.currency)}.
+          Request payouts per currency (no mixed-currency aggregation). Minimum for{" "}
+          {payoutCurrency}: {money(selectedMin, payoutCurrency)}. Available:{" "}
+          {money(selectedAvailable, payoutCurrency)}.
         </p>
-        <form onSubmit={onPayout} className="flex max-w-lg flex-wrap items-end gap-3">
+        <form onSubmit={onPayout} className="flex max-w-2xl flex-wrap items-end gap-3">
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Currency</label>
+            <select
+              className="flex h-9 w-[110px] rounded-md border border-input bg-transparent px-3 text-sm"
+              value={payoutCurrency}
+              onChange={(e) => setPayoutCurrency(e.target.value)}
+            >
+              {dash.balances_by_currency.map((b) => (
+                <option key={b.currency} value={b.currency}>
+                  {b.currency}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="space-y-1">
             <label className="text-xs text-muted-foreground">Amount</label>
             <Input
               value={payoutAmount}
               onChange={(e) => setPayoutAmount(e.target.value)}
-              placeholder={dash.minimum_payout}
+              placeholder={String(selectedMin)}
               required
             />
           </div>

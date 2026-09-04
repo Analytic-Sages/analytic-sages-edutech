@@ -21,6 +21,12 @@ class ReferralConversionStatus(str, Enum):
     REVIEW_REQUIRED = "review_required"
 
 
+class ReferralFraudStatus(str, Enum):
+    CLEAR = "clear"
+    FLAGGED = "flagged"
+    REVIEW_REQUIRED = "review_required"
+
+
 class PartnerLedgerEntryType(str, Enum):
     COMMISSION = "commission"
     REVERSAL = "reversal"

@@ -8,7 +8,7 @@ import {
   FEATURED_FREE_COURSE_PUBLIC,
   mergeFreeCatalog,
 } from "@/lib/self-paced";
-import { listPublicProgramPaths, getProgramPage, getProgramPageHref } from "@/lib/program-pages";
+import { listPublicProgramPaths, getProgramPage, getProgramPageHref, getEngineeringProgramPage } from "@/lib/program-pages";
 
 export type SearchKind = "course" | "program" | "event" | "lesson" | "blog" | "community" | "opportunity";
 
@@ -125,7 +125,50 @@ export function searchCatalog(query: string, sources: {
   });
 
   for (const path of listPublicProgramPaths()) {
-    const slug = path.replace(/^\/programs\//, "");
+    const slug = path.replace(/^\/programs\//, "").replace(/\/curriculum$/, "");
+    const engineering = getEngineeringProgramPage(slug);
+    if (engineering) {
+      if (path.endsWith("/curriculum")) {
+        push({
+          id: `program:${engineering.pageSlug}:curriculum`,
+          kind: "program",
+          title: `${engineering.h1} Curriculum`,
+          description: engineering.curriculum.intro,
+          href: engineering.curriculumPath,
+          fields: [
+            engineering.h1,
+            engineering.salesHeadline,
+            "curriculum",
+            "airflow",
+            "kafka",
+            "dbt",
+            "docker",
+            engineering.pageSlug,
+          ],
+        });
+        continue;
+      }
+      push({
+        id: `program:${engineering.pageSlug}`,
+        kind: "program",
+        title: engineering.h1,
+        description: engineering.support,
+        href: engineering.canonicalPath,
+        fields: [
+          engineering.h1,
+          engineering.salesHeadline,
+          engineering.support,
+          engineering.eyebrow,
+          engineering.pageSlug,
+          "data engineering",
+          "docker",
+          "dbt",
+          "airflow",
+          "kafka",
+        ],
+      });
+      continue;
+    }
     const page = getProgramPage(slug);
     if (!page) continue;
     push({

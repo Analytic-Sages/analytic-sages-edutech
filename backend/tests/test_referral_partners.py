@@ -552,3 +552,124 @@ def test_release_held_commissions():
 def test_money_helpers_never_float():
     assert isinstance(referral_money(7), Decimal)
     assert isinstance(commission_from_payment_amount(eligible_amount=1, rate=Decimal("0.07")), Decimal)
+
+
+def test_usd_reporting_estimate_does_not_overwrite_ledger_currency():
+    from app.core.referral_fx import estimate_usd, minimum_payout_thresholds, safe_referral_redirect
+
+    settings = get_settings()
+    usd, rate, _ = estimate_usd(amount=Decimal("21.00"), currency="USD", settings=settings)
+    assert usd == Decimal("21.00")
+    assert rate == Decimal("1")
+
+    ngn_usd, ngn_rate, _ = estimate_usd(
+        amount=Decimal("16000.00"), currency="NGN", settings=settings
+    )
+    assert ngn_rate is not None
+    assert ngn_usd is not None
+    # 16000 NGN at 1600 NGN/USD ≈ $10 reporting estimate
+    assert ngn_usd == Decimal("10.00")
+
+    thresholds = minimum_payout_thresholds(settings)
+    assert "USD" in thresholds
+    assert thresholds["USD"] == Decimal("25.00")
+
+    assert safe_referral_redirect("/programs", default="/programs") == "/programs"
+    assert safe_referral_redirect("//evil.com", default="/programs") == "/programs"
+    assert safe_referral_redirect("https://evil.com", default="/programs") == "/programs"
+
+
+def test_usd_payment_commission_stores_reporting_estimate():
+    partner_email = f"partner-usd-{uuid.uuid4()}@example.com"
+    learner_email = f"learner-usd-{uuid.uuid4()}@example.com"
+    admin_email = f"admin-usd-{uuid.uuid4()}@example.com"
+    cohort_id = None
+    try:
+        partner_user = _make_user(partner_email, full_name="USD Partner")
+        learner = _make_user(learner_email, full_name="USD Learner")
+        admin = _make_user(admin_email, UserRole.ADMIN)
+        settings = get_settings()
+        db = SessionLocal()
+        try:
+            svc = ReferralPartnerService(db, settings)
+            partner = svc.apply(
+                user=partner_user,
+                display_name="USD Partner",
+                social_handle=None,
+                promotion_channels="X",
+                terms_accepted=True,
+            )
+            partner = svc.set_status(
+                partner_id=partner.id,
+                status_value=ReferralPartnerStatus.ACTIVE,
+                actor=admin,
+            )
+            now = datetime.now(UTC)
+            db.add(
+                ReferralAttribution(
+                    partner_id=partner.id,
+                    anonymous_visitor_id=uuid.uuid4().hex,
+                    referred_user_id=learner.id,
+                    referral_code=partner.referral_code or "TESTUSD",
+                    attributed_at=now,
+                    expires_at=now + timedelta(days=30),
+                    locked_at=now,
+                )
+            )
+            cohort = Cohort(
+                name="USD Cohort",
+                slug=f"ref-usd-{uuid.uuid4().hex[:8]}",
+                description="test",
+                status=CohortStatus.OPEN,
+                price=300,
+                currency="USD",
+                referral_commission_eligible=True,
+            )
+            db.add(cohort)
+            db.flush()
+            payment = Payment(
+                order_id=f"ord-usd-{uuid.uuid4().hex[:10]}",
+                user_id=learner.id,
+                cohort_id=cohort.id,
+                provider=PaymentProviderName.MOCK,
+                amount=Decimal("300.00"),
+                currency="USD",
+                status=PaymentStatus.CONFIRMED,
+                confirmed_at=datetime.now(UTC),
+            )
+            db.add(payment)
+            db.flush()
+            conv = ReferralCommissionService(db, settings).handle_successful_payment(payment)
+            db.commit()
+            assert conv is not None
+            assert conv.currency == "USD"
+            assert conv.commission_amount == Decimal("21.00")
+            assert conv.reporting_usd_equivalent == Decimal("21.00")
+            entry = db.scalar(
+                select(PartnerLedgerEntry).where(
+                    PartnerLedgerEntry.reference_id == conv.id,
+                )
+            )
+            assert entry is not None
+            assert entry.currency == "USD"
+            assert entry.amount == Decimal("21.00")
+            assert entry.reporting_usd_equivalent == Decimal("21.00")
+            cohort_id = cohort.id
+        finally:
+            db.close()
+    finally:
+        _cleanup_cohort(cohort_id=cohort_id)
+        _cleanup_emails(partner_email, learner_email, admin_email)
+
+
+def test_payout_rejects_unsupported_currency_and_mixed_aggregation():
+    from app.services.referrals import ReferralPayoutService
+
+    db = SessionLocal()
+    try:
+        payouts = ReferralPayoutService(db, get_settings())
+        assert payouts.minimum_for("USD") == Decimal("25.00")
+        assert payouts.minimum_for("BTC") is None
+    finally:
+        db.close()
+

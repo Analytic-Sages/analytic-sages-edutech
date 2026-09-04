@@ -142,25 +142,76 @@ export function AdminReferralsContent() {
       </div>
 
       {tab === "overview" && overview ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {(
-            [
-              ["Partners", overview.total_partners],
-              ["Active", overview.active_partners],
-              ["Pending apps", overview.pending_applications],
-              ["Clicks", overview.total_clicks],
-              ["Registrations", overview.total_registrations],
-              ["Paid enrollments", overview.total_paid_enrollments],
-              [`Pending (${overview.currency})`, overview.commission_pending],
-              [`Available (${overview.currency})`, overview.commission_available],
-              [`Paid (${overview.currency})`, overview.commission_paid],
-            ] as const
-          ).map(([label, value]) => (
-            <div key={label} className="border-b pb-3">
-              <p className="text-xs uppercase text-muted-foreground">{label}</p>
-              <p className="mt-1 text-xl font-semibold">{String(value)}</p>
-            </div>
-          ))}
+        <div className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {(
+              [
+                ["Partners", overview.total_partners],
+                ["Active", overview.active_partners],
+                ["Pending apps", overview.pending_applications],
+                ["Clicks", overview.total_clicks],
+                ["Registrations", overview.total_registrations],
+                ["Paid enrollments", overview.total_paid_enrollments],
+                [
+                  `Est. USD pending`,
+                  overview.estimated_usd_pending != null
+                    ? `${overview.reporting_currency} ${overview.estimated_usd_pending}`
+                    : "—",
+                ],
+                [
+                  `Est. USD available`,
+                  overview.estimated_usd_available != null
+                    ? `${overview.reporting_currency} ${overview.estimated_usd_available}`
+                    : "—",
+                ],
+                [
+                  `Est. USD portfolio`,
+                  overview.estimated_usd_portfolio != null
+                    ? `${overview.reporting_currency} ${overview.estimated_usd_portfolio}`
+                    : "—",
+                ],
+              ] as const
+            ).map(([label, value]) => (
+              <div key={label} className="border-b pb-3">
+                <p className="text-xs uppercase text-muted-foreground">{label}</p>
+                <p className="mt-1 text-xl font-semibold">{String(value)}</p>
+              </div>
+            ))}
+          </div>
+          {overview.balances_by_currency?.length ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Currency</TableHead>
+                  <TableHead>Pending</TableHead>
+                  <TableHead>Available</TableHead>
+                  <TableHead>Paid</TableHead>
+                  <TableHead>Est. USD avail.</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {overview.balances_by_currency.map((row) => (
+                  <TableRow key={row.currency}>
+                    <TableCell>{row.currency}</TableCell>
+                    <TableCell>
+                      {row.currency} {row.pending_commission}
+                    </TableCell>
+                    <TableCell>
+                      {row.currency} {row.available_balance}
+                    </TableCell>
+                    <TableCell>
+                      {row.currency} {row.total_paid_out}
+                    </TableCell>
+                    <TableCell>
+                      {row.estimated_usd_available != null
+                        ? `${overview.reporting_currency} ${row.estimated_usd_available}`
+                        : "—"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : null}
         </div>
       ) : null}
 
@@ -225,7 +276,9 @@ export function AdminReferralsContent() {
               <TableHead>Programme</TableHead>
               <TableHead>Eligible</TableHead>
               <TableHead>Commission</TableHead>
+              <TableHead>Est. USD</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Fraud</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -240,7 +293,15 @@ export function AdminReferralsContent() {
                 <TableCell>
                   {row.currency} {row.commission_amount}
                 </TableCell>
+                <TableCell>
+                  {row.reporting_usd_equivalent != null
+                    ? `USD ${row.reporting_usd_equivalent}`
+                    : "—"}
+                </TableCell>
                 <TableCell className="capitalize">{row.status.replaceAll("_", " ")}</TableCell>
+                <TableCell className="capitalize">
+                  {(row.fraud_status || "clear").replaceAll("_", " ")}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -308,6 +369,7 @@ export function AdminReferralsContent() {
                 <TableHead>Learner</TableHead>
                 <TableHead>Commission</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Fraud</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -318,7 +380,10 @@ export function AdminReferralsContent() {
                   <TableCell>
                     {row.currency} {row.commission_amount}
                   </TableCell>
-                  <TableCell>{row.status}</TableCell>
+                  <TableCell className="capitalize">{row.status.replaceAll("_", " ")}</TableCell>
+                  <TableCell className="capitalize">
+                    {(row.fraud_status || "clear").replaceAll("_", " ")}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
