@@ -325,11 +325,11 @@ export function SelfPacedCourseLanding({ initialCourse }: Props) {
                 Explore Instructor-Led Training
               </ButtonLink>
               <ButtonLink
-                href="/programs/cohort-9-sql-blockchain-data-analytics"
+                href="/programs/blockchain-data-engineering"
                 variant="ghost"
                 className="text-brand-orange"
               >
-                View Cohort 9
+                View Blockchain Data Engineering
               </ButtonLink>
             </div>
           </CardContent>

@@ -34,6 +34,7 @@ export function AdminOpportunityDiscoverContent() {
   const [importing, setImporting] = useState(false);
   const [reclassifying, setReclassifying] = useState(false);
   const [importedCount, setImportedCount] = useState<number | null>(null);
+  const [pageVerifiedCount, setPageVerifiedCount] = useState<number | null>(null);
 
   function toggleType(type: OpportunityType) {
     setTypes((current) =>
@@ -45,6 +46,7 @@ export function AdminOpportunityDiscoverContent() {
     setSearching(true);
     setError(null);
     setImportedCount(null);
+    setPageVerifiedCount(null);
     try {
       const result = await discoverAdminOpportunities(types.length ? types : DISCOVERY_TYPES, query);
       setCandidates(result.candidates);
@@ -92,6 +94,7 @@ export function AdminOpportunityDiscoverContent() {
     try {
       const result = await importAdminDiscoveredOpportunities(rows);
       setImportedCount(result.imported);
+      setPageVerifiedCount(result.page_verified);
       setCandidates((current) =>
         current.map((row) =>
           rows.some((item) => item.application_url === row.application_url)
@@ -112,7 +115,7 @@ export function AdminOpportunityDiscoverContent() {
     <div>
       <PageHeader
         title="Discover opportunities"
-        description="Find internships, fellowships, hackathons, grants, bounties, and research listings. Everything lands as a draft for review. Nothing is published automatically."
+        description="Find internships, fellowships, hackathons, grants, bounties, and research listings. Import fetches the official page and extracts structured fields before creating drafts. Nothing is published automatically."
         action={
           <ButtonLink href="/admin/opportunities" variant="outline">
             Review queue
@@ -155,8 +158,9 @@ export function AdminOpportunityDiscoverContent() {
           </Button>
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          Uses OpenAI first, then Gemini if OpenAI is missing or fails. Official https pages
-          only — LinkedIn, Indeed, and Web3.career are blocked.
+          Uses OpenAI first, then Gemini if OpenAI is missing or fails. Official https pages only —
+          LinkedIn, Indeed, and Web3.career are blocked. Import always tries to fetch the original
+          page before creating a draft.
         </p>
       </div>
 
@@ -166,7 +170,9 @@ export function AdminOpportunityDiscoverContent() {
       ) : null}
       {importedCount != null ? (
         <p className="mb-4 text-sm text-muted-foreground">
-          Imported {importedCount} drafts. Open Pending review to publish.
+          Imported {importedCount} drafts
+          {pageVerifiedCount != null ? ` · ${pageVerifiedCount} page-verified` : ""}. Open Pending
+          review to publish.
         </p>
       ) : null}
       {notes ? <p className="mb-4 text-sm text-amber-700">{notes}</p> : null}

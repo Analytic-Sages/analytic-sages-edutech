@@ -23,7 +23,7 @@ const faqs = [
   {
     question: "How can I sign up for a course?",
     answer:
-      "For Instructor-Led training, create an account, open Instructor-Led Training, and register for an open cohort (payment unlocks Classroom). Self-paced checkout will open when those courses launch.",
+      "For Instructor-Led training, create an account, open Instructor-Led Training, and register for an open cohort such as Blockchain Data Engineering (payment unlocks Classroom). Self-paced checkout will open when those courses launch.",
   },
   {
     question: "Are the courses suitable for beginners?",

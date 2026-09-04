@@ -36,7 +36,7 @@ export const ROLE_ACCESS: Record<AppRole, RoleAccess> = {
     summary: "Full admin console — users, payments, catalog, opportunities, insights, settings.",
     areas: [
       "Dashboard",
-      "Cohort 9",
+      "Featured cohort",
       "Users",
       "Payments",
       "Billing",

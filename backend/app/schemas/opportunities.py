@@ -49,6 +49,7 @@ class SourcePublic(BaseModel):
     id: UUID | None = None
     name: str
     source_type: str
+    website_url: str | None = None
 
 
 class HackathonDetailsPublic(BaseModel):
@@ -627,6 +628,8 @@ class OpportunityDiscoverCandidate(BaseModel):
     career_path_slugs: list[str] = Field(default_factory=list)
     already_imported: bool = False
     source_host: str | None = None
+    page_verified: bool = False
+    ai_confidence: float | None = None
 
 
 class OpportunityDiscoverResponse(BaseModel):
@@ -649,6 +652,8 @@ class OpportunityDiscoverImportResult(BaseModel):
     skipped: int
     opportunity_ids: list[UUID] = Field(default_factory=list)
     published: bool = False
+    page_verified: int = 0
+    extraction_failed: int = 0
 
 
 class OpportunityReclassifyResult(BaseModel):

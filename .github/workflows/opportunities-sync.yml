@@ -1,14 +1,14 @@
-# Optional scheduled sync for Opportunities Hub.
+# Weekly sync for Opportunities Hub (plus manual run via workflow_dispatch).
 # Requires OPPORTUNITY_SYNC_TOKEN and PUBLIC_API_URL repository secrets.
-# Disabled by default (workflow_dispatch only) until secrets are configured.
-# To enable cron: uncomment the schedule block.
+# Without those secrets the job exits 0 and skips the API call.
 
 name: Opportunities sync
 
 on:
   workflow_dispatch:
-  # schedule:
-  #   - cron: "0 */6 * * *"
+  schedule:
+    # Mondays 09:00 UTC — connector sync into drafts (no auto-publish).
+    - cron: "0 9 * * 1"
 
 jobs:
   sync:

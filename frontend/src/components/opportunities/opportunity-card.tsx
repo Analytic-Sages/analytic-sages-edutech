@@ -9,6 +9,7 @@ import {
   formatPostedRelative,
   HACKATHON_FORMAT_LABELS,
   REGION_LABELS,
+  resolveOrganizationLogoUrl,
   TYPE_LABELS,
   viewCtaLabel,
   WORKPLACE_LABELS,
@@ -55,6 +56,7 @@ export function OpportunityRow({
   const isBounty = opportunity.opportunity_type === "bounty";
   const visibleSkills = opportunity.skills.slice(0, compact ? 3 : 5);
   const extraSkills = Math.max(0, opportunity.skills.length - visibleSkills.length);
+  const logoUrl = resolveOrganizationLogoUrl(opportunity);
 
   if (compact) {
     return (
@@ -64,7 +66,7 @@ export function OpportunityRow({
       >
         <OrganizationLogo
           name={opportunity.organization_name}
-          logoUrl={opportunity.organization_logo_url}
+          logoUrl={logoUrl}
           size="sm"
         />
         <div className="min-w-0 flex-1">
@@ -88,7 +90,7 @@ export function OpportunityRow({
           <div className="flex gap-4">
             <OrganizationLogo
               name={opportunity.organization_name}
-              logoUrl={opportunity.organization_logo_url}
+              logoUrl={logoUrl}
             />
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">

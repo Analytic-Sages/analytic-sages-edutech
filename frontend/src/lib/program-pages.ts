@@ -1,4 +1,3 @@
-import { FEATURED_COHORT_SLUG } from "@/lib/auth-redirect";
 import {
   BDE_COHORT_SLUG,
   blockchainDataEngineeringProgram,
@@ -36,6 +35,8 @@ export type ProgramPageContent = {
   duration: string;
   timeCommitment: string;
   paymentOptions: string;
+  /** When true, show Coming soon — do not sell checkout as open. */
+  comingSoon?: boolean;
   audienceFor: string[];
   audienceNotFor: string[];
   learnTopics: { title: string; body: string }[];
@@ -51,12 +52,14 @@ export type ProgramPageContent = {
 };
 
 const COHORT_9_PAGE_SLUG = "cohort-9-sql-blockchain-data-analytics";
+/** API slug for Cohort 9 (kept even when FEATURED points at BDE). */
+export const COHORT_9_COHORT_SLUG = "cohort-9-blockchain-data";
 
 const cohort9: ProgramPageContent = {
   pageSlug: COHORT_9_PAGE_SLUG,
-  cohortSlug: FEATURED_COHORT_SLUG,
-  aliases: [FEATURED_COHORT_SLUG],
-  eyebrow: "Instructor-Led Training · Cohort 9",
+  cohortSlug: COHORT_9_COHORT_SLUG,
+  aliases: [COHORT_9_COHORT_SLUG],
+  eyebrow: "Coming soon · Instructor-Led",
   headline: "SQL Blockchain Data Analytics",
   support:
     "Learn to work with real blockchain data using SQL and build practical analytics projects: live classes, recorded materials, and a learning community.",
@@ -69,6 +72,7 @@ const cohort9: ProgramPageContent = {
   duration: "4 weeks",
   timeCommitment: "5-8 hours per week",
   paymentOptions: "Paystack (cards and bank transfer) or crypto via NOWPayments. One-time payment.",
+  comingSoon: true,
   audienceFor: [
     "You're curious about blockchain but don't know where to start",
     "You want a practical, skill-based path in Web3 data",
@@ -192,9 +196,9 @@ const cohort9: ProgramPageContent = {
         "Platform certificates are not issued yet. Completing Cohort 9 still gives you the dashboards, report, and classroom work you can show.",
     },
     {
-      question: "Can I pay in installments?",
+      question: "Is registration open?",
       answer:
-        "No. Registration is a one-time payment at checkout via Paystack or NOWPayments.",
+        "Not yet — Cohort 9 is coming soon. Blockchain Data Engineering is our current live instructor-led focus. When Cohort 9 opens, payment will be one-time via Paystack or NOWPayments.",
     },
     {
       question: "What do I need to start?",
@@ -239,6 +243,10 @@ export function listPublicProgramPaths(): string[] {
       blockchainDataEngineeringProgram.curriculumPath,
     ]),
   ];
+}
+
+export function listComingSoonPrograms(): ProgramPageContent[] {
+  return programPages.filter((page) => page.comingSoon);
 }
 
 export function getProgramPageHref(cohortApiSlug: string): string | null {

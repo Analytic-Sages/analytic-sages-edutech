@@ -55,7 +55,7 @@ export function AdminCohortContent() {
         if (!cancelled) setDetail(fallback);
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof ApiError ? err.detail : "Failed to load Cohort 9");
+          setError(err instanceof ApiError ? err.detail : "Failed to load featured cohort");
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -72,7 +72,7 @@ export function AdminCohortContent() {
     return (
       <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
         <Loader2 className="size-5 animate-spin" />
-        Loading Cohort 9…
+        Loading featured cohort…
       </div>
     );
   }
@@ -81,7 +81,7 @@ export function AdminCohortContent() {
     return (
       <EmptyState
         icon={<Loader2 className="size-6" />}
-        title="Couldn’t load Cohort 9"
+        title="Couldn’t load featured cohort"
         description={error}
         action={{ label: "Retry", href: "/admin/cohort" }}
       />
@@ -92,8 +92,8 @@ export function AdminCohortContent() {
     return (
       <EmptyState
         icon={<Loader2 className="size-6" />}
-        title="Cohort 9 is not seeded"
-        description="No open cohort was found. Seed classroom data on the API, then refresh."
+        title="Featured cohort is not seeded"
+        description="No featured cohort was found. Seed Blockchain Data Engineering on the API, then refresh."
       />
     );
   }

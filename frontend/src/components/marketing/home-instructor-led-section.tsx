@@ -5,8 +5,14 @@ import Image from "next/image";
 import { ArrowRight, Calendar, Loader2 } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FEATURED_COHORT_SLUG } from "@/lib/auth-redirect";
 import { formatPrice } from "@/lib/mock-data";
-import { getProgramPageHref, getProgramPostcard } from "@/lib/program-pages";
+import {
+  getProgramPageHref,
+  getProgramPostcard,
+  listComingSoonPrograms,
+  type ProgramPageContent,
+} from "@/lib/program-pages";
 import { listPublicCohorts, type PublicCohortCard } from "@/lib/api";
 
 function formatDate(iso: string | null) {
@@ -23,15 +29,57 @@ function formatDate(iso: string | null) {
   }
 }
 
+function ComingSoonCard({ program }: { program: ProgramPageContent }) {
+  return (
+    <Card className="overflow-hidden shadow-card">
+      <div className="relative aspect-[16/10] bg-brand-surface">
+        <Image
+          src={program.postcardImage}
+          alt={`${program.headline} postcard`}
+          fill
+          className="object-cover"
+          sizes="(max-width: 1024px) 100vw, 33vw"
+        />
+      </div>
+      <CardHeader>
+        <div className="mb-2 flex flex-wrap gap-2">
+          <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-semibold uppercase text-muted-foreground">
+            Coming soon
+          </span>
+        </div>
+        <CardTitle className="font-heading text-xl">{program.headline}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm text-muted-foreground">
+        <p className="font-medium text-foreground/80">{program.support}</p>
+        <p>
+          {program.duration} · {program.timeCommitment}
+        </p>
+        <ButtonLink href={`/programs/${program.pageSlug}`} variant="outline" className="mt-2">
+          Learn more
+          <ArrowRight className="ml-2 size-4" />
+        </ButtonLink>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function HomeInstructorLedSection() {
   const [cohorts, setCohorts] = useState<PublicCohortCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const comingSoon = listComingSoonPrograms();
 
   useEffect(() => {
     let cancelled = false;
     listPublicCohorts()
       .then((data) => {
-        if (!cancelled) setCohorts(data.slice(0, 3));
+        if (!cancelled) {
+          const sorted = [...data].sort((a, b) => {
+            if (a.slug === FEATURED_COHORT_SLUG) return -1;
+            if (b.slug === FEATURED_COHORT_SLUG) return 1;
+            return 0;
+          });
+          setCohorts(sorted.slice(0, 2));
+        }
       })
       .catch(() => {
         if (!cancelled) setCohorts([]);
@@ -43,6 +91,8 @@ export function HomeInstructorLedSection() {
       cancelled = true;
     };
   }, []);
+
+  const hasContent = cohorts.length > 0 || comingSoon.length > 0;
 
   return (
     <section className="relative border-y bg-brand-warm py-20 sm:py-28">
@@ -56,7 +106,8 @@ export function HomeInstructorLedSection() {
               Learn live with experts
             </h2>
             <p className="mt-3 max-w-xl text-lg text-muted-foreground">
-              Learn live. Build together. Join the classroom when your session starts.
+              Focus now: Blockchain Data Engineering. Learn live. Build together. Join the
+              classroom when your session starts.
             </p>
           </div>
           <ButtonLink href="/instructor-led" variant="outline" className="shrink-0">
@@ -70,7 +121,7 @@ export function HomeInstructorLedSection() {
             <Loader2 className="size-5 animate-spin" />
             Loading cohorts…
           </div>
-        ) : cohorts.length === 0 ? (
+        ) : !hasContent ? (
           <Card className="mt-12">
             <CardContent className="py-10 text-center text-muted-foreground">
               New cohorts will appear here as they open.{" "}
@@ -84,65 +135,69 @@ export function HomeInstructorLedSection() {
             {cohorts.map((cohort) => {
               const programHref = getProgramPageHref(cohort.slug);
               const postcard = getProgramPostcard(cohort.slug);
+              const isFeatured = cohort.slug === FEATURED_COHORT_SLUG;
               return (
-              <Card key={cohort.id} className="overflow-hidden shadow-card">
-                {postcard && (
-                  <div className="relative aspect-[16/10] bg-brand-surface">
-                    <Image
-                      src={postcard}
-                      alt={`${cohort.name} postcard`}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 1024px) 100vw, 33vw"
-                    />
-                  </div>
-                )}
-                <CardHeader>
-                  <div className="mb-2 flex flex-wrap gap-2">
-                    {cohort.next_session_phase === "live" ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-md bg-red-500/15 px-2 py-0.5 text-xs font-semibold uppercase text-red-600">
-                        <span className="size-1.5 animate-pulse rounded-full bg-red-500" />
-                        Live now
-                      </span>
-                    ) : (
-                      <span className="rounded-md bg-brand-orange/15 px-2 py-0.5 text-xs font-semibold uppercase text-brand-orange">
-                        Cohort open
-                      </span>
+                <Card key={cohort.id} className="overflow-hidden shadow-card">
+                  {postcard && (
+                    <div className="relative aspect-[16/10] bg-brand-surface">
+                      <Image
+                        src={postcard}
+                        alt={`${cohort.name} postcard`}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 1024px) 100vw, 33vw"
+                      />
+                    </div>
+                  )}
+                  <CardHeader>
+                    <div className="mb-2 flex flex-wrap gap-2">
+                      {cohort.next_session_phase === "live" ? (
+                        <span className="inline-flex items-center gap-1.5 rounded-md bg-red-500/15 px-2 py-0.5 text-xs font-semibold uppercase text-red-600">
+                          <span className="size-1.5 animate-pulse rounded-full bg-red-500" />
+                          Live now
+                        </span>
+                      ) : (
+                        <span className="rounded-md bg-brand-orange/15 px-2 py-0.5 text-xs font-semibold uppercase text-brand-orange">
+                          {isFeatured ? "Focus cohort" : "Cohort open"}
+                        </span>
+                      )}
+                    </div>
+                    <CardTitle className="font-heading text-xl">{cohort.name}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm text-muted-foreground">
+                    {cohort.description && (
+                      <p className="font-medium text-foreground/80">{cohort.description}</p>
                     )}
-                  </div>
-                  <CardTitle className="font-heading text-xl">{cohort.name}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm text-muted-foreground">
-                  {cohort.description && (
-                    <p className="font-medium text-foreground/80">{cohort.description}</p>
-                  )}
-                  {formatDate(cohort.registration_deadline) && (
-                    <p>
-                      Registration deadline: {formatDate(cohort.registration_deadline)}
-                    </p>
-                  )}
-                  {formatDate(cohort.starts_at) && (
-                    <p className="inline-flex items-center gap-1.5">
-                      <Calendar className="size-3.5" />
-                      Starts {formatDate(cohort.starts_at)}
-                    </p>
-                  )}
-                  {cohort.price > 0 && (
-                    <p className="font-medium text-foreground">
-                      {formatPrice(cohort.price, cohort.currency)}
-                    </p>
-                  )}
-                  <ButtonLink
-                    href={programHref ?? "/instructor-led"}
-                    className="mt-2 bg-brand-orange text-white hover:bg-brand-orange/90"
-                  >
-                    {programHref ? "Explore Cohort 9" : "View program"}
-                    <ArrowRight className="ml-2 size-4" />
-                  </ButtonLink>
-                </CardContent>
-              </Card>
+                    {formatDate(cohort.registration_deadline) && (
+                      <p>
+                        Registration deadline: {formatDate(cohort.registration_deadline)}
+                      </p>
+                    )}
+                    {formatDate(cohort.starts_at) && (
+                      <p className="inline-flex items-center gap-1.5">
+                        <Calendar className="size-3.5" />
+                        Starts {formatDate(cohort.starts_at)}
+                      </p>
+                    )}
+                    {cohort.price > 0 && (
+                      <p className="font-medium text-foreground">
+                        {formatPrice(cohort.price, cohort.currency)}
+                      </p>
+                    )}
+                    <ButtonLink
+                      href={programHref ?? "/instructor-led"}
+                      className="mt-2 bg-brand-orange text-white hover:bg-brand-orange/90"
+                    >
+                      {isFeatured ? "Explore Blockchain Data Engineering" : "View program"}
+                      <ArrowRight className="ml-2 size-4" />
+                    </ButtonLink>
+                  </CardContent>
+                </Card>
               );
             })}
+            {comingSoon.map((program) => (
+              <ComingSoonCard key={program.pageSlug} program={program} />
+            ))}
           </div>
         )}
       </div>

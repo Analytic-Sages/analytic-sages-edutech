@@ -70,7 +70,7 @@ export function AdminOverviewContent() {
   return (
     <div>
       <PageHeader
-        title="Cohort 9 monitor"
+        title="Featured cohort monitor"
         description="Live signups, payments, seats, and staff access from production data."
         action={
           <ButtonLink href="/admin/users" variant="outline">
@@ -99,13 +99,13 @@ export function AdminOverviewContent() {
           description={`${data.payments_pending} pending · ${formatMoneyList(data.revenue_by_currency)}`}
         />
         <StatsCard
-          title="Cohort 9 seats"
+          title="Featured seats"
           value={cohort?.student_seats ?? 0}
           icon="courses"
           description={
             cohort
               ? `${cohort.pending_payments} pending checkouts · ${cohort.confirmed_payments} paid`
-              : "Cohort 9 is not in the database yet"
+              : "Featured cohort is not in the database yet"
           }
         />
       </div>
@@ -217,7 +217,7 @@ export function AdminOverviewContent() {
                     </Badge>
                     <p className="text-xs text-muted-foreground">{formatAdminDate(user.created_at)}</p>
                     {user.in_featured_cohort && (
-                      <p className="text-xs font-medium text-brand-orange">Cohort 9</p>
+                      <p className="text-xs font-medium text-brand-orange">Featured cohort</p>
                     )}
                   </div>
                 </div>

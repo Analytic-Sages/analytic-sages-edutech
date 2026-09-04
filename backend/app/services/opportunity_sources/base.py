@@ -38,6 +38,7 @@ class RawOpportunity:
     location: str = ""
     application_url: str = ""
     source_url: str | None = None
+    organization_logo_url: str | None = None
     posted_at: datetime | None = None
     deadline: datetime | None = None
     opportunity_type: OpportunityType | None = None

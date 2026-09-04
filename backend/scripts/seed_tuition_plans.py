@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Seed tuition plans for Cohort 9 (Pay in Full + 2 installments).
+"""Seed tuition plans for the featured cohort (Pay in Full + 2 installments).
 
 Usage (from backend/):
   python scripts/seed_tuition_plans.py
@@ -36,7 +36,7 @@ def main() -> None:
     try:
         cohort = db.scalar(select(Cohort).where(Cohort.slug == FEATURED_COHORT_SLUG))
         if not cohort:
-            print(f"Cohort {FEATURED_COHORT_SLUG} not found. Run seed_classroom.py first.")
+            print(f"Cohort {FEATURED_COHORT_SLUG} not found. Run seed_blockchain_data_engineering.py first.")
             return
 
         second_due = None

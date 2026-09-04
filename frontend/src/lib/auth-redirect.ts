@@ -1,4 +1,4 @@
-export const FEATURED_COHORT_SLUG = "cohort-9-blockchain-data";
+export const FEATURED_COHORT_SLUG = "blockchain-data-engineering";
 
 export function resolvePostLoginPath(role: string | undefined, nextPath: string) {
   const next = nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/dashboard";

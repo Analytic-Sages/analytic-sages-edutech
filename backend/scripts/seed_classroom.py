@@ -33,12 +33,13 @@ from app.models.user import User
 COHORT_SLUG = "cohort-9-blockchain-data"
 COURSE_SLUG = "sql-for-blockchain-analytics"
 
-# Cohort 9 marketing dates (UTC midnight on calendar day). Program length is 4 weeks.
+# Cohort 9 is visible as Coming soon — not open for registration while BDE is the live focus.
 REGISTRATION_DEADLINE = datetime(2026, 9, 30, 23, 59, 59, tzinfo=timezone.utc)
 START_DATE = datetime(2026, 10, 1, 0, 0, 0, tzinfo=timezone.utc)
 END_DATE = datetime(2026, 10, 28, 23, 59, 59, tzinfo=timezone.utc)
 COHORT_PRICE = 35
 COHORT_CURRENCY = "USD"
+COHORT_STATUS = CohortStatus.DRAFT
 
 
 def main() -> None:
@@ -62,7 +63,7 @@ def main() -> None:
                 name="Cohort 9 - SQL Blockchain Data Analytics",
                 slug=COHORT_SLUG,
                 description="Onchain Analytics and Research",
-                status=CohortStatus.OPEN,
+                status=COHORT_STATUS,
                 registration_deadline=REGISTRATION_DEADLINE,
                 starts_at=START_DATE,
                 ends_at=END_DATE,
@@ -75,7 +76,7 @@ def main() -> None:
         else:
             cohort.name = "Cohort 9 - SQL Blockchain Data Analytics"
             cohort.description = "Onchain Analytics and Research"
-            cohort.status = CohortStatus.OPEN
+            cohort.status = COHORT_STATUS
             cohort.registration_deadline = REGISTRATION_DEADLINE
             cohort.starts_at = START_DATE
             cohort.ends_at = END_DATE
@@ -83,7 +84,7 @@ def main() -> None:
             cohort.currency = COHORT_CURRENCY
             if course:
                 cohort.course_id = course.id
-            print(f"Updated cohort: {cohort.slug}")
+            print(f"Updated cohort: {cohort.slug} ({COHORT_STATUS.value})")
 
         existing = list(
             db.scalars(select(LiveSession).where(LiveSession.cohort_id == cohort.id)).all()

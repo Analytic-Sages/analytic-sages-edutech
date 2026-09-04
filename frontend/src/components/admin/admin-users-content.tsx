@@ -337,7 +337,7 @@ export function AdminUsersContent() {
                 <TableHead>Role</TableHead>
                 <TableHead>Access</TableHead>
                 <TableHead>Verified</TableHead>
-                <TableHead>Cohort 9</TableHead>
+                <TableHead>Featured</TableHead>
                 <TableHead>Joined</TableHead>
                 <TableHead />
               </TableRow>

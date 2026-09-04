@@ -120,7 +120,7 @@ export type OpportunityCard = {
   application_domain: string | null;
   primary_career_path: CareerPathPublic | null;
   skills: SkillPublic[];
-  source?: { id: string | null; name: string; source_type: string } | null;
+  source?: { id: string | null; name: string; source_type: string; website_url?: string | null } | null;
   saved?: boolean;
   applied?: boolean;
   match_score?: number | null;
@@ -302,7 +302,6 @@ export const TYPE_ROUTES: { href: string; type: OpportunityType; label: string }
   { href: "/opportunities/hackathons", type: "hackathon", label: "Hackathons" },
   { href: "/opportunities/grants", type: "grant", label: "Grants" },
   { href: "/opportunities/bounties", type: "bounty", label: "Bounties" },
-  { href: "/opportunities/research", type: "research", label: "Research" },
 ];
 
 export const TYPE_LABELS: Record<OpportunityType, string> = {
@@ -491,6 +490,64 @@ export function organizationInitials(name: string) {
   if (!parts.length) return "?";
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
+}
+
+const ATS_OR_PLATFORM_HOSTS = new Set([
+  "boards.greenhouse.io",
+  "job-boards.greenhouse.io",
+  "greenhouse.io",
+  "jobs.lever.co",
+  "lever.co",
+  "jobs.ashbyhq.com",
+  "ashbyhq.com",
+  "myworkdayjobs.com",
+  "workday.com",
+  "linkedin.com",
+  "indeed.com",
+  "wellfound.com",
+  "angel.co",
+]);
+
+function hostnameFromUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    let host = new URL(url).hostname.toLowerCase();
+    if (host.startsWith("www.")) host = host.slice(4);
+    return host || null;
+  } catch {
+    return null;
+  }
+}
+
+function isEmployerHost(host: string | null): boolean {
+  if (!host) return false;
+  if (ATS_OR_PLATFORM_HOSTS.has(host)) return false;
+  for (const blocked of ATS_OR_PLATFORM_HOSTS) {
+    if (host.endsWith(`.${blocked}`)) return false;
+  }
+  return true;
+}
+
+/** Prefer stored logo; otherwise derive a favicon from the employer/site domain. */
+export function resolveOrganizationLogoUrl(opportunity: {
+  organization_logo_url?: string | null;
+  application_domain?: string | null;
+  source?: { website_url?: string | null } | null;
+}): string | null {
+  if (opportunity.organization_logo_url?.trim()) {
+    return opportunity.organization_logo_url.trim();
+  }
+  const candidates = [
+    opportunity.source?.website_url,
+    opportunity.application_domain ? `https://${opportunity.application_domain}` : null,
+  ];
+  for (const url of candidates) {
+    const host = hostnameFromUrl(url);
+    if (isEmployerHost(host)) {
+      return `https://www.google.com/s2/favicons?domain=${host}&sz=128`;
+    }
+  }
+  return null;
 }
 
 export type OpportunityQuery = {
@@ -810,6 +867,8 @@ export type OpportunityDiscoverCandidate = {
   career_path_slugs: string[];
   already_imported: boolean;
   source_host: string | null;
+  page_verified?: boolean;
+  ai_confidence?: number | null;
 };
 
 export type OpportunityDiscoverResponse = {
@@ -831,13 +890,17 @@ export function discoverAdminOpportunities(types: OpportunityType[], query?: str
 }
 
 export function importAdminDiscoveredOpportunities(candidates: OpportunityDiscoverCandidate[]) {
-  return apiFetch<{ imported: number; skipped: number; opportunity_ids: string[]; published: boolean }>(
-    "/api/v1/admin/opportunities/discover/import",
-    {
-      method: "POST",
-      body: JSON.stringify({ candidates }),
-    },
-  );
+  return apiFetch<{
+    imported: number;
+    skipped: number;
+    opportunity_ids: string[];
+    published: boolean;
+    page_verified: number;
+    extraction_failed: number;
+  }>("/api/v1/admin/opportunities/discover/import", {
+    method: "POST",
+    body: JSON.stringify({ candidates }),
+  });
 }
 
 export function reclassifyAdminOpportunityTypes() {

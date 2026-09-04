@@ -98,7 +98,7 @@ export function AdminAnalyticsContent() {
         description="Live counts from the database. Zeros mean nothing has happened yet — they are not sample data."
         action={
           <ButtonLink href="/admin" variant="outline">
-            Cohort 9 monitor
+            Featured cohort monitor
           </ButtonLink>
         }
       />

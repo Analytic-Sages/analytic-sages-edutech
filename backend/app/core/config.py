@@ -118,6 +118,9 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4.1-mini"
     gemini_api_key: str | None = None
     gemini_model: str = "gemini-2.0-flash"
+    # When true and an LLM key is set: fetch original pages and extract missing fields.
+    opportunity_ai_extraction_enabled: bool = True
+    opportunity_ai_extraction_max_chars: int = 12000
 
     @property
     def is_production(self) -> bool:

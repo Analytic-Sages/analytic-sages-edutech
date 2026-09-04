@@ -134,19 +134,31 @@ def test_discover_and_import_stay_unpublished():
         urls = {row["application_url"] for row in found.json()["candidates"]}
         assert apply_url in urls
         assert all("web3.career" not in row["application_url"] for row in found.json()["candidates"])
-        imported = client.post(
-            "/api/v1/admin/opportunities/discover/import",
-            headers=_auth(admin),
-            json={"candidates": [row for row in found.json()["candidates"] if row["application_url"] == apply_url]},
-        )
+        candidates = [row for row in found.json()["candidates"] if row["application_url"] == apply_url]
+        with patch.object(
+            OpportunityDiscoveryService,
+            "_ground_candidate",
+            side_effect=lambda candidate: (
+                candidate.model_copy(update={"page_verified": True, "ai_confidence": 0.88}),
+                True,
+                True,
+            ),
+        ):
+            imported = client.post(
+                "/api/v1/admin/opportunities/discover/import",
+                headers=_auth(admin),
+                json={"candidates": candidates},
+            )
         assert imported.status_code == 200, imported.text
         assert imported.json()["published"] is False
         assert imported.json()["imported"] == 1
+        assert imported.json()["page_verified"] == 1
         opportunity_id = imported.json()["opportunity_ids"][0]
         detail = client.get(f"/api/v1/admin/opportunities/{opportunity_id}", headers=_auth(admin))
         assert detail.json()["status"] == "draft"
         assert detail.json()["opportunity_type"] == "hackathon"
         assert detail.json()["trust_status"] == "review_required"
+        assert "Page-verified" in (detail.json().get("admin_notes") or "")
         public = client.get("/api/v1/opportunities")
         assert all(item["id"] != opportunity_id for item in public.json()["items"])
         slug = detail.json()["slug"]

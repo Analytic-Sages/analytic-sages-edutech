@@ -48,8 +48,16 @@ from app.schemas.opportunities import (
 )
 from app.services.bounty_details import upsert_bounty_details
 from app.services.hackathon_details import upsert_hackathon_details
+from app.services.opportunity_extract import (
+    extract_from_page_text,
+    extraction_enabled,
+    is_incomplete_raw,
+    merge_raw_with_extraction,
+)
 from app.services.opportunity_mission import is_off_mission_title
 from app.services.opportunity_normalize import canonicalize_application_url, normalize_opportunity_fields
+from app.services.opportunity_logos import resolve_organization_logo_url
+from app.services.opportunity_page_fetch import fetch_public_page
 from app.services.opportunity_prose import normalize_description
 from app.services.opportunity_relevance import (
     RELEVANCE_REJECT_BELOW,
@@ -60,6 +68,7 @@ from app.services.opportunity_risk import detect_risk_flags
 from app.services.opportunity_sources import RawOpportunity, get_connector
 from app.services.opportunity_urls import validate_http_url
 from app.services.opportunities import OpportunityService, _enum_value
+from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 CONNECTOR_SOURCE_TYPES = {
@@ -402,6 +411,16 @@ class OpportunityIngestionService:
         *,
         source_ids: list[UUID] | None = None,
     ) -> OpportunitySyncAllResult:
+        running = self.db.scalar(
+            select(func.count())
+            .select_from(OpportunitySyncRun)
+            .where(OpportunitySyncRun.status == SyncRunStatus.RUNNING)
+        )
+        if int(running or 0) > 0:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="An opportunity sync is already running. Wait for it to finish.",
+            )
         runs = self.sync_enabled_sources(actor=actor, source_ids=source_ids)
         return OpportunitySyncAllResult(
             runs=runs,
@@ -427,6 +446,19 @@ class OpportunityIngestionService:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="This source cannot be synced automatically",
+            )
+        running = self.db.scalar(
+            select(func.count())
+            .select_from(OpportunitySyncRun)
+            .where(
+                OpportunitySyncRun.source_id == source.id,
+                OpportunitySyncRun.status == SyncRunStatus.RUNNING,
+            )
+        )
+        if int(running or 0) > 0:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This source is already syncing. Wait for it to finish.",
             )
         run = OpportunitySyncRun(
             source_id=source.id,
@@ -491,6 +523,7 @@ class OpportunityIngestionService:
         return self._run_public(run)
 
     def _ingest_item(self, source: OpportunitySource, raw: RawOpportunity) -> str:
+        raw = self._maybe_enrich_with_extraction(raw)
         title = (raw.title or "").strip()[:255]
         if not title:
             return "rejected"
@@ -584,6 +617,12 @@ class OpportunityIngestionService:
             slug=self.opportunities._ensure_slug(normalized.title, None),
             title=normalized.title,
             organization_name=normalized.organization_name,
+            organization_logo_url=resolve_organization_logo_url(
+                explicit=raw.organization_logo_url,
+                source_website_url=source.website_url,
+                application_url=normalized.application_url,
+                source_url=raw.source_url,
+            ),
             description=normalized.description,
             requirements=(raw.requirements or "")[:20000],
             location=normalized.location,
@@ -667,6 +706,39 @@ class OpportunityIngestionService:
         ingestion.opportunity_id = opportunity.id
         return "created"
 
+    def _maybe_enrich_with_extraction(self, raw: RawOpportunity) -> RawOpportunity:
+        """When connector output is thin, fetch the official page and extract missing fields."""
+        if not is_incomplete_raw(raw):
+            return raw
+        settings = get_settings()
+        if not extraction_enabled(settings):
+            return raw
+        url = (raw.application_url or raw.source_url or "").strip()
+        if not url:
+            return raw
+        try:
+            page = fetch_public_page(
+                url,
+                max_text_chars=settings.opportunity_ai_extraction_max_chars,
+                allow_aggregators=False,
+            )
+        except HTTPException:
+            return raw
+        extracted = extract_from_page_text(
+            page.text,
+            page_url=page.final_url,
+            settings=settings,
+            hint_title=raw.title,
+            hint_organization=raw.organization_name,
+            hint_type=raw.opportunity_type.value if raw.opportunity_type else None,
+        )
+        if extracted is None:
+            return raw
+        enriched = merge_raw_with_extraction(raw, extracted)
+        if not enriched.source_url:
+            enriched.source_url = page.final_url
+        return enriched
+
     def _refresh_existing(
         self,
         opportunity: Opportunity,
@@ -681,6 +753,13 @@ class OpportunityIngestionService:
         opportunity.location = (raw.location or opportunity.location)[:255]
         opportunity.application_url = application_url
         opportunity.content_hash = hashed
+        if not opportunity.organization_logo_url:
+            opportunity.organization_logo_url = resolve_organization_logo_url(
+                explicit=raw.organization_logo_url,
+                source_website_url=opportunity.source.website_url if opportunity.source else None,
+                application_url=application_url,
+                source_url=raw.source_url,
+            )
 
     def _find_by_url(self, url: str) -> Opportunity | None:
         target = _normalize_url(url)

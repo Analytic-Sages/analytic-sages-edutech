@@ -13,6 +13,7 @@ import {
   formatPostedRelative,
   learningPathForOpportunity,
   REGION_LABELS,
+  resolveOrganizationLogoUrl,
   SAFETY_NOTICE,
   TYPE_LABELS,
   WORKPLACE_LABELS,
@@ -79,6 +80,7 @@ export function OpportunityDetailView({ opportunity }: { opportunity: Opportunit
     opportunity.career_paths.find((item) => item.is_primary) || opportunity.primary_career_path;
   const learn = learningPathForOpportunity(opportunity);
   const skillPreview = opportunity.skills.slice(0, 12);
+  const logoUrl = resolveOrganizationLogoUrl(opportunity);
 
   return (
     <div className="bg-[#F7F9FC] pb-16 dark:bg-background">
@@ -110,7 +112,7 @@ export function OpportunityDetailView({ opportunity }: { opportunity: Opportunit
               <div className="mt-4 flex items-center gap-3">
                 <OrganizationLogo
                   name={opportunity.organization_name}
-                  logoUrl={opportunity.organization_logo_url}
+                  logoUrl={logoUrl}
                   size="lg"
                 />
                 <div>
@@ -230,7 +232,7 @@ export function OpportunityDetailView({ opportunity }: { opportunity: Opportunit
               <div className="flex items-center gap-3">
                 <OrganizationLogo
                   name={opportunity.organization_name}
-                  logoUrl={opportunity.organization_logo_url}
+                  logoUrl={logoUrl}
                 />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold">{opportunity.title}</p>

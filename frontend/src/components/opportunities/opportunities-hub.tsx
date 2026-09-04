@@ -177,39 +177,19 @@ export function OpportunitiesHub({
             ))}
           </div>
 
-          {(filters?.career_paths || []).length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setCareerPath("")}
-                className={cn(
-                  "rounded-full border px-3 py-1.5 text-sm transition-colors",
-                  !careerPath
-                    ? "border-brand-orange/40 bg-brand-orange/10 text-brand-orange"
-                    : "border-border bg-card hover:border-brand-orange hover:text-brand-orange",
-                )}
-              >
-                All paths
-              </button>
-              {(filters?.career_paths || []).slice(0, 8).map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setCareerPath(item.slug === careerPath ? "" : item.slug)}
-                  className={cn(
-                    "rounded-full border px-3 py-1.5 text-sm transition-colors",
-                    careerPath === item.slug
-                      ? "border-brand-orange/40 bg-brand-orange/10 text-brand-orange"
-                      : "border-border bg-card hover:border-brand-orange hover:text-brand-orange",
-                  )}
-                >
-                  {item.name}
-                </button>
-              ))}
-            </div>
-          ) : null}
-
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <select
+              className="h-10 rounded-lg border border-border/80 bg-card px-3 text-sm sm:w-52"
+              value={careerPath}
+              onChange={(event) => setCareerPath(event.target.value)}
+            >
+              <option value="">All career paths</option>
+              {(filters?.career_paths || []).map((item) => (
+                <option key={item.id} value={item.slug}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
             <select
               className="h-10 rounded-lg border border-border/80 bg-card px-3 text-sm sm:w-48"
               value={workplace}

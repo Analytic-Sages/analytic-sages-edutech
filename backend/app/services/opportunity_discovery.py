@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from datetime import UTC, datetime
+from decimal import Decimal
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -28,7 +30,13 @@ from app.schemas.opportunities import (
     OpportunityDiscoverResponse,
 )
 from app.services.llm_complete import complete_json, llm_configured
+from app.services.opportunity_extract import (
+    extract_from_page_text,
+    extraction_enabled,
+    merge_raw_with_extraction,
+)
 from app.services.opportunity_mission import is_off_mission_title
+from app.services.opportunity_page_fetch import fetch_public_page
 from app.services.opportunity_relevance import infer_opportunity_type, score_relevance
 from app.services.opportunity_sources.base import RawOpportunity
 from app.services.opportunity_urls import (
@@ -38,6 +46,8 @@ from app.services.opportunity_urls import (
     validate_http_url,
 )
 from app.services.opportunities import OpportunityService
+
+logger = logging.getLogger(__name__)
 
 MAX_CANDIDATES = 18
 DISCOVERY_TYPES = (
@@ -166,6 +176,8 @@ class OpportunityDiscoveryService:
     ) -> OpportunityDiscoverImportResult:
         imported: list[UUID] = []
         skipped = 0
+        page_verified = 0
+        extraction_failed = 0
         for candidate in candidates[:MAX_CANDIDATES]:
             cleaned, reason = self._sanitize(candidate.model_dump(), list(DISCOVERY_TYPES), set())
             if reason or cleaned is None:
@@ -174,16 +186,104 @@ class OpportunityDiscoveryService:
             if self._find_by_url(cleaned.application_url):
                 skipped += 1
                 continue
-            opportunity = self._create_draft(cleaned, actor)
+            grounded_candidate, verified, extract_ok = self._ground_candidate(cleaned)
+            if verified:
+                page_verified += 1
+            if not extract_ok:
+                extraction_failed += 1
+            opportunity = self._create_draft(grounded_candidate, actor, page_verified=verified)
             imported.append(opportunity.id)
         return OpportunityDiscoverImportResult(
             imported=len(imported),
             skipped=skipped,
             opportunity_ids=imported,
             published=False,
+            page_verified=page_verified,
+            extraction_failed=extraction_failed,
         )
 
-    def _create_draft(self, candidate: OpportunityDiscoverCandidate, actor: User) -> Opportunity:
+    def _ground_candidate(
+        self,
+        candidate: OpportunityDiscoverCandidate,
+    ) -> tuple[OpportunityDiscoverCandidate, bool, bool]:
+        """Fetch the official page and extract fields. Search results are never source of truth."""
+        if not extraction_enabled(self.settings):
+            return candidate, False, True
+        try:
+            page = fetch_public_page(
+                candidate.application_url,
+                max_text_chars=self.settings.opportunity_ai_extraction_max_chars,
+            )
+        except HTTPException as exc:
+            logger.info("Discovery grounding fetch skipped for %s: %s", candidate.application_url, exc.detail)
+            return candidate.model_copy(update={"page_verified": False}), False, False
+
+        extracted = extract_from_page_text(
+            page.text,
+            page_url=page.final_url,
+            settings=self.settings,
+            hint_title=candidate.title,
+            hint_organization=candidate.organization_name,
+            hint_type=candidate.opportunity_type,
+        )
+        if extracted is None or extracted.confidence < 0.55:
+            return (
+                candidate.model_copy(
+                    update={
+                        "page_verified": True,
+                        "source_url": candidate.source_url or page.final_url,
+                        "ai_confidence": extracted.confidence if extracted else None,
+                    }
+                ),
+                True,
+                extracted is not None,
+            )
+
+        raw = RawOpportunity(
+            external_id=_external_id(candidate.application_url),
+            title=candidate.title,
+            organization_name=candidate.organization_name,
+            description=candidate.description,
+            application_url=candidate.application_url,
+            source_url=candidate.source_url or page.final_url,
+            location=candidate.location,
+            deadline=candidate.deadline,
+            opportunity_type=(
+                OpportunityType(candidate.opportunity_type)
+                if candidate.opportunity_type in ALLOWED_TYPES
+                else None
+            ),
+        )
+        merged = merge_raw_with_extraction(raw, extracted)
+        opp_type = merged.opportunity_type.value if merged.opportunity_type else candidate.opportunity_type
+        return (
+            OpportunityDiscoverCandidate(
+                title=(merged.title or candidate.title)[:255],
+                organization_name=(merged.organization_name or candidate.organization_name)[:255],
+                opportunity_type=opp_type,
+                application_url=candidate.application_url,
+                source_url=(merged.source_url or page.final_url)[:500] if (merged.source_url or page.final_url) else None,
+                description=(merged.description or candidate.description)[:4000],
+                why_relevant=candidate.why_relevant,
+                location=(merged.location or candidate.location)[:255],
+                deadline=merged.deadline or candidate.deadline,
+                career_path_slugs=candidate.career_path_slugs,
+                already_imported=candidate.already_imported,
+                source_host=hostname_of(candidate.application_url),
+                page_verified=True,
+                ai_confidence=extracted.confidence,
+            ),
+            True,
+            True,
+        )
+
+    def _create_draft(
+        self,
+        candidate: OpportunityDiscoverCandidate,
+        actor: User,
+        *,
+        page_verified: bool = False,
+    ) -> Opportunity:
         opportunity_type = OpportunityType(candidate.opportunity_type)
         raw = RawOpportunity(
             external_id=_external_id(candidate.application_url),
@@ -192,6 +292,8 @@ class OpportunityDiscoveryService:
             description=candidate.description,
             application_url=candidate.application_url,
             source_url=candidate.source_url,
+            location=candidate.location,
+            deadline=candidate.deadline,
             opportunity_type=opportunity_type,
         )
         relevance = score_relevance(raw, "medium")
@@ -201,6 +303,9 @@ class OpportunityDiscoveryService:
             candidate.career_path_slugs or relevance.career_path_slugs,
         )
         skill_ids = _ids_for_slugs(self.db, Skill, relevance.skill_slugs)
+        notes = f"AI discovery draft. {candidate.why_relevant}".strip()
+        if page_verified:
+            notes = f"{notes} Page-verified against official URL.".strip()
         created = self.opportunities.create(
             OpportunityCreate(
                 title=candidate.title,
@@ -220,7 +325,7 @@ class OpportunityDiscoveryService:
                 application_url=candidate.application_url,
                 source_url=candidate.source_url,
                 deadline=candidate.deadline,
-                admin_notes=f"AI discovery draft. {candidate.why_relevant}".strip()[:4000],
+                admin_notes=notes[:4000],
                 career_path_ids=path_ids,
                 skill_ids=skill_ids,
             ),
@@ -231,6 +336,16 @@ class OpportunityDiscoveryService:
         opportunity.trust_status = OpportunityTrustStatus.REVIEW_REQUIRED
         opportunity.external_id = _external_id(candidate.application_url)
         opportunity.relevance_score = relevance.score
+        if candidate.ai_confidence is not None:
+            opportunity.trust_score = Decimal(str(round(candidate.ai_confidence * 100, 2)))
+        opportunity.review_assist = {
+            **(opportunity.review_assist or {}),
+            "page_grounding": {
+                "verified": page_verified,
+                "confidence": candidate.ai_confidence,
+                "source_url": candidate.source_url or candidate.application_url,
+            },
+        }
         self.db.commit()
         return opportunity
 
@@ -302,6 +417,12 @@ class OpportunityDiscoveryService:
                 career_path_slugs=paths[:6],
                 already_imported=already,
                 source_host=hostname_of(url),
+                page_verified=bool(data.get("page_verified")),
+                ai_confidence=(
+                    float(data["ai_confidence"])
+                    if isinstance(data.get("ai_confidence"), (int, float))
+                    else None
+                ),
             ),
             None,
         )

@@ -69,6 +69,7 @@ from app.services.hackathon_dates import PHASE_RANK, HackathonPhase, registratio
 from app.services.hackathon_details import refresh_derived_phase, upsert_hackathon_details
 from app.services.hackathon_normalize import HackathonDetailsPayload
 from app.services.insights import slugify
+from app.services.opportunity_logos import resolve_organization_logo_url
 from app.services.opportunity_prose import normalize_description, normalize_optional
 from app.services.opportunity_urls import validate_http_url
 
@@ -411,7 +412,12 @@ class OpportunityService:
             slug=opportunity.slug,
             title=opportunity.title,
             organization_name=opportunity.organization_name,
-            organization_logo_url=opportunity.organization_logo_url,
+            organization_logo_url=opportunity.organization_logo_url
+            or resolve_organization_logo_url(
+                source_website_url=opportunity.source.website_url if opportunity.source else None,
+                application_url=opportunity.application_url,
+                source_url=opportunity.source_url,
+            ),
             compensation_text=opportunity.compensation_text,
             opportunity_type=_enum_value(opportunity.opportunity_type),
             employment_type=_enum_value(opportunity.employment_type) if opportunity.employment_type else None,
@@ -436,6 +442,7 @@ class OpportunityService:
                 source_type=_enum_value(opportunity.source.source_type)
                 if opportunity.source
                 else "manual",
+                website_url=opportunity.source.website_url if opportunity.source else None,
             )
             if opportunity.source or opportunity.is_manual
             else None,
@@ -1110,11 +1117,17 @@ class OpportunityService:
         elif not self.db.get(OpportunitySource, source_id):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Source not found")
 
+        source_row = self.db.get(OpportunitySource, source_id) if source_id else None
         opportunity = Opportunity(
             slug=slug,
             title=payload.title,
             organization_name=payload.organization_name,
-            organization_logo_url=payload.organization_logo_url,
+            organization_logo_url=payload.organization_logo_url
+            or resolve_organization_logo_url(
+                source_website_url=source_row.website_url if source_row else None,
+                application_url=payload.application_url,
+                source_url=payload.source_url,
+            ),
             compensation_text=payload.compensation_text,
             description=normalize_description(payload.description),
             requirements=normalize_description(payload.requirements),

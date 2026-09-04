@@ -55,6 +55,13 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
   }, [program.cohortSlug]);
 
   const checkoutHref = `/checkout/cohort/${program.cohortSlug}`;
+  const isComingSoon = Boolean(program.comingSoon);
+  const primaryHref = isComingSoon
+    ? "/programs/blockchain-data-engineering"
+    : checkoutHref;
+  const primaryLabel = isComingSoon
+    ? "See Blockchain Data Engineering"
+    : "Register now";
   const priceLabel =
     cohort && cohort.price > 0 ? formatPrice(cohort.price, cohort.currency) : null;
   const startDate = formatDate(cohort?.starts_at ?? null);
@@ -62,11 +69,11 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
 
   const details: [string, string | null][] = [
     ["Duration", program.duration],
-    ["Registration Deadline", deadline],
-    ["Start Date", startDate],
+    ["Registration Deadline", isComingSoon ? "Coming soon" : deadline],
+    ["Start Date", isComingSoon ? "Coming soon" : startDate],
     ["Format", program.format],
     ["Time Commitment", program.timeCommitment],
-    ["Price", priceLabel ? `${priceLabel} one-time payment` : null],
+    ["Price", !isComingSoon && priceLabel ? `${priceLabel} one-time payment` : null],
     ["Payment", program.paymentOptions],
   ];
 
@@ -84,32 +91,39 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
             <p className="mx-auto mt-5 max-w-2xl text-lg text-muted-foreground sm:text-xl lg:mx-0">
               {program.support}
             </p>
-            {loading ? (
+            {loading && !isComingSoon ? (
               <p className="mt-6 inline-flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="size-4 animate-spin" />
                 Loading cohort dates…
               </p>
             ) : (
               <p className="mt-6 text-sm text-muted-foreground sm:text-base">
-                {[
-                  deadline ? `Registration closes: ${deadline}` : null,
-                  startDate ? `Classes start: ${startDate}` : null,
-                  "Fully remote",
-                  "Live sessions",
-                ]
-                  .filter(Boolean)
-                  .join("  ·  ")}
+                {isComingSoon
+                  ? "Coming soon · Fully remote · Live sessions"
+                  : [
+                      deadline ? `Registration closes: ${deadline}` : null,
+                      startDate ? `Classes start: ${startDate}` : null,
+                      "Fully remote",
+                      "Live sessions",
+                    ]
+                      .filter(Boolean)
+                      .join("  ·  ")}
               </p>
             )}
-            <div className="mt-8">
+            <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row lg:justify-start">
               <ButtonLink
-                href={checkoutHref}
+                href={primaryHref}
                 size="lg"
                 className="h-12 rounded-full bg-brand-orange px-10 text-base text-white hover:bg-brand-orange/90"
               >
-                Register for Cohort 9
+                {primaryLabel}
                 <ArrowRight className="ml-2 size-4" />
               </ButtonLink>
+              {isComingSoon && (
+                <ButtonLink href="/contact" size="lg" variant="outline" className="h-12 rounded-full px-8">
+                  Get notified
+                </ButtonLink>
+              )}
             </div>
           </div>
           <div className="relative aspect-[16/10] overflow-hidden rounded-2xl border bg-brand-surface shadow-card">
@@ -262,16 +276,18 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
           Your blockchain data journey starts here.
         </h2>
         <p className="mt-4 text-muted-foreground">
-          {deadline
-            ? `Cohort 9 registration closes ${deadline}.`
-            : "Join Cohort 9 for structured, instructor-led SQL blockchain analytics."}
+          {isComingSoon
+            ? "Cohort 9 is coming soon. Meanwhile, Blockchain Data Engineering is open for registration."
+            : deadline
+              ? `Registration closes ${deadline}.`
+              : "Join this cohort for structured, instructor-led SQL blockchain analytics."}
         </p>
         <ButtonLink
-          href={checkoutHref}
+          href={primaryHref}
           size="lg"
           className="mt-8 h-12 rounded-full bg-brand-orange px-10 text-base text-white hover:bg-brand-orange/90"
         >
-          Register Now
+          {isComingSoon ? "See Blockchain Data Engineering" : "Register Now"}
           <span className="ml-2 flex size-6 items-center justify-center rounded-full bg-white text-brand-orange">
             <ArrowRight className="size-3.5" />
           </span>
@@ -289,11 +305,12 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-3 backdrop-blur md:hidden">
         <ButtonLink
-          href={checkoutHref}
+          href={primaryHref}
           className="h-12 w-full rounded-full bg-brand-orange text-white hover:bg-brand-orange/90"
         >
-          Register for Cohort 9
-          {priceLabel ? ` · ${priceLabel}` : ""}
+          {isComingSoon
+            ? "See Blockchain Data Engineering"
+            : `Register${priceLabel ? ` · ${priceLabel}` : ""}`}
         </ButtonLink>
       </div>
     </div>

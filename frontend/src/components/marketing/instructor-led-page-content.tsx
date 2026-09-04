@@ -8,8 +8,14 @@ import { SectionBackground } from "@/components/marketing/section-background";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ApiError, listPublicCohorts, type PublicCohortCard } from "@/lib/api";
+import { FEATURED_COHORT_SLUG } from "@/lib/auth-redirect";
 import { formatPrice } from "@/lib/mock-data";
-import { getProgramPageHref, getProgramPostcard } from "@/lib/program-pages";
+import {
+  getProgramPageHref,
+  getProgramPostcard,
+  listComingSoonPrograms,
+  type ProgramPageContent,
+} from "@/lib/program-pages";
 import { cn } from "@/lib/utils";
 
 function formatWhen(iso: string | null) {
@@ -45,6 +51,8 @@ export function InstructorLedPageContent() {
   const [cohorts, setCohorts] = useState<PublicCohortCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const comingSoonPrograms = listComingSoonPrograms();
+  const sortedCohorts = sortedOpenCohorts(cohorts);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,12 +88,16 @@ export function InstructorLedPageContent() {
             Learn live. Build together. Get mentored.
           </h1>
           <p className="mt-5 max-w-2xl text-lg text-muted-foreground sm:text-xl">
-            Join scheduled expert-led cohorts with live classroom sessions, projects, and a
-            learning community. Enrolled students join class from the Classroom.
+            Current focus: Blockchain Data Engineering — a 10-week instructor-led programme.
+            Enrolled students join live class from the Classroom. Cohort 9 (SQL Blockchain Data
+            Analytics) is coming soon.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <ButtonLink href="/register" className="bg-brand-orange text-white hover:bg-brand-orange/90">
-              Create an account
+            <ButtonLink
+              href={getProgramPageHref(FEATURED_COHORT_SLUG) ?? "/programs/blockchain-data-engineering"}
+              className="bg-brand-orange text-white hover:bg-brand-orange/90"
+            >
+              Explore Blockchain Data Engineering
             </ButtonLink>
             <ButtonLink href="/classroom" variant="outline">
               Go to Classroom
@@ -102,7 +114,7 @@ export function InstructorLedPageContent() {
           <div>
             <h2 className="font-heading text-2xl font-bold sm:text-3xl">Upcoming cohorts</h2>
             <p className="mt-2 text-muted-foreground">
-              Live online training with real session schedules.
+              Open for registration now, plus programmes marked Coming soon.
             </p>
           </div>
         </div>
@@ -120,7 +132,7 @@ export function InstructorLedPageContent() {
           </Card>
         )}
 
-        {!loading && !error && cohorts.length === 0 && (
+        {!loading && !error && cohorts.length === 0 && comingSoonPrograms.length === 0 && (
           <Card>
             <CardContent className="py-10 text-center">
               <p className="font-heading text-lg font-semibold">New cohorts coming soon</p>
@@ -135,12 +147,66 @@ export function InstructorLedPageContent() {
         )}
 
         <div className="grid gap-6 lg:grid-cols-2">
-          {cohorts.map((cohort) => (
+          {sortedCohorts.map((cohort) => (
             <CohortCard key={cohort.id} cohort={cohort} />
           ))}
+          {!loading &&
+            comingSoonPrograms.map((program) => (
+              <ComingSoonProgramCard key={program.pageSlug} program={program} />
+            ))}
         </div>
       </section>
     </div>
+  );
+}
+
+function sortedOpenCohorts(cohorts: PublicCohortCard[]) {
+  return [...cohorts].sort((a, b) => {
+    if (a.slug === FEATURED_COHORT_SLUG) return -1;
+    if (b.slug === FEATURED_COHORT_SLUG) return 1;
+    return 0;
+  });
+}
+
+function ComingSoonProgramCard({ program }: { program: ProgramPageContent }) {
+  return (
+    <Card className="overflow-hidden shadow-card">
+      <div className="relative aspect-[16/10] bg-brand-surface">
+        <Image
+          src={program.postcardImage}
+          alt={`${program.headline} postcard`}
+          fill
+          className="object-cover"
+          sizes="(max-width: 1024px) 100vw, 50vw"
+        />
+      </div>
+      <CardHeader className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Coming soon
+          </span>
+          <span className="rounded-md bg-brand-orange/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-brand-orange">
+            Instructor-Led
+          </span>
+        </div>
+        <CardTitle className="font-heading text-2xl">{program.headline}</CardTitle>
+        <p className="text-base font-medium text-foreground/80">{program.support}</p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+          <p>
+            <span className="font-medium text-foreground">Duration:</span> {program.duration}
+          </p>
+          <p>
+            <span className="font-medium text-foreground">Time:</span> {program.timeCommitment}
+          </p>
+        </div>
+        <ButtonLink href={`/programs/${program.pageSlug}`} variant="outline">
+          Learn more
+          <ArrowRight className="ml-1 size-4" />
+        </ButtonLink>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -149,6 +215,7 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
   const isLive = cohort.next_session_phase === "live";
   const programHref = getProgramPageHref(cohort.slug);
   const postcard = getProgramPostcard(cohort.slug);
+  const isFeatured = cohort.slug === FEATURED_COHORT_SLUG;
 
   return (
     <Card className="overflow-hidden shadow-card">
@@ -166,7 +233,7 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-md bg-brand-orange/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-brand-orange">
-            Instructor-Led Cohort
+            {isFeatured ? "Focus cohort" : "Instructor-Led Cohort"}
           </span>
           {isLive && (
             <span className="inline-flex items-center gap-1.5 rounded-md bg-red-500/15 px-2 py-0.5 text-xs font-semibold uppercase text-red-600 dark:text-red-300">
@@ -227,7 +294,7 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
               href={programHref}
               className={cn("bg-brand-orange text-white hover:bg-brand-orange/90")}
             >
-              View program
+              {isFeatured ? "Explore Blockchain Data Engineering" : "View program"}
               <ArrowRight className="ml-1 size-4" />
             </ButtonLink>
           ) : cohort.price > 0 ? (

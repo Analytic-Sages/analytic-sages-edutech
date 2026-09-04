@@ -71,7 +71,7 @@ export function AdminPaymentsContent() {
         <EmptyState
           icon={<Loader2 className="size-6" />}
           title="No payments yet"
-          description="Checkout attempts for Cohort 9 and courses will show here."
+          description="Checkout attempts for the featured cohort and courses will show here."
         />
       ) : (
         <div className="rounded-xl border shadow-card">
