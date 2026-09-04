@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { isOpportunitiesPublic } from "@/lib/feature-flags";
+import { isOpportunitiesPublic, isPartnersPublic } from "@/lib/feature-flags";
 import { PUBLIC_SITE_ORIGIN } from "@/lib/program-pages";
 
 export default function robots(): MetadataRoute.Robots {
@@ -23,12 +23,17 @@ export default function robots(): MetadataRoute.Robots {
     "/certificates",
     "/studio",
     "/studio/",
+    "/partner",
+    "/partner/",
     "/verify-email",
     "/reset-password",
     "/staff-invite",
   ];
   if (!isOpportunitiesPublic()) {
     disallow.push("/opportunities", "/opportunities/");
+  }
+  if (!isPartnersPublic()) {
+    disallow.push("/partners", "/partners/", "/ref", "/ref/");
   }
   return {
     rules: {

@@ -28,7 +28,6 @@ export const marketingNav = [
   { title: "Opportunities", href: "/opportunities" },
   { title: "Community", href: "/community" },
   { title: "Insights", href: "/insights" },
-  { title: "Partners", href: "/partners" },
   { title: "About us", href: "/about" },
 ] as const;
 

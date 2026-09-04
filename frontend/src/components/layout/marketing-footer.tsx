@@ -3,6 +3,7 @@ import { Logo } from "@/components/brand/logo";
 import { CookieSettingsButton } from "@/components/layout/cookie-settings-button";
 import { siteConfig } from "@/config/site";
 import { publicMarketingNav } from "@/config/navigation";
+import { isPartnersPublic } from "@/lib/feature-flags";
 
 export function MarketingFooter() {
   return (
@@ -49,6 +50,16 @@ export function MarketingFooter() {
                   </Link>
                 </li>
               ))}
+              {isPartnersPublic() ? (
+                <li>
+                  <Link
+                    href="/partners"
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Partners
+                  </Link>
+                </li>
+              ) : null}
               <li>
                 <Link
                   href="/faq"

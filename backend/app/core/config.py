@@ -84,6 +84,9 @@ class Settings(BaseSettings):
     # Public opportunities hub. Off until go-live so listings stay staff-only.
     opportunities_public: bool = False
 
+    # Public Referral Partner programme (/partners). Off until go-live; admins still manage referrals.
+    partners_public: bool = False
+
     # Cohort tuition plans / installments. Off keeps legacy one-time checkout.
     billing_plans_enabled: bool = False
 

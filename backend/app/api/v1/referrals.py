@@ -9,9 +9,10 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, R
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, require_admin
+from app.api.deps import get_current_user, get_current_user_optional, get_db, require_admin
 from app.core.config import Settings, get_settings
 from app.core.referrals import PartnerPayoutStatus, ReferralConversionStatus, ReferralPartnerStatus
+from app.core.roles import UserRole
 from app.models.classroom import Cohort
 from app.models.course import Course
 from app.models.referral import PartnerPayoutRequest, ReferralConversion, ReferralPartner
@@ -131,8 +132,14 @@ def track_referral(
 @router.get("/referrals/leaderboard", response_model=LeaderboardResponse)
 def public_leaderboard(
     period: str = Query(default="all", pattern="^(all|monthly)$"),
+    settings: Settings = Depends(get_settings),
     dashboard: ReferralDashboardService = Depends(_dashboard),
+    current_user: User | None = Depends(get_current_user_optional),
 ) -> LeaderboardResponse:
+    if not settings.partners_public and (
+        current_user is None or current_user.role != UserRole.ADMIN
+    ):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
     entries = [
         LeaderboardEntry(**row) for row in dashboard.leaderboard(period=period, limit=25)
     ]
@@ -143,8 +150,11 @@ def public_leaderboard(
 def apply_partner(
     payload: PartnerApplyRequest,
     user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
     partners: ReferralPartnerService = Depends(_partners),
 ) -> PartnerPublic:
+    if not settings.partners_public and user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
     partner = partners.apply(
         user=user,
         display_name=payload.display_name,
