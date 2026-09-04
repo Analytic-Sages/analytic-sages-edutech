@@ -10,6 +10,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { ButtonLink } from "@/components/ui/button-link";
+import { BlockchainDataEngineeringStackExplorer } from "@/components/marketing/blockchain-data-engineering-stack-explorer";
 import { listPublicCohorts, type PublicCohortCard } from "@/lib/api";
 import type { EngineeringProgramPageContent } from "@/lib/blockchain-data-engineering-program";
 import { formatPrice } from "@/lib/mock-data";
@@ -207,31 +208,11 @@ export function BlockchainDataEngineeringLanding({
       </section>
 
       {/* 6. Stack */}
-      <section className="border-y border-border/60 bg-[#F7F9FC] dark:bg-transparent">
-        <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
-          <h2 className="font-heading text-3xl font-bold sm:text-4xl">{program.stackTitle}</h2>
-          <p className="mt-3 max-w-2xl text-muted-foreground">{program.stackIntro}</p>
-          <div className="mt-10 space-y-8">
-            {program.stackTiers.map((tier) => (
-              <div key={tier.label}>
-                <p className="text-xs font-semibold uppercase tracking-wide text-brand-orange">
-                  {tier.label}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {tier.tools.map((tool) => (
-                    <span
-                      key={tool}
-                      className="border border-[#0B1F3A]/15 bg-background px-3 py-1.5 font-mono text-sm font-medium text-[#0B1F3A] dark:border-white/15 dark:text-foreground"
-                    >
-                      {tool}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <BlockchainDataEngineeringStackExplorer
+        title={program.stackTitle}
+        intro={program.stackIntro}
+        curriculumHref={program.curriculumPath}
+      />
 
       {/* 7. Who for */}
       <section className="mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">

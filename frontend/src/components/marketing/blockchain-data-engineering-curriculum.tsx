@@ -70,25 +70,17 @@ export function BlockchainDataEngineeringCurriculum({
       <section className="border-y border-border/60 bg-[#F7F9FC] dark:bg-transparent">
         <div className="mx-auto max-w-5xl px-4 py-14 sm:px-6 lg:px-8">
           <h2 className="font-heading text-2xl font-bold sm:text-3xl">Technology stack</h2>
-          <div className="mt-8 space-y-6">
-            {program.stackTiers.map((tier) => (
-              <div key={tier.label}>
-                <p className="text-xs font-semibold uppercase tracking-wide text-brand-orange">
-                  {tier.label}
-                </p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {tier.tools.map((tool) => (
-                    <span
-                      key={tool}
-                      className="border border-[#0B1F3A]/15 bg-background px-3 py-1.5 font-mono text-sm dark:border-white/15"
-                    >
-                      {tool}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+          <p className="mt-3 max-w-2xl text-muted-foreground">
+            Explore the tools you&apos;ll use — categories, how they connect, and where each fits in
+            a blockchain data pipeline — on the programme overview.
+          </p>
+          <Link
+            href={`${program.canonicalPath}#tech-stack`}
+            className="mt-5 inline-flex items-center gap-1.5 text-sm font-medium text-brand-orange hover:underline"
+          >
+            Explore the stack
+            <ArrowRight className="size-4" />
+          </Link>
         </div>
       </section>
 
