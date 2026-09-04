@@ -42,17 +42,16 @@ export function OpportunitiesHub({
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
   const [careerPath, setCareerPath] = useState("");
-  const [skill, setSkill] = useState(skillFromUrl);
+  /** null = follow URL; string = user override (including ""). */
+  const [skillOverride, setSkillOverride] = useState<string | null>(null);
+  const skill = skillOverride ?? skillFromUrl;
   const [workplace, setWorkplace] = useState<WorkplaceType | "">("");
   const [employment, setEmployment] = useState("");
   const [region, setRegion] = useState<LocationRegion | "">("");
   const [sort, setSort] = useState<"newest" | "deadline" | "featured" | "closing_soon" | "matched">(
     "newest",
   );
-
-  useEffect(() => {
-    setSkill(skillFromUrl);
-  }, [skillFromUrl]);
+  const [weekAgoMs] = useState(() => Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebounced(search.trim()), 250);
@@ -67,7 +66,9 @@ export function OpportunitiesHub({
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
+    queueMicrotask(() => {
+      if (!cancelled) setLoading(true);
+    });
     listOpportunities({
       q: debounced || undefined,
       opportunity_type: initialType,
@@ -103,12 +104,11 @@ export function OpportunitiesHub({
   }, [filters]);
 
   const newThisWeek = useMemo(() => {
-    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     return items.filter((item) => {
       if (!item.published_at) return false;
-      return new Date(item.published_at).getTime() >= weekAgo;
+      return new Date(item.published_at).getTime() >= weekAgoMs;
     }).length;
-  }, [items]);
+  }, [items, weekAgoMs]);
 
   return (
     <div className="bg-[#F7F9FC] dark:bg-background">
@@ -228,7 +228,7 @@ export function OpportunitiesHub({
             <select
               className="h-10 rounded-lg border border-border/80 bg-card px-3 text-sm sm:w-48"
               value={skill}
-              onChange={(event) => setSkill(event.target.value)}
+              onChange={(event) => setSkillOverride(event.target.value)}
             >
               <option value="">All skills</option>
               {(filters?.skills || []).slice(0, 40).map((item) => (
@@ -258,7 +258,7 @@ export function OpportunitiesHub({
               <button
                 type="button"
                 className="text-brand-orange hover:underline"
-                onClick={() => setSkill("")}
+                onClick={() => setSkillOverride("")}
               >
                 Clear
               </button>
