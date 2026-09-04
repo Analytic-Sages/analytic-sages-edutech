@@ -303,11 +303,6 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
               Session live now
             </span>
           )}
-          {cohort.next_session_phase === "upcoming" && (
-            <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-semibold uppercase text-muted-foreground">
-              Upcoming session
-            </span>
-          )}
         </div>
         <CardTitle className="font-heading text-2xl">{cohort.name}</CardTitle>
         {cohort.description && (
