@@ -1,12 +1,8 @@
 import { ArrowRight } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button-link";
 import { SectionBackground } from "@/components/marketing/section-background";
-import { getProgramPageHref } from "@/lib/program-pages";
-import { FEATURED_COHORT_SLUG } from "@/lib/auth-redirect";
 
 export function HomeCtaSection() {
-  const featuredHref = getProgramPageHref(FEATURED_COHORT_SLUG) ?? "/instructor-led";
-
   return (
     <section className="relative py-28 sm:py-32">
       <div className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-10">
@@ -22,11 +18,12 @@ export function HomeCtaSection() {
               you&apos;ll be ready when they arrive.
             </p>
             <p className="mt-4 text-base font-medium text-white/90 sm:text-lg">
-              Start with Blockchain Data Engineering — our live instructor-led focus.
+              Blockchain Data Engineering is open for registration. SQL Blockchain Data Analytics
+              is coming soon — each is its own programme.
             </p>
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <ButtonLink
-                href={featuredHref}
+                href="/programs/blockchain-data-engineering"
                 size="lg"
                 className="group h-14 bg-brand-orange px-10 text-base text-white shadow-elevated transition-all hover:-translate-y-0.5 hover:bg-brand-orange/90 hover:shadow-float"
               >

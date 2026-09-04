@@ -108,7 +108,7 @@ function guardDocumentTitle() {
 function replyFor(question: string): Pick<ChatMessage, "text" | "links"> {
   if (question === SUGGESTIONS[0]) {
     return {
-      text: "We run instructor-led live cohorts and a self-paced catalog. Blockchain Data Engineering is the current live focus. Cohort 9 (SQL Blockchain Data Analytics) is coming soon. Self-paced courses are visible now and launch when the player is ready.",
+      text: "We run instructor-led live cohorts and a self-paced catalog. Blockchain Data Engineering is open for registration. SQL Blockchain Data Analytics (Cohort 9) is a separate programme coming soon. Self-paced courses are visible now and launch when the player is ready.",
       links: [
         { href: "/instructor-led", label: "Instructor-led programs" },
         { href: "/courses", label: "Self-paced catalog" },
@@ -117,7 +117,7 @@ function replyFor(question: string): Pick<ChatMessage, "text" | "links"> {
   }
   if (question === SUGGESTIONS[1]) {
     return {
-      text: "If you want live classes and a 10-week data engineering path, start with Blockchain Data Engineering. Cohort 9 (SQL + blockchain analytics) is coming soon. Prefer to browse on your own? Use the self-paced catalog.",
+      text: "Pick the programme that matches your path. Blockchain Data Engineering is open now (10-week live cohort). SQL Blockchain Data Analytics is coming soon. Prefer to browse on your own? Use the self-paced catalog.",
       links: [
         { href: "/programs/blockchain-data-engineering", label: "Blockchain Data Engineering" },
         { href: "/courses", label: "Browse self-paced" },

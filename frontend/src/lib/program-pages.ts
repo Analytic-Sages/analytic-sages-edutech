@@ -198,7 +198,7 @@ const cohort9: ProgramPageContent = {
     {
       question: "Is registration open?",
       answer:
-        "Not yet — Cohort 9 is coming soon. Blockchain Data Engineering is our current live instructor-led focus. When Cohort 9 opens, payment will be one-time via Paystack or NOWPayments.",
+        "Not yet — this SQL Blockchain Data Analytics programme is coming soon. It is separate from Blockchain Data Engineering, which is open for registration now. When this programme opens, payment will be one-time via Paystack or NOWPayments.",
     },
     {
       question: "What do I need to start?",

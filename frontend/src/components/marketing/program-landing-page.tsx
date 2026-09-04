@@ -56,12 +56,8 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
 
   const checkoutHref = `/checkout/cohort/${program.cohortSlug}`;
   const isComingSoon = Boolean(program.comingSoon);
-  const primaryHref = isComingSoon
-    ? "/programs/blockchain-data-engineering"
-    : checkoutHref;
-  const primaryLabel = isComingSoon
-    ? "See Blockchain Data Engineering"
-    : "Register now";
+  const primaryHref = isComingSoon ? "/contact" : checkoutHref;
+  const primaryLabel = isComingSoon ? "Get notified" : "Register now";
   const priceLabel =
     cohort && cohort.price > 0 ? formatPrice(cohort.price, cohort.currency) : null;
   const startDate = formatDate(cohort?.starts_at ?? null);
@@ -120,8 +116,13 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
                 <ArrowRight className="ml-2 size-4" />
               </ButtonLink>
               {isComingSoon && (
-                <ButtonLink href="/contact" size="lg" variant="outline" className="h-12 rounded-full px-8">
-                  Get notified
+                <ButtonLink
+                  href="/instructor-led"
+                  size="lg"
+                  variant="outline"
+                  className="h-12 rounded-full px-8"
+                >
+                  See open programmes
                 </ButtonLink>
               )}
             </div>
@@ -277,7 +278,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
         </h2>
         <p className="mt-4 text-muted-foreground">
           {isComingSoon
-            ? "Cohort 9 is coming soon. Meanwhile, Blockchain Data Engineering is open for registration."
+            ? "Registration is not open yet. Get notified when this programme launches — it is separate from our other live instructor-led courses."
             : deadline
               ? `Registration closes ${deadline}.`
               : "Join this cohort for structured, instructor-led SQL blockchain analytics."}
@@ -287,7 +288,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
           size="lg"
           className="mt-8 h-12 rounded-full bg-brand-orange px-10 text-base text-white hover:bg-brand-orange/90"
         >
-          {isComingSoon ? "See Blockchain Data Engineering" : "Register Now"}
+          {isComingSoon ? "Get notified" : "Register Now"}
           <span className="ml-2 flex size-6 items-center justify-center rounded-full bg-white text-brand-orange">
             <ArrowRight className="size-3.5" />
           </span>
@@ -309,7 +310,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
           className="h-12 w-full rounded-full bg-brand-orange text-white hover:bg-brand-orange/90"
         >
           {isComingSoon
-            ? "See Blockchain Data Engineering"
+            ? "Get notified"
             : `Register${priceLabel ? ` · ${priceLabel}` : ""}`}
         </ButtonLink>
       </div>

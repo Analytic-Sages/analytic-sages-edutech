@@ -5,7 +5,7 @@ import Image from "next/image";
 import { ArrowRight, Calendar, Loader2 } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FEATURED_COHORT_SLUG } from "@/lib/auth-redirect";
+import { BDE_COHORT_SLUG, blockchainDataEngineeringProgram } from "@/lib/blockchain-data-engineering-program";
 import { formatPrice } from "@/lib/mock-data";
 import {
   getProgramPageHref,
@@ -63,6 +63,45 @@ function ComingSoonCard({ program }: { program: ProgramPageContent }) {
   );
 }
 
+/** Shown when the live BDE cohort is not yet returned by the public API. */
+function LiveEngineeringFallbackCard() {
+  const program = blockchainDataEngineeringProgram;
+  return (
+    <Card className="overflow-hidden shadow-card">
+      <div className="relative aspect-[16/10] bg-brand-surface">
+        <Image
+          src={program.postcardImage}
+          alt={`${program.h1} postcard`}
+          fill
+          className="object-cover"
+          sizes="(max-width: 1024px) 100vw, 33vw"
+        />
+      </div>
+      <CardHeader>
+        <div className="mb-2 flex flex-wrap gap-2">
+          <span className="rounded-md bg-brand-orange/15 px-2 py-0.5 text-xs font-semibold uppercase text-brand-orange">
+            Open for registration
+          </span>
+        </div>
+        <CardTitle className="font-heading text-xl">{program.h1}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm text-muted-foreground">
+        <p className="font-medium text-foreground/80">{program.support}</p>
+        <p>
+          {program.duration} · {program.timeCommitment}
+        </p>
+        <ButtonLink
+          href={`/programs/${program.pageSlug}`}
+          className="mt-2 bg-brand-orange text-white hover:bg-brand-orange/90"
+        >
+          View program
+          <ArrowRight className="ml-2 size-4" />
+        </ButtonLink>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function HomeInstructorLedSection() {
   const [cohorts, setCohorts] = useState<PublicCohortCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,9 +112,10 @@ export function HomeInstructorLedSection() {
     listPublicCohorts()
       .then((data) => {
         if (!cancelled) {
+          // Prefer open cohorts; keep BDE first when present so it leads the grid.
           const sorted = [...data].sort((a, b) => {
-            if (a.slug === FEATURED_COHORT_SLUG) return -1;
-            if (b.slug === FEATURED_COHORT_SLUG) return 1;
+            if (a.slug === BDE_COHORT_SLUG) return -1;
+            if (b.slug === BDE_COHORT_SLUG) return 1;
             return 0;
           });
           setCohorts(sorted.slice(0, 2));
@@ -92,7 +132,8 @@ export function HomeInstructorLedSection() {
     };
   }, []);
 
-  const hasContent = cohorts.length > 0 || comingSoon.length > 0;
+  const hasBdeFromApi = cohorts.some((cohort) => cohort.slug === BDE_COHORT_SLUG);
+  const hasContent = cohorts.length > 0 || comingSoon.length > 0 || !hasBdeFromApi;
 
   return (
     <section className="relative border-y bg-brand-warm py-20 sm:py-28">
@@ -106,8 +147,8 @@ export function HomeInstructorLedSection() {
               Learn live with experts
             </h2>
             <p className="mt-3 max-w-xl text-lg text-muted-foreground">
-              Focus now: Blockchain Data Engineering. Learn live. Build together. Join the
-              classroom when your session starts.
+              Independent live programmes you can join when open. Learn live. Build together. Join
+              the classroom when your session starts.
             </p>
           </div>
           <ButtonLink href="/instructor-led" variant="outline" className="shrink-0">
@@ -132,10 +173,10 @@ export function HomeInstructorLedSection() {
           </Card>
         ) : (
           <div className="mt-12 grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
+            {!hasBdeFromApi ? <LiveEngineeringFallbackCard /> : null}
             {cohorts.map((cohort) => {
               const programHref = getProgramPageHref(cohort.slug);
               const postcard = getProgramPostcard(cohort.slug);
-              const isFeatured = cohort.slug === FEATURED_COHORT_SLUG;
               return (
                 <Card key={cohort.id} className="overflow-hidden shadow-card">
                   {postcard && (
@@ -158,7 +199,7 @@ export function HomeInstructorLedSection() {
                         </span>
                       ) : (
                         <span className="rounded-md bg-brand-orange/15 px-2 py-0.5 text-xs font-semibold uppercase text-brand-orange">
-                          {isFeatured ? "Focus cohort" : "Cohort open"}
+                          Open for registration
                         </span>
                       )}
                     </div>
@@ -188,7 +229,7 @@ export function HomeInstructorLedSection() {
                       href={programHref ?? "/instructor-led"}
                       className="mt-2 bg-brand-orange text-white hover:bg-brand-orange/90"
                     >
-                      {isFeatured ? "Explore Blockchain Data Engineering" : "View program"}
+                      View program
                       <ArrowRight className="ml-2 size-4" />
                     </ButtonLink>
                   </CardContent>
