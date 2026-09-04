@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
 import { ApiError } from "@/lib/api";
 import { getInsight, type InsightArticle } from "@/lib/insights";
-import { blogPostingJsonLd, pageMetadata } from "@/lib/seo";
+import { blogPostingJsonLd, breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/json-ld";
 
 export const dynamic = "force-dynamic";
 
@@ -51,20 +52,22 @@ export default async function InsightArticlePage({ params }: Props) {
 
   return (
     <article className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(
-            blogPostingJsonLd({
-              title: post.title,
-              excerpt: post.excerpt,
-              slug: post.slug,
-              publishedAt: post.published_at || new Date().toISOString(),
-              coverImage: post.cover_image_url || undefined,
-              author: { name: post.author.name },
-            })
-          ),
-        }}
+      <JsonLd
+        data={blogPostingJsonLd({
+          title: post.title,
+          excerpt: post.excerpt,
+          slug: post.slug,
+          publishedAt: post.published_at || new Date().toISOString(),
+          coverImage: post.cover_image_url || undefined,
+          author: { name: post.author.name },
+        })}
+      />
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: "Home", path: "/" },
+          { name: "Insights", path: "/insights" },
+          { name: post.title, path: `/insights/${post.slug}` },
+        ])}
       />
       <p className="text-xs font-semibold uppercase tracking-wide text-brand-orange">{post.category}</p>
       <h1 className="mt-3 font-heading text-4xl font-bold tracking-tight">{post.title}</h1>

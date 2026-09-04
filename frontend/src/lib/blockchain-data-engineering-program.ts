@@ -113,9 +113,9 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
     "Don't just learn tools. Learn how the system connects - from blockchain RPCs to production data products.",
   positioningPhrase:
     "Learn Blockchain Data Engineering by Building Real Onchain Data Systems.",
-  seoTitle: "Blockchain Data Engineering Programme | Learn Python, Web3.py & Onchain Data",
+  seoTitle: "Blockchain Data Engineering Programme | Global Onchain Data Skills",
   seoDescription:
-    "Learn Blockchain Data Engineering through hands-on projects. Build real onchain data pipelines using Python, SQL, Web3.py, PostgreSQL, dbt, Docker and modern data engineering tools.",
+    "Join Analytic Sages' global Blockchain Data Engineering programme. Learn by building real onchain data pipelines with Python, SQL, Web3.py, PostgreSQL, dbt, Docker and modern data engineering tools.",
   canonicalPath: `/programs/${BDE_PAGE_SLUG}`,
   curriculumPath: `/programs/${BDE_PAGE_SLUG}/curriculum`,
   postcardImage: "/blockchain-data-engineering.png",
@@ -320,7 +320,7 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
   curriculum: {
     seoTitle: "Blockchain Data Engineering Curriculum | 5 Modules, 30 Sessions",
     seoDescription:
-      "Full Blockchain Data Engineering curriculum: Web3.py extraction, PostgreSQL warehousing, dbt analytics engineering, Prefect, Apache Airflow, Apache Kafka, FastAPI and cloud deployment across 10 weeks.",
+      "Full Blockchain Data Engineering curriculum from Analytic Sages' global programme: Web3.py extraction, PostgreSQL warehousing, dbt, Prefect, Airflow, Kafka, FastAPI and cloud deployment across 10 weeks.",
     intro:
       "Learn Blockchain Data Engineering by building real onchain data systems. Project-Based Learning across 5 modules, 10 weeks and 30 sessions - from blockchain RPCs to cloud deployment.",
     modules: [

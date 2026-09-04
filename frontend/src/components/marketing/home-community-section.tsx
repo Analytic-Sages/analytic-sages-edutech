@@ -11,6 +11,12 @@ import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
 const channels = [
   {
+    name: "X",
+    href: siteConfig.links.x,
+    icon: ExternalLink,
+    accent: "bg-foreground/10 text-foreground",
+  },
+  {
     name: "Discord",
     href: siteConfig.links.discord,
     icon: MessageCircle,

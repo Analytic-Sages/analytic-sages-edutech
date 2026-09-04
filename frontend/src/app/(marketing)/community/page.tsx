@@ -1,11 +1,19 @@
 import { ExternalLink, MessageCircle, Play } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
+import { JsonLd } from "@/components/seo/json-ld";
 import { ButtonAnchor } from "@/components/ui/button-anchor";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { siteConfig } from "@/config/site";
-import { pageMetadata } from "@/lib/seo";
+import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
 
 const channels = [
+  {
+    name: "X",
+    description: "Product updates, programme news, and onchain education threads.",
+    href: siteConfig.links.x,
+    icon: ExternalLink,
+    color: "text-foreground",
+  },
   {
     name: "YouTube",
     description: "Free tutorials, webinars, and technical deep dives.",
@@ -32,18 +40,24 @@ const channels = [
 export const metadata = pageMetadata({
   title: "Community",
   description:
-    "Join the Analytic Sages community on YouTube, Telegram, and Discord for tutorials, study groups, and cohort updates.",
+    "Join the Analytic Sages global community on X, YouTube, Telegram, and Discord for tutorials, study groups, and cohort updates.",
   path: "/community",
 });
 
 export default function CommunityPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: "Home", path: "/" },
+          { name: "Community", path: "/community" },
+        ])}
+      />
       <PageHeader
         title="Join the Community"
         description="Connect with learners, mentors, and builders around the world"
       />
-      <div className="grid gap-6 sm:grid-cols-3">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {channels.map((channel) => (
           <Card key={channel.name} className="shadow-card">
             <CardHeader>

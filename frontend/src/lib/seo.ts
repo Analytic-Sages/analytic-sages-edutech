@@ -15,6 +15,23 @@ export function absoluteAssetUrl(src: string): string {
   return `${PUBLIC_SITE_ORIGIN}${src.startsWith("/") ? src : `/${src}`}`;
 }
 
+export function organizationId(): string {
+  return `${PUBLIC_SITE_ORIGIN}/#organization`;
+}
+
+export function websiteId(): string {
+  return `${PUBLIC_SITE_ORIGIN}/#website`;
+}
+
+export function socialSameAs(): string[] {
+  return [
+    siteConfig.links.x,
+    siteConfig.links.youtube,
+    siteConfig.links.telegram,
+    siteConfig.links.discord,
+  ];
+}
+
 export function brandedTitle(title: string): string {
   if (title === siteConfig.seoTitle || title === "Analytic Sages" || title.endsWith(" | Analytic Sages")) {
     return title;
@@ -57,6 +74,8 @@ export function pageMetadata({
     },
     twitter: {
       card: "summary_large_image",
+      site: siteConfig.twitterHandle,
+      creator: siteConfig.twitterHandle,
       title: ogTitle,
       description,
       images: [ogImage],
@@ -67,7 +86,7 @@ export function pageMetadata({
 }
 
 export function organizationJsonLd() {
-  const orgId = `${PUBLIC_SITE_ORIGIN}/#organization`;
+  const orgId = organizationId();
   return {
     "@context": "https://schema.org",
     "@graph": [
@@ -83,11 +102,11 @@ export function organizationJsonLd() {
         image: absoluteAssetUrl(DEFAULT_OG_IMAGE),
         description: siteConfig.description,
         email: siteConfig.emails.support,
-        sameAs: [siteConfig.links.youtube, siteConfig.links.telegram, siteConfig.links.discord],
+        sameAs: socialSameAs(),
       },
       {
         "@type": "WebSite",
-        "@id": `${PUBLIC_SITE_ORIGIN}/#website`,
+        "@id": websiteId(),
         url: PUBLIC_SITE_ORIGIN,
         name: siteConfig.name,
         description: siteConfig.description,
@@ -95,6 +114,135 @@ export function organizationJsonLd() {
         inLanguage: "en",
       },
     ],
+  };
+}
+
+export type BreadcrumbItem = { name: string; path: string };
+
+export function breadcrumbJsonLd(items: BreadcrumbItem[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: item.name,
+      item: absoluteUrl(item.path),
+    })),
+  };
+}
+
+export function faqPageJsonLd(faqs: { question: string; answer: string }[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((faq) => ({
+      "@type": "Question",
+      name: faq.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: faq.answer,
+      },
+    })),
+  };
+}
+
+export function courseJsonLd(input: {
+  name: string;
+  description: string;
+  path: string;
+  image?: string | null;
+  providerName?: string;
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Course",
+    name: input.name,
+    description: input.description,
+    url: absoluteUrl(input.path),
+    image: absoluteAssetUrl(input.image || DEFAULT_OG_IMAGE),
+    provider: {
+      "@id": organizationId(),
+    },
+    inLanguage: "en",
+  };
+}
+
+/** Live / cohort-style programmes (e.g. Blockchain Data Engineering). */
+export function educationalProgramJsonLd(input: {
+  name: string;
+  description: string;
+  path: string;
+  image?: string | null;
+  timeToComplete?: string;
+  educationalProgramMode?: string;
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "EducationalOccupationalProgram",
+    name: input.name,
+    description: input.description,
+    url: absoluteUrl(input.path),
+    image: absoluteAssetUrl(input.image || DEFAULT_OG_IMAGE),
+    provider: {
+      "@id": organizationId(),
+    },
+    ...(input.timeToComplete ? { timeToComplete: input.timeToComplete } : {}),
+    ...(input.educationalProgramMode
+      ? { educationalProgramMode: input.educationalProgramMode }
+      : {}),
+    inLanguage: "en",
+  };
+}
+
+export function eventJsonLd(input: {
+  name: string;
+  description: string;
+  path: string;
+  image?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  isFree?: boolean;
+  price?: number;
+  currency?: string;
+  eventStatus?: "EventScheduled" | "EventCancelled" | "EventPostponed";
+}) {
+  const offer =
+    input.isFree || input.price === 0
+      ? {
+          "@type": "Offer",
+          price: 0,
+          priceCurrency: input.currency || "USD",
+          availability: "https://schema.org/InStock",
+          url: absoluteUrl(input.path),
+        }
+      : input.price != null
+        ? {
+            "@type": "Offer",
+            price: input.price,
+            priceCurrency: input.currency || "USD",
+            availability: "https://schema.org/InStock",
+            url: absoluteUrl(input.path),
+          }
+        : undefined;
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: input.name,
+    description: input.description,
+    url: absoluteUrl(input.path),
+    image: absoluteAssetUrl(input.image || DEFAULT_OG_IMAGE),
+    ...(input.startDate ? { startDate: input.startDate } : {}),
+    ...(input.endDate ? { endDate: input.endDate } : {}),
+    eventAttendanceMode: "https://schema.org/OnlineEventAttendanceMode",
+    eventStatus: `https://schema.org/${input.eventStatus || "EventScheduled"}`,
+    organizer: { "@id": organizationId() },
+    ...(offer ? { offers: offer } : {}),
+    location: {
+      "@type": "VirtualLocation",
+      url: absoluteUrl(input.path),
+    },
   };
 }
 
@@ -119,12 +267,10 @@ export function blogPostingJsonLd(post: {
       name: post.author.name,
     },
     publisher: {
-      "@type": "EducationalOrganization",
-      name: siteConfig.name,
-      logo: {
-        "@type": "ImageObject",
-        url: absoluteAssetUrl(ORGANIZATION_LOGO),
-      },
+      "@id": organizationId(),
+    },
+    isPartOf: {
+      "@id": websiteId(),
     },
   };
 }

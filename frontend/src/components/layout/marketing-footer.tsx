@@ -75,6 +75,16 @@ export function MarketingFooter() {
             <ul className="mt-4 space-y-2">
               <li>
                 <a
+                  href={siteConfig.links.x}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  X
+                </a>
+              </li>
+              <li>
+                <a
                   href={siteConfig.links.youtube}
                   target="_blank"
                   rel="noopener noreferrer"

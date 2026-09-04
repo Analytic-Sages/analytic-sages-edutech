@@ -11,7 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ApiError, getSelfPacedCourse, type SelfPacedCoursePublic } from "@/lib/api";
 import { getCourseBySlug } from "@/lib/mock-data";
 import { featuredSelfPacedCourse } from "@/lib/self-paced";
-import { pageMetadata } from "@/lib/seo";
+import { breadcrumbJsonLd, courseJsonLd, pageMetadata } from "@/lib/seo";
+import { JsonLd } from "@/components/seo/json-ld";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (live) {
     const description =
       live.description ||
-      "Learn practical Dune SQL and dashboard techniques through this free self-paced course from Analytic Sages.";
+      "Learn practical Dune SQL and dashboard techniques through this free self-paced course from Analytic Sages - a global technology education platform.";
     return pageMetadata({
       title: live.title,
       description,
@@ -48,8 +49,26 @@ export default async function CourseDetailsPage({ params }: Props) {
   const { slug } = await params;
   const live = (await loadSelfPaced(slug)) ?? featuredSelfPacedCourse(slug);
   if (live) {
+    const description =
+      live.description ||
+      "Learn practical Dune SQL and dashboard techniques through this free self-paced course from Analytic Sages - a global technology education platform.";
     return (
       <Suspense>
+        <JsonLd
+          data={courseJsonLd({
+            name: live.title,
+            description,
+            path: `/courses/${live.slug}`,
+            image: live.thumbnail || "/dune-analytics-practical-sql-dashboard-techniques.png",
+          })}
+        />
+        <JsonLd
+          data={breadcrumbJsonLd([
+            { name: "Home", path: "/" },
+            { name: "Self-Paced Courses", path: "/courses" },
+            { name: live.title, path: `/courses/${live.slug}` },
+          ])}
+        />
         <SelfPacedCourseLanding initialCourse={live} />
       </Suspense>
     );
