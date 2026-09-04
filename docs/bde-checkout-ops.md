@@ -27,20 +27,45 @@ Expected:
 
 Idempotent: safe to re-run; existing plans are left in place (installment due date may be refreshed).
 
-## 2. Enable billing plans
+## 2. Enable billing plans + live payments
 
 On the **Render API service → Environment**:
 
 | Key | Value |
 |-----|--------|
 | `BILLING_PLANS_ENABLED` | `true` |
+| `PAYMENT_MODE` | `live` |
 
-Save and **deploy** so the running process reloads settings. Default in code is `false` (legacy one-time checkout only; `/api/v1/billing/plans` returns `[]`).
+Also set live provider secrets (empty keys still mock out even when mode is `live`):
 
-Related (local / staging):
+| Key | Notes |
+|-----|--------|
+| `PAYSTACK_SECRET_KEY` | Live `sk_live_…` |
+| `PAYSTACK_CHARGE_CURRENCY` | Usually `NGN` for NG merchants |
+| `PAYSTACK_USD_TO_NGN_RATE` | Used when catalogue prices are USD |
+| `NOWPAYMENTS_API_KEY` | Live crypto invoices |
+| `NOWPAYMENTS_IPN_SECRET` | IPN signing secret |
+| `PUBLIC_API_URL` | HTTPS API origin (webhook base) |
+| `FRONTEND_URL` | HTTPS site origin |
 
-- Prefer `PAYMENT_MODE=mock` for rehearsal without real money
-- Live Paystack / NOWPayments only after mock path looks correct
+Webhook / IPN URLs in provider dashboards:
+
+- Paystack: `{PUBLIC_API_URL}/api/v1/webhooks/payments/paystack`
+- NOWPayments: `{PUBLIC_API_URL}/api/v1/webhooks/payments/nowpayments`
+
+Save and **deploy** so the running process reloads settings.
+
+Local / staging rehearsal: keep `PAYMENT_MODE=mock` until the plan picker and unlock path look correct.
+
+### Cohort registration window (BDE seed)
+
+`seed_blockchain_data_engineering.py` currently sets:
+
+- Registration open from **4 Sep 2026** (cohort status `OPEN`)
+- Registration deadline **3 Oct 2026** 23:59 UTC
+- Programme start **6 Oct 2026**, end **14 Dec 2026** (10 weeks)
+
+Re-run both seed scripts on Render after pulling this change so production dates update.
 
 ## 3. Verify (database + flag)
 
@@ -92,11 +117,12 @@ Product behaviour in this release: seat unlocks after the **first** confirmed pa
 - [ ] `seed_blockchain_data_engineering.py` run on production DB  
 - [ ] `seed_tuition_plans.py` run on production DB  
 - [ ] `BILLING_PLANS_ENABLED=true` deployed on API  
-- [ ] `verify_bde_checkout.py` exits 0  
+- [ ] `PAYMENT_MODE=live` deployed on API (with live Paystack / NOWPayments secrets + webhooks)  
+- [ ] `verify_bde_checkout.py` exits 0 and prints `PAYMENT_MODE: live`  
 - [ ] Public cohorts API includes BDE as `open`  
 - [ ] Billing plans API returns both plans  
 - [ ] Checkout UI shows plan chooser  
-- [ ] One mock or test-account enrollment completed (full + installments if possible)  
+- [ ] One live (or test-key) enrollment completed (full + installments if possible)  
 
 ## Troubleshooting
 

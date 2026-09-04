@@ -45,6 +45,11 @@ def main() -> int:
     print(f"Cohort slug: {FEATURED_COHORT_SLUG}")
     print(f"BILLING_PLANS_ENABLED: {settings.billing_plans_enabled}")
     print(f"PAYMENT_MODE: {settings.payment_mode}")
+    if settings.payment_mode != "live":
+        print(
+            "NOTE PAYMENT_MODE is not live - checkout uses mock adapters. "
+            "Set PAYMENT_MODE=live on Render (with provider secrets) for real charges."
+        )
     print()
 
     if settings.billing_plans_enabled:

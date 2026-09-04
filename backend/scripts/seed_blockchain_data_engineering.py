@@ -28,10 +28,11 @@ COHORT_DESCRIPTION = (
     "activity into reliable, usable data systems."
 )
 
-# Open for registration — 10-week programme
-REGISTRATION_DEADLINE = datetime(2026, 10, 19, 23, 59, 59, tzinfo=timezone.utc)
-START_DATE = datetime(2026, 10, 20, 0, 0, 0, tzinfo=timezone.utc)
-END_DATE = datetime(2026, 12, 28, 23, 59, 59, tzinfo=timezone.utc)
+# Registration open from 4 Sep 2026. Deadline 3 Oct 2026 (after open date).
+# Programme runs 10 weeks from the first live week after registration closes.
+REGISTRATION_DEADLINE = datetime(2026, 10, 3, 23, 59, 59, tzinfo=timezone.utc)
+START_DATE = datetime(2026, 10, 6, 0, 0, 0, tzinfo=timezone.utc)
+END_DATE = datetime(2026, 12, 14, 23, 59, 59, tzinfo=timezone.utc)
 COHORT_PRICE = 200
 COHORT_CURRENCY = "USD"
 

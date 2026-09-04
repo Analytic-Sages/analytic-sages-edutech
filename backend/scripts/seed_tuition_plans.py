@@ -116,14 +116,14 @@ def main() -> None:
         else:
             plan = by_name["Pay in 2 Installments"]
             second = next((s for s in plan.schedules if s.sequence_number == 2), None)
-            if second and second.due_date is None and second_due:
+            if second and second_due and second.due_date != second_due:
                 second.due_date = second_due
                 db.commit()
-                print("Updated installment 2 due date")
+                print(f"Updated installment 2 due date -> {second_due.isoformat()}")
             else:
                 print("Plan exists: Pay in 2 Installments")
 
-        print("Done. Enable with BILLING_PLANS_ENABLED=true")
+        print("Done. Enable with BILLING_PLANS_ENABLED=true and PAYMENT_MODE=live for production.")
     finally:
         db.close()
 
