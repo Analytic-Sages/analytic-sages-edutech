@@ -158,11 +158,16 @@ export default function CohortCheckoutPage() {
       <div className="mx-auto max-w-lg px-4 py-16 text-center sm:px-6">
         <PageHeader
           title="Cohort not available"
-          description="This instructor-led cohort isn’t open for registration right now."
+          description="This instructor-led cohort isn’t open for registration right now. Check Instructor-Led programmes for what’s live, or return to the programme page."
         />
-        <ButtonLink href="/instructor-led" variant="outline" className="mt-6">
-          Back to Instructor-Led
-        </ButtonLink>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <ButtonLink href="/instructor-led" variant="outline">
+            Back to Instructor-Led
+          </ButtonLink>
+          <ButtonLink href={`/programs/${slug}`} variant="ghost">
+            Programme overview
+          </ButtonLink>
+        </div>
       </div>
     );
   }

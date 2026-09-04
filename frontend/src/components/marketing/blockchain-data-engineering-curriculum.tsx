@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight, Check, Loader2 } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button-link";
+import { useCohortRegistration } from "@/hooks/use-cohort-registration";
 import type { EngineeringProgramPageContent } from "@/lib/blockchain-data-engineering-program";
 
 export function BlockchainDataEngineeringCurriculum({
@@ -9,7 +12,9 @@ export function BlockchainDataEngineeringCurriculum({
   program: EngineeringProgramPageContent;
 }) {
   const { curriculum } = program;
-  const checkoutHref = `/checkout/cohort/${program.cohortSlug}`;
+  const { loading, open, checkoutHref } = useCohortRegistration(program.cohortSlug);
+  const primaryHref = open ? checkoutHref : program.canonicalPath;
+  const primaryLabel = open ? "Join the Next Cohort" : "Back to programme overview";
 
   return (
     <div className="bg-background pb-20 text-foreground">
@@ -26,20 +31,29 @@ export function BlockchainDataEngineeringCurriculum({
             {program.programSignal}
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <ButtonLink
-              href={checkoutHref}
-              className="h-11 bg-brand-orange text-white hover:bg-brand-orange/90"
-            >
-              Join the Next Cohort
-              <ArrowRight className="ml-2 size-4" />
-            </ButtonLink>
-            <ButtonLink
-              href={program.canonicalPath}
-              variant="outline"
-              className="h-11 border-white/30 bg-transparent text-white hover:bg-white/10"
-            >
-              Back to programme overview
-            </ButtonLink>
+            {loading ? (
+              <p className="inline-flex h-11 items-center gap-2 text-sm text-white/70">
+                <Loader2 className="size-4 animate-spin" />
+                Checking registration…
+              </p>
+            ) : (
+              <ButtonLink
+                href={primaryHref}
+                className="h-11 bg-brand-orange text-white hover:bg-brand-orange/90"
+              >
+                {primaryLabel}
+                <ArrowRight className="ml-2 size-4" />
+              </ButtonLink>
+            )}
+            {open ? (
+              <ButtonLink
+                href={program.canonicalPath}
+                variant="outline"
+                className="h-11 border-white/30 bg-transparent text-white hover:bg-white/10"
+              >
+                Back to programme overview
+              </ButtonLink>
+            ) : null}
           </div>
         </div>
       </section>
@@ -162,18 +176,20 @@ export function BlockchainDataEngineeringCurriculum({
           <p className="mt-4 text-sm leading-relaxed text-white/75">{curriculum.facilitatorNote}</p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <ButtonLink
-              href={checkoutHref}
+              href={primaryHref}
               className="h-11 bg-brand-orange text-white hover:bg-brand-orange/90"
             >
-              Join the Next Cohort
+              {primaryLabel}
               <ArrowRight className="ml-2 size-4" />
             </ButtonLink>
-            <Link
-              href={program.canonicalPath}
-              className="inline-flex h-11 items-center px-4 text-sm text-white/80 underline-offset-4 hover:underline"
-            >
-              Programme overview
-            </Link>
+            {open ? (
+              <Link
+                href={program.canonicalPath}
+                className="inline-flex h-11 items-center px-4 text-sm text-white/80 underline-offset-4 hover:underline"
+              >
+                Programme overview
+              </Link>
+            ) : null}
           </div>
         </div>
       </section>

@@ -41,6 +41,8 @@ export type EngineeringProgramPageContent = {
   duration: string;
   timeCommitment: string;
   paymentOptions: string;
+  /** Marketing tuition line for hero / CTA when registration is open. */
+  tuitionSummary: string;
   applyLabel: string;
   programSignal: string;
   learningMode: string;
@@ -113,8 +115,12 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
   format: "Project-Based Learning · Live sessions · Builds · Reviews · Community",
   duration: "10 weeks",
   timeCommitment: "8–12 hours per week",
-  paymentOptions: "Paystack (cards and bank transfer) or crypto via NOWPayments. One-time payment.",
+  paymentOptions:
+    "Pay in full ($200) or 2 installments ($110 + $110). Paystack (cards and bank transfer) or crypto via NOWPayments at checkout.",
   applyLabel: "Join the Next Cohort",
+  /** Shown on the programme page when live tuition plans are not returned by the API. */
+  tuitionSummary:
+    "Pay in full ($200) or 2 installments ($110 due today, then $110 later).",
   programSignal: "5 Modules · 10 Weeks · 30 Sessions · Learn by Building",
   learningMode: "Project-Based Learning",
   problemTitle: "Blockchain Data Is Growing. So Is the Need for Infrastructure.",
@@ -303,7 +309,7 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
     {
       question: "Can I pay in installments?",
       answer:
-        "Registration is currently a one-time payment at checkout via Paystack or NOWPayments unless a tuition plan is explicitly enabled for the cohort.",
+        "Yes. At checkout you can choose Pay in Full ($200) or Pay in 2 Installments ($110 now to unlock your seat, then $110 later — total $220). Pay with Paystack or crypto via NOWPayments. Later installments appear on your Billing page after you enrol.",
     },
   ],
   curriculum: {
