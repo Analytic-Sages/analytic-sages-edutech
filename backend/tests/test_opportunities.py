@@ -200,13 +200,29 @@ def test_non_admin_staff_cannot_manage_opportunities():
     author = _make_user(author_email, UserRole.AUTHOR)
     editor = _make_user(editor_email, UserRole.EDITOR)
     ops = _make_user(ops_email, UserRole.OPERATIONS)
-    payload = _payload(slug=f"forbidden-{uuid.uuid4().hex[:8]}")
+    forbidden_slug = f"forbidden-{uuid.uuid4().hex[:8]}"
+    ops_slug = f"ops-allowed-{uuid.uuid4().hex[:8]}"
     try:
-        assert client.post("/api/v1/admin/opportunities", headers=_auth(author), json=payload).status_code == 403
-        assert client.post("/api/v1/admin/opportunities", headers=_auth(editor), json=payload).status_code == 403
-        assert client.post("/api/v1/admin/opportunities", headers=_auth(ops), json=payload).status_code == 403
+        assert client.post(
+            "/api/v1/admin/opportunities",
+            headers=_auth(author),
+            json=_payload(slug=forbidden_slug),
+        ).status_code == 403
+        assert client.post(
+            "/api/v1/admin/opportunities",
+            headers=_auth(editor),
+            json=_payload(slug=forbidden_slug),
+        ).status_code == 403
+        # Operations (and partnerships) may manage opportunities
+        created = client.post(
+            "/api/v1/admin/opportunities",
+            headers=_auth(ops),
+            json=_payload(slug=ops_slug),
+        )
+        assert created.status_code == 201
         assert client.get("/api/v1/admin/opportunities").status_code == 401
     finally:
+        _cleanup_slug(ops_slug)
         _cleanup_user(author_email)
         _cleanup_user(editor_email)
         _cleanup_user(ops_email)

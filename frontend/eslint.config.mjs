@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Accidental nested Next output (not used by the app)
+    "frontend/**",
   ]),
 ]);
 

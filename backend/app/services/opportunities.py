@@ -932,7 +932,7 @@ class OpportunityService:
         card = self._decorate_card(self._card(opportunity), opportunity, user)
         source = opportunity.source
         return OpportunityPublic(
-            **card.model_dump(),
+            **card.model_dump(exclude={"source"}),
             description=normalize_description(opportunity.description),
             requirements=normalize_description(opportunity.requirements or ""),
             responsibilities=normalize_optional(opportunity.responsibilities),

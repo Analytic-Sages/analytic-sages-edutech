@@ -39,9 +39,39 @@ export function AdminReferralsContent() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    let cancelled = false;
+    getAdminReferralOverview()
+      .then(async (o) => {
+        const [p, c, pay, r] = await Promise.all([
+          getAdminReferralPartners(),
+          getAdminReferralConversions(),
+          getAdminReferralPayouts(),
+          getAdminReferralReviewQueue(),
+        ]);
+        if (cancelled) return;
+        setOverview(o);
+        setPartners(p);
+        setConversions(c);
+        setPayouts(pay);
+        setReview(r);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof ApiError ? err.detail : "Failed to load referrals");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   async function load() {
-    setLoading(true);
     setError(null);
+    setLoading(true);
     try {
       const [o, p, c, pay, r] = await Promise.all([
         getAdminReferralOverview(),
@@ -61,10 +91,6 @@ export function AdminReferralsContent() {
       setLoading(false);
     }
   }
-
-  useEffect(() => {
-    load();
-  }, []);
 
   async function setPartnerStatus(id: string, status: string) {
     await patchAdminReferralPartner(id, { status });

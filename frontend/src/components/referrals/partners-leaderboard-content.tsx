@@ -20,12 +20,27 @@ export function PartnersLeaderboardContent() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
+    let cancelled = false;
     getReferralLeaderboard(period)
-      .then((res) => setEntries(res.entries))
-      .catch(() => setEntries([]))
-      .finally(() => setLoading(false));
+      .then((res) => {
+        if (!cancelled) setEntries(res.entries);
+      })
+      .catch(() => {
+        if (!cancelled) setEntries([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [period]);
+
+  function selectPeriod(next: "all" | "monthly") {
+    if (next === period) return;
+    setLoading(true);
+    setPeriod(next);
+  }
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6">
@@ -38,7 +53,7 @@ export function PartnersLeaderboardContent() {
         <Button
           variant={period === "all" ? "default" : "outline"}
           size="sm"
-          onClick={() => setPeriod("all")}
+          onClick={() => selectPeriod("all")}
           className={period === "all" ? "bg-brand-orange text-white hover:bg-brand-orange/90" : ""}
         >
           All time
@@ -46,7 +61,7 @@ export function PartnersLeaderboardContent() {
         <Button
           variant={period === "monthly" ? "default" : "outline"}
           size="sm"
-          onClick={() => setPeriod("monthly")}
+          onClick={() => selectPeriod("monthly")}
           className={
             period === "monthly" ? "bg-brand-orange text-white hover:bg-brand-orange/90" : ""
           }

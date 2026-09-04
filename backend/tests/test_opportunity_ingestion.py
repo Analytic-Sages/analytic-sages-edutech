@@ -673,21 +673,61 @@ def test_off_mission_title_is_rejected():
 
 def test_non_admin_cannot_manage_sources_or_sync():
     _seed()
+    author_email = f"author-ing-{uuid.uuid4()}@example.com"
     ops_email = f"ops-ing-{uuid.uuid4()}@example.com"
+    author = _make_user(author_email, UserRole.AUTHOR)
     ops = _make_user(ops_email, UserRole.OPERATIONS)
-    payload = {
+    blocked_payload = {
         "name": f"Blocked {uuid.uuid4().hex[:8]}",
         "connector_type": "rss",
         "config": {"feed_url": "https://example.com/feed.xml"},
     }
+    ops_payload = {
+        "name": f"Ops Source {uuid.uuid4().hex[:8]}",
+        "connector_type": "rss",
+        "config": {"feed_url": "https://example.com/ops-feed.xml"},
+    }
     try:
-        assert client.post("/api/v1/admin/opportunity-sources", headers=_auth(ops), json=payload).status_code == 403
-        assert client.get("/api/v1/admin/opportunity-sources", headers=_auth(ops)).status_code == 403
-        assert client.get("/api/v1/admin/opportunities", headers=_auth(ops), params={"review": True}).status_code == 403
-        assert client.post("/api/v1/admin/opportunities/sync-sources", headers=_auth(ops)).status_code == 403
+        # Authors cannot manage opportunity sources / sync
+        assert (
+            client.post(
+                "/api/v1/admin/opportunity-sources",
+                headers=_auth(author),
+                json=blocked_payload,
+            ).status_code
+            == 403
+        )
+        assert client.get("/api/v1/admin/opportunity-sources", headers=_auth(author)).status_code == 403
+        assert (
+            client.get(
+                "/api/v1/admin/opportunities", headers=_auth(author), params={"review": True}
+            ).status_code
+            == 403
+        )
+        assert (
+            client.post("/api/v1/admin/opportunities/sync-sources", headers=_auth(author)).status_code
+            == 403
+        )
+        # Operations may manage opportunity ops surfaces
+        created = client.post(
+            "/api/v1/admin/opportunity-sources",
+            headers=_auth(ops),
+            json=ops_payload,
+        )
+        assert created.status_code == 201
+        assert client.get("/api/v1/admin/opportunity-sources", headers=_auth(ops)).status_code == 200
+        assert (
+            client.get(
+                "/api/v1/admin/opportunities", headers=_auth(ops), params={"review": True}
+            ).status_code
+            == 200
+        )
         assert client.post("/api/v1/admin/opportunities/sync-sources").status_code == 401
         assert client.post("/api/v1/internal/opportunities/sync").status_code == 404
+        if created.status_code == 201:
+            _cleanup_source(ops_payload["name"])
     finally:
+        _cleanup_user(author_email)
         _cleanup_user(ops_email)
 
 
