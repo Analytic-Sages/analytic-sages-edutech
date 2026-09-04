@@ -36,6 +36,9 @@ HEADING_SPLIT_RE = re.compile(
 )
 LIST_LINE_RE = re.compile(r"^\s*(?:[-*•–]|\d+[.)])\s+")
 MARKDOWN_HEADING_RE = re.compile(r"^#{1,4}\s+\S")
+BOLD_MARKDOWN_RE = re.compile(r"\*\*(.+?)\*\*")
+ITALIC_MARKDOWN_RE = re.compile(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)")
+FANCY_DASH_RE = re.compile(r"\s*[\u2014\u2013]\s*")
 
 
 def looks_like_html(value: str) -> bool:
@@ -139,8 +142,23 @@ def _as_list_item(line: str) -> str | None:
     return None
 
 
+def _strip_emphasis_markers(line: str) -> str:
+    """Drop markdown bold/italic markers so listings don't show raw ** or *."""
+    text = BOLD_MARKDOWN_RE.sub(r"\1", line)
+    text = ITALIC_MARKDOWN_RE.sub(r"\1", text)
+    return text.replace("**", "").replace("__", "")
+
+
+def _normalize_dashes(line: str) -> str:
+    """Replace em/en dashes with a plain hyphen (avoids AI-slop punctuation)."""
+    return FANCY_DASH_RE.sub(" - ", line)
+
+
 def _clean_line(line: str) -> str:
-    return re.sub(r"[ \t]+", " ", line).strip()
+    text = re.sub(r"[ \t]+", " ", line).strip()
+    text = _strip_emphasis_markers(text)
+    text = _normalize_dashes(text)
+    return re.sub(r"[ \t]+", " ", text).strip()
 
 
 def _cleanup_markdown(text: str) -> str:
@@ -197,10 +215,7 @@ class _HtmlMarkdownParser(HTMLParser):
                 self._chunks.append(f"{self._indexes[-1]}. ")
             else:
                 self._chunks.append("- ")
-        elif tag in {"strong", "b"}:
-            self._chunks.append("**")
-        elif tag in {"em", "i"}:
-            self._chunks.append("*")
+        # strong/em: keep plain text only — no ** / * markers in stored prose
 
     def handle_endtag(self, tag: str) -> None:
         tag = tag.lower()
@@ -221,10 +236,6 @@ class _HtmlMarkdownParser(HTMLParser):
             if self._li:
                 self._li -= 1
             self._break()
-        elif tag in {"strong", "b"}:
-            self._chunks.append("**")
-        elif tag in {"em", "i"}:
-            self._chunks.append("*")
 
     def handle_data(self, data: str) -> None:
         if self._skip or not data:

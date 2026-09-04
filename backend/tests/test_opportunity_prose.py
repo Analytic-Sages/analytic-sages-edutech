@@ -68,6 +68,25 @@ def test_markdown_passthrough_is_stable():
     assert normalize_description(source) == source
 
 
+def test_strips_bold_markers_and_em_dashes():
+    html = "<p>We need a <strong>data engineer</strong> — remote preferred.</p>"
+    markdown = normalize_description(html)
+    assert "**" not in markdown
+    assert "—" not in markdown
+    assert "–" not in markdown
+    assert "data engineer" in markdown
+    assert " - " in markdown
+
+
+def test_strips_raw_markdown_emphasis():
+    text = "**About the role**\n\nBuild pipelines — ship dashboards."
+    markdown = normalize_description(text)
+    assert "**" not in markdown
+    assert "—" not in markdown
+    assert "About the role" in markdown
+    assert "Build pipelines - ship dashboards." in markdown
+
+
 def test_greenhouse_parser_preserves_list_structure():
     from app.models.opportunity import OpportunitySource
     from app.services.opportunity_sources.greenhouse import parse_jobs

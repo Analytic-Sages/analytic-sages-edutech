@@ -101,6 +101,8 @@ export type OpportunityCard = {
   slug: string;
   title: string;
   organization_name: string;
+  organization_logo_url?: string | null;
+  compensation_text?: string | null;
   opportunity_type: OpportunityType;
   employment_type: string | null;
   experience_level: ExperienceLevel;
@@ -163,6 +165,8 @@ export type OpportunityAdmin = {
   slug: string;
   title: string;
   organization_name: string;
+  organization_logo_url?: string | null;
+  compensation_text?: string | null;
   description: string;
   requirements: string;
   responsibilities: string | null;
@@ -386,6 +390,109 @@ export function formatPosted(value: string | null) {
   }).format(new Date(value));
 }
 
+/** Relative time for listing cards, e.g. "2 days ago". */
+export function formatPostedRelative(value: string | null) {
+  if (!value) return null;
+  const then = new Date(value).getTime();
+  if (Number.isNaN(then)) return null;
+  const diffMs = Date.now() - then;
+  if (diffMs < 0) return "just now";
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 60) return minutes <= 1 ? "just now" : `${minutes} minutes ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return hours === 1 ? "1 hour ago" : `${hours} hours ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "1 day ago";
+  if (days < 14) return `${days} days ago`;
+  if (days < 45) {
+    const weeks = Math.floor(days / 7);
+    return weeks === 1 ? "1 week ago" : `${weeks} weeks ago`;
+  }
+  return formatPosted(value);
+}
+
+export function compensationLabel(opportunity: OpportunityCard): string | null {
+  if (opportunity.compensation_text?.trim()) return opportunity.compensation_text.trim();
+  const prize = opportunity.hackathon?.prize_pool_raw || opportunity.bounty?.reward_raw;
+  if (prize?.trim()) return prize.trim();
+  if (opportunity.opportunity_type === "hackathon") return "Prize pool";
+  if (opportunity.opportunity_type === "grant") return "Funding";
+  if (opportunity.opportunity_type === "bounty") return "Reward";
+  if (opportunity.opportunity_type === "fellowship") return "Stipend TBA";
+  return null;
+}
+
+export function viewCtaLabel(type: OpportunityType) {
+  if (type === "hackathon") return "Explore";
+  if (type === "grant") return "View grant";
+  if (type === "bounty") return "View bounty";
+  if (type === "fellowship") return "View";
+  return "View";
+}
+
+export type LearningPathCta = {
+  title: string;
+  body: string;
+  href: string;
+};
+
+/** Map career paths to Analytic Sages programmes learners can explore. */
+export function learningPathForOpportunity(opportunity: {
+  primary_career_path: CareerPathPublic | null;
+  career_paths?: CareerPathPublic[];
+  skills: SkillPublic[];
+}): LearningPathCta | null {
+  const paths = [
+    opportunity.primary_career_path,
+    ...(opportunity.career_paths || []),
+  ].filter(Boolean) as CareerPathPublic[];
+  const slugs = new Set(paths.map((p) => p.slug));
+  if (slugs.has("blockchain-data-engineering")) {
+    return {
+      title: "Blockchain Data Engineering",
+      body: "Learn Python, SQL, Web3.py, dbt, orchestration and onchain data pipelines.",
+      href: "/programs/blockchain-data-engineering",
+    };
+  }
+  if (slugs.has("onchain-data-analytics")) {
+    return {
+      title: "SQL Blockchain Data Analytics",
+      body: "Practice SQL on real blockchain data and build practical analytics projects.",
+      href: "/programs/cohort-9-sql-blockchain-data-analytics",
+    };
+  }
+  if (
+    slugs.has("applied-ai") ||
+    slugs.has("agentic-systems") ||
+    slugs.has("ai-automation")
+  ) {
+    return {
+      title: "Instructor-led AI programmes",
+      body: "Build applied AI, agent, and automation skills through live Analytic Sages cohorts.",
+      href: "/instructor-led",
+    };
+  }
+  if (
+    opportunity.skills.some((s) =>
+      ["python", "sql", "dbt", "web3", "kafka", "airflow"].includes(s.slug),
+    )
+  ) {
+    return {
+      title: "Blockchain Data Engineering",
+      body: "Missing pipeline skills? Learn the stack this opportunity asks for.",
+      href: "/programs/blockchain-data-engineering",
+    };
+  }
+  return null;
+}
+
+export function organizationInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
+}
+
 export type OpportunityQuery = {
   q?: string;
   opportunity_type?: OpportunityType;
@@ -464,6 +571,8 @@ export type OpportunityWritePayload = {
   slug?: string | null;
   title: string;
   organization_name: string;
+  organization_logo_url?: string | null;
+  compensation_text?: string | null;
   description: string;
   requirements: string;
   responsibilities?: string | null;

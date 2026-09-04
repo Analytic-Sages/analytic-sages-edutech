@@ -411,6 +411,8 @@ class OpportunityService:
             slug=opportunity.slug,
             title=opportunity.title,
             organization_name=opportunity.organization_name,
+            organization_logo_url=opportunity.organization_logo_url,
+            compensation_text=opportunity.compensation_text,
             opportunity_type=_enum_value(opportunity.opportunity_type),
             employment_type=_enum_value(opportunity.employment_type) if opportunity.employment_type else None,
             experience_level=_enum_value(opportunity.experience_level),
@@ -492,6 +494,8 @@ class OpportunityService:
             slug=opportunity.slug,
             title=opportunity.title,
             organization_name=opportunity.organization_name,
+            organization_logo_url=opportunity.organization_logo_url,
+            compensation_text=opportunity.compensation_text,
             description=normalize_description(opportunity.description),
             requirements=normalize_description(opportunity.requirements or ""),
             responsibilities=normalize_optional(opportunity.responsibilities),
@@ -547,7 +551,7 @@ class OpportunityService:
             updated_at=opportunity.updated_at,
         )
 
-    def _similar(self, opportunity: Opportunity, limit: int = 3) -> list[OpportunityCardPublic]:
+    def _similar(self, opportunity: Opportunity, limit: int = 5) -> list[OpportunityCardPublic]:
         now = self._utcnow()
         path_ids = [link.career_path_id for link in opportunity.career_path_links]
         query = (
@@ -1110,6 +1114,8 @@ class OpportunityService:
             slug=slug,
             title=payload.title,
             organization_name=payload.organization_name,
+            organization_logo_url=payload.organization_logo_url,
+            compensation_text=payload.compensation_text,
             description=normalize_description(payload.description),
             requirements=normalize_description(payload.requirements),
             responsibilities=normalize_optional(payload.responsibilities),

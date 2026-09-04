@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { OpportunitiesHub } from "@/components/opportunities/opportunities-hub";
 import { OpportunityDetailView } from "@/components/opportunities/opportunity-detail";
@@ -54,11 +55,13 @@ export default async function OpportunitySlugPage({ params }: Props) {
   if (type) {
     const route = TYPE_ROUTES.find((item) => item.type === type);
     return (
-      <OpportunitiesHub
-        initialType={type}
-        title={route?.label || "Opportunities"}
-        description={`${route?.label || "Opportunities"} selected for Analytic Sages learners and mapped to our career pathways.`}
-      />
+      <Suspense fallback={<div className="p-12 text-center text-sm text-muted-foreground">Loading opportunities…</div>}>
+        <OpportunitiesHub
+          initialType={type}
+          title={route?.label || "Opportunities"}
+          description={`${route?.label || "Opportunities"} for people building careers in blockchain data, AI, quantitative finance and onchain research.`}
+        />
+      </Suspense>
     );
   }
 

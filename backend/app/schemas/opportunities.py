@@ -135,6 +135,8 @@ class OpportunityCardPublic(BaseModel):
     slug: str
     title: str
     organization_name: str
+    organization_logo_url: str | None = None
+    compensation_text: str | None = None
     opportunity_type: str
     employment_type: str | None = None
     experience_level: str
@@ -205,6 +207,8 @@ class OpportunityWriteBase(BaseModel):
     slug: str | None = Field(default=None, min_length=3, max_length=180, pattern=SLUG_PATTERN)
     title: str = Field(min_length=3, max_length=255)
     organization_name: str = Field(min_length=2, max_length=255)
+    organization_logo_url: str | None = Field(default=None, max_length=500)
+    compensation_text: str | None = Field(default=None, max_length=255)
     description: str = Field(default="", max_length=20000)
     requirements: str = Field(default="", max_length=20000)
     responsibilities: str | None = Field(default=None, max_length=20000)
@@ -234,6 +238,8 @@ class OpportunityWriteBase(BaseModel):
         "country",
         "source_url",
         "slug",
+        "organization_logo_url",
+        "compensation_text",
         mode="before",
     )
     @classmethod
@@ -263,6 +269,8 @@ class OpportunityUpdate(BaseModel):
     slug: str | None = Field(default=None, min_length=3, max_length=180, pattern=SLUG_PATTERN)
     title: str | None = Field(default=None, min_length=3, max_length=255)
     organization_name: str | None = Field(default=None, min_length=2, max_length=255)
+    organization_logo_url: str | None = Field(default=None, max_length=500)
+    compensation_text: str | None = Field(default=None, max_length=255)
     description: str | None = Field(default=None, max_length=20000)
     requirements: str | None = Field(default=None, max_length=20000)
     responsibilities: str | None = Field(default=None, max_length=20000)
@@ -292,6 +300,8 @@ class OpportunityUpdate(BaseModel):
         "country",
         "source_url",
         "slug",
+        "organization_logo_url",
+        "compensation_text",
         mode="before",
     )
     @classmethod
@@ -373,6 +383,8 @@ class OpportunityAdmin(BaseModel):
     slug: str
     title: str
     organization_name: str
+    organization_logo_url: str | None = None
+    compensation_text: str | None = None
     description: str
     requirements: str
     responsibilities: str | None

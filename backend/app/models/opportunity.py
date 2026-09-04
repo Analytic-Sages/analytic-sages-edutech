@@ -337,6 +337,8 @@ class Opportunity(Base):
     slug: Mapped[str] = mapped_column(String(180), unique=True, index=True, nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     organization_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    organization_logo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    compensation_text: Mapped[str | None] = mapped_column(String(255), nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     requirements: Mapped[str] = mapped_column(Text, nullable=False, default="")
     responsibilities: Mapped[str | None] = mapped_column(Text, nullable=True)

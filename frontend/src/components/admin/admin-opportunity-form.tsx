@@ -38,6 +38,8 @@ type FormState = {
   slug: string;
   title: string;
   organization_name: string;
+  organization_logo_url: string;
+  compensation_text: string;
   description: string;
   requirements: string;
   responsibilities: string;
@@ -64,6 +66,8 @@ const EMPTY: FormState = {
   slug: "",
   title: "",
   organization_name: "",
+  organization_logo_url: "",
+  compensation_text: "",
   description: "",
   requirements: "",
   responsibilities: "",
@@ -98,6 +102,8 @@ function fromOpportunity(row: OpportunityAdmin): FormState {
     slug: row.slug,
     title: row.title,
     organization_name: row.organization_name,
+    organization_logo_url: row.organization_logo_url ?? "",
+    compensation_text: row.compensation_text ?? "",
     description: row.description,
     requirements: row.requirements,
     responsibilities: row.responsibilities ?? "",
@@ -131,6 +137,8 @@ function toPayload(form: FormState): OpportunityWritePayload {
     slug: form.slug.trim() || null,
     title: form.title.trim(),
     organization_name: form.organization_name.trim(),
+    organization_logo_url: form.organization_logo_url.trim() || null,
+    compensation_text: form.compensation_text.trim() || null,
     description: form.description.trim(),
     requirements: form.requirements.trim(),
     responsibilities: form.responsibilities.trim() || null,
@@ -288,6 +296,24 @@ export function AdminOpportunityForm({ opportunityId }: { opportunityId?: string
               value={form.organization_name}
               onChange={(e) => set("organization_name", e.target.value)}
               required
+            />
+          </div>
+          <div>
+            <Label htmlFor="organization_logo_url">Organization logo URL</Label>
+            <Input
+              id="organization_logo_url"
+              value={form.organization_logo_url}
+              onChange={(e) => set("organization_logo_url", e.target.value)}
+              placeholder="https://…"
+            />
+          </div>
+          <div>
+            <Label htmlFor="compensation_text">Compensation / funding</Label>
+            <Input
+              id="compensation_text"
+              value={form.compensation_text}
+              onChange={(e) => set("compensation_text", e.target.value)}
+              placeholder="Competitive, $120k-$160k, Prize pool"
             />
           </div>
           <div>

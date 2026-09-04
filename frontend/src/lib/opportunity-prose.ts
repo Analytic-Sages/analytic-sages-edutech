@@ -7,8 +7,19 @@ const HEADING_RE = /^(#{1,4})\s+(.+)$/;
 const UL_RE = /^[-*•–]\s+(.+)$/;
 const OL_RE = /^(\d+)[.)]\s+(.+)$/;
 
+/** Strip markdown emphasis and fancy dashes so opportunity copy reads clean. */
+export function sanitizeOpportunityProse(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "$1")
+    .replace(/\*\*/g, "")
+    .replace(/__/g, "")
+    .replace(/\s*[\u2014\u2013]\s*/g, " - ")
+    .replace(/[ \t]+/g, " ");
+}
+
 export function parseOpportunityMarkdown(source: string): OpportunityProseBlock[] {
-  const lines = source.replace(/\r\n/g, "\n").split("\n");
+  const lines = sanitizeOpportunityProse(source.replace(/\r\n/g, "\n")).split("\n");
   const blocks: OpportunityProseBlock[] = [];
   let paragraph: string[] = [];
   let list: { ordered: boolean; items: string[] } | null = null;
@@ -16,7 +27,7 @@ export function parseOpportunityMarkdown(source: string): OpportunityProseBlock[
   function flushParagraph() {
     const text = paragraph.join(" ").trim();
     paragraph = [];
-    if (text) blocks.push({ type: "paragraph", text });
+    if (text) blocks.push({ type: "paragraph", text: sanitizeOpportunityProse(text).trim() });
   }
 
   function flushList() {
@@ -37,7 +48,11 @@ export function parseOpportunityMarkdown(source: string): OpportunityProseBlock[
       flushList();
       const hashes = heading[1].length;
       const level = hashes <= 2 ? 2 : hashes === 3 ? 3 : 4;
-      blocks.push({ type: "heading", level, text: heading[2].trim() });
+      blocks.push({
+        type: "heading",
+        level,
+        text: sanitizeOpportunityProse(heading[2]).trim(),
+      });
       continue;
     }
     const ul = line.match(UL_RE);
@@ -47,7 +62,7 @@ export function parseOpportunityMarkdown(source: string): OpportunityProseBlock[
         flushList();
         list = { ordered: false, items: [] };
       }
-      list.items.push(ul[1].trim());
+      list.items.push(sanitizeOpportunityProse(ul[1]).trim());
       continue;
     }
     const ol = line.match(OL_RE);
@@ -57,7 +72,7 @@ export function parseOpportunityMarkdown(source: string): OpportunityProseBlock[
         flushList();
         list = { ordered: true, items: [] };
       }
-      list.items.push(ol[2].trim());
+      list.items.push(sanitizeOpportunityProse(ol[2]).trim());
       continue;
     }
     flushList();
@@ -68,16 +83,7 @@ export function parseOpportunityMarkdown(source: string): OpportunityProseBlock[
   return blocks;
 }
 
-export function renderInline(text: string): { text: string; bold?: boolean }[] {
-  const parts: { text: string; bold?: boolean }[] = [];
-  const re = /\*\*(.+?)\*\*/g;
-  let last = 0;
-  let match: RegExpExecArray | null;
-  while ((match = re.exec(text))) {
-    if (match.index > last) parts.push({ text: text.slice(last, match.index) });
-    parts.push({ text: match[1], bold: true });
-    last = match.index + match[0].length;
-  }
-  if (last < text.length) parts.push({ text: text.slice(last) });
-  return parts.length ? parts : [{ text }];
+export function renderInline(text: string): { text: string }[] {
+  const cleaned = sanitizeOpportunityProse(text).trim();
+  return cleaned ? [{ text: cleaned }] : [];
 }

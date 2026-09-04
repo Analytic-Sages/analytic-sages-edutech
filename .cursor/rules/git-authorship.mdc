@@ -1,0 +1,11 @@
+---
+description: Git commits must use the user's identity only — never Cursor as author, committer, or co-author
+alwaysApply: true
+---
+
+# Git authorship
+
+- Never attribute commits to Cursor (`Cursor`, `cursoragent@cursor.com`, or similar).
+- Author and committer must be the repo owner identity from `git config` (Olaoluwa Tunmise / oluwatunmise1olaoluwa@gmail.com).
+- Do not add `Co-authored-by: Cursor` trailers. If the environment injects one, rewrite the commit with `git commit-tree` (or equivalent) to strip it before push.
+- When the user asks to commit, verify `git log -1` shows their name/email and no Cursor trailer.

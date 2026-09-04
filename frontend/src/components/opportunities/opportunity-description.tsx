@@ -54,15 +54,9 @@ export function OpportunityDescription({ text }: { text: string }) {
 function Inline({ text }: { text: string }) {
   return (
     <>
-      {renderInline(text).map((part, index) =>
-        part.bold ? (
-          <strong key={`${part.text}-${index}`} className="font-medium text-foreground">
-            {part.text}
-          </strong>
-        ) : (
-          <span key={`${part.text}-${index}`}>{part.text}</span>
-        ),
-      )}
+      {renderInline(text).map((part, index) => (
+        <span key={`${part.text}-${index}`}>{part.text}</span>
+      ))}
     </>
   );
 }
