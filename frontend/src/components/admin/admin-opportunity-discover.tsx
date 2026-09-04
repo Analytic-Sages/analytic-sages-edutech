@@ -115,7 +115,7 @@ export function AdminOpportunityDiscoverContent() {
     <div>
       <PageHeader
         title="Discover opportunities"
-        description="Find internships, fellowships, hackathons, grants, bounties, and research listings. Import fetches the official page and extracts structured fields before creating drafts. Nothing is published automatically."
+        description="Find jobs, internships, fellowships, hackathons, grants, bounties, and research listings. Import fetches the official page and extracts structured fields before creating drafts. Nothing is published automatically."
         action={
           <ButtonLink href="/admin/opportunities" variant="outline">
             Review queue
@@ -148,7 +148,7 @@ export function AdminOpportunityDiscoverContent() {
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Optional focus, e.g. SQL internships or ETHGlobal"
+            placeholder="Optional focus, e.g. onchain data engineer jobs or ETHGlobal"
           />
           <Button onClick={search} disabled={searching || types.length === 0}>
             {searching ? "Searching…" : "Find listings"}
@@ -159,8 +159,8 @@ export function AdminOpportunityDiscoverContent() {
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
           Uses OpenAI first, then Gemini if OpenAI is missing or fails. Official https pages only —
-          LinkedIn, Indeed, and Web3.career are blocked. Import always tries to fetch the original
-          page before creating a draft.
+          LinkedIn, Indeed, and Web3.career are blocked. Prefer company careers / ATS and ecosystem
+          programme pages. Import always tries to fetch the original page before creating a draft.
         </p>
       </div>
 
@@ -194,7 +194,7 @@ export function AdminOpportunityDiscoverContent() {
         <EmptyState
           icon={<Search className="size-5" />}
           title="No candidates yet"
-          description="Choose types and search. Company job boards stay on Sources. This inbox is for internships, fellowships, hackathons, grants, bounties, and research."
+          description="Choose types and search. Jobs should be official careers/ATS pages. Aggregator boards stay blocked — use Sources for recurring company board sync."
         />
       ) : null}
 

@@ -845,6 +845,7 @@ export function requestAdminReviewAssist(id: string) {
 }
 
 export const DISCOVERY_TYPES: OpportunityType[] = [
+  "job",
   "internship",
   "fellowship",
   "hackathon",

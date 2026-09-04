@@ -228,3 +228,47 @@ def test_discover_falls_back_to_gemini_when_openai_fails():
         assert "Gemini" in (found.json()["notes"] or "")
     finally:
         _cleanup_user(email)
+
+
+def test_discover_keeps_official_job_listings():
+    """Jobs are accepted for Discover when they point at official HTTPS pages."""
+    from app.models.opportunity import OpportunityType
+    from app.schemas.opportunities import OpportunityDiscoverCandidate
+
+    db = SessionLocal()
+    try:
+        service = OpportunityDiscoveryService(db)
+        apply_url = "https://jobs.ashbyhq.com/example-protocol/data-engineer-abc"
+        with patch.object(service, "_find_by_url", return_value=None):
+            kept, reason = service._sanitize(
+                {
+                    "title": "Blockchain Data Engineer",
+                    "organization_name": "Example Protocol",
+                    "opportunity_type": "job",
+                    "application_url": apply_url,
+                    "description": "Build onchain data pipelines with Python and SQL.",
+                    "why_relevant": "Blockchain data engineering",
+                    "location": "Remote",
+                },
+                [OpportunityType.JOB],
+                set(),
+            )
+            dropped, drop_reason = service._sanitize(
+                {
+                    "title": "Aggregator job",
+                    "organization_name": "Web3 Career",
+                    "opportunity_type": "job",
+                    "application_url": "https://web3.career/jobs/data-engineer",
+                    "description": "Should be dropped",
+                },
+                [OpportunityType.JOB],
+                set(),
+            )
+        assert reason is None
+        assert isinstance(kept, OpportunityDiscoverCandidate)
+        assert kept.opportunity_type == "job"
+        assert kept.application_url == apply_url
+        assert dropped is None
+        assert drop_reason == "aggregator"
+    finally:
+        db.close()

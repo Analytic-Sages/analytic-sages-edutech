@@ -51,6 +51,7 @@ logger = logging.getLogger(__name__)
 
 MAX_CANDIDATES = 18
 DISCOVERY_TYPES = (
+    OpportunityType.JOB,
     OpportunityType.INTERNSHIP,
     OpportunityType.FELLOWSHIP,
     OpportunityType.HACKATHON,
@@ -375,6 +376,7 @@ class OpportunityDiscoveryService:
         if key in seen:
             return None, "duplicate"
         suggested = str(data.get("opportunity_type") or "").strip().lower()
+        selected_values = {item.value for item in selected}
         inferred = infer_opportunity_type(
             RawOpportunity(
                 external_id=key,
@@ -385,13 +387,11 @@ class OpportunityDiscoveryService:
                 opportunity_type=OpportunityType(suggested) if suggested in ALLOWED_TYPES else None,
             )
         )
-        if inferred not in selected and inferred not in DISCOVERY_TYPES:
-            return None, "not_typed"
-        if inferred == OpportunityType.JOB:
-            if suggested in ALLOWED_TYPES:
-                inferred = OpportunityType(suggested)
-            else:
-                return None, "job"
+        # Prefer an explicit type the admin selected when the model names one.
+        if suggested in selected_values:
+            inferred = OpportunityType(suggested)
+        elif inferred not in selected:
+            return None, "not_selected"
         already = self._find_by_url(url) is not None
         deadline = _parse_deadline(data.get("deadline"))
         source_url = str(data.get("source_url") or "").strip() or None
@@ -453,20 +453,23 @@ class OpportunityDiscoveryService:
             ],
             "mission": (
                 "Analytic Sages teaches blockchain analytics, data engineering, applied AI, "
-                "agentic systems, quantitative research, and forensic analytics. Include Web3 "
-                "and non-Web3 listings that match those skills. Exclude sales, recruiting, HR, "
-                "and generic marketing."
+                "agentic systems, quantitative research, and forensic analytics. Prefer "
+                "crypto/Web3 and blockchain-adjacent roles and programmes that match those "
+                "skills. Also include strong non-Web3 data/AI/quant roles when relevant. "
+                "Exclude sales, recruiting, HR, community management, and generic marketing."
             ),
         }
         instructions = (
-            "You find CURRENT internships, fellowships, hackathons, grants, bounties, and "
-            "research opportunities for Analytic Sages admins. Never decide to publish. "
+            "You find CURRENT jobs, internships, fellowships, hackathons, grants, bounties, "
+            "and research opportunities for Analytic Sages admins. Never decide to publish. "
             "Return JSON {candidates:[{title, organization_name, opportunity_type, "
             "application_url, source_url, description, why_relevant, location, deadline, "
-            "career_path_slugs}]}. opportunity_type must be one of internship, fellowship, "
-            "hackathon, grant, bounty, research. application_url must be an https official "
-            "page (the program or apply page), not an aggregator. Prefer preferred_hosts. "
-            "Skip closed or unverifiable listings. Max 3 per type."
+            "career_path_slugs}]}. opportunity_type must be one of job, internship, fellowship, "
+            "hackathon, grant, bounty, research. Prefer blockchain/crypto/Web3 and niche "
+            "data-engineering, onchain analytics, AI, and quant roles. application_url must "
+            "be an https official page (company careers, ATS posting, or program apply page), "
+            "not an aggregator. Prefer preferred_hosts. Skip closed or unverifiable listings. "
+            "Max 3 per type."
         )
         parsed, grounded, provider = complete_json(
             self.settings,
