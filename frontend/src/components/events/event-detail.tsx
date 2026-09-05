@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { CalendarDays, Clock, UserRound } from "lucide-react";
+import { EventKeepLearning } from "@/components/events/event-keep-learning";
 import { EventRegisterCta } from "@/components/events/event-register-cta";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { ButtonAnchor } from "@/components/ui/button-anchor";
-import { ButtonLink } from "@/components/ui/button-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getPublicEvent, type EventPublic } from "@/lib/api";
 import {
@@ -152,21 +152,7 @@ export function EventDetail({ initialEvent }: Props) {
               <EventRegisterCta event={event} onUpdated={setEvent} />
             </CardContent>
           </Card>
-          {event.related_course_slug && (
-            <Card className="shadow-card">
-              <CardHeader>
-                <CardTitle className="text-lg">Keep learning</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Continue with a related course after this session.
-                </p>
-                <ButtonLink href={`/courses/${event.related_course_slug}`} variant="outline" className="w-full">
-                  Open free course
-                </ButtonLink>
-              </CardContent>
-            </Card>
-          )}
+          <EventKeepLearning relatedCourseSlug={event.related_course_slug} />
         </aside>
       </div>
     </div>
