@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,10 +14,11 @@ import {
   createAdminEvent,
   getAdminEvent,
   updateAdminEvent,
+  uploadAdminEventImage,
   type EventAdmin,
   type EventType,
 } from "@/lib/api";
-import { EVENT_TYPE_LABELS } from "@/lib/events";
+import { EVENT_TYPE_LABELS, isBundledEventCover, resolveEventCoverSrc } from "@/lib/events";
 
 type FormState = {
   slug: string;
@@ -142,10 +143,13 @@ function toPayload(form: FormState) {
 
 export function AdminEventForm({ eventId }: { eventId?: string }) {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<FormState>(EMPTY);
   const [loading, setLoading] = useState(Boolean(eventId));
   const [saving, setSaving] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cancelled, setCancelled] = useState(false);
 
@@ -208,6 +212,24 @@ export function AdminEventForm({ eventId }: { eventId?: string }) {
       setCancelling(false);
     }
   }
+
+  async function onUploadCover(fileList: FileList | null) {
+    const file = fileList?.[0];
+    if (!file) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const uploaded = await uploadAdminEventImage(file);
+      set("cover_image", uploaded.url);
+    } catch (err) {
+      setUploadError(err instanceof ApiError ? err.detail : "Could not upload image.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  const coverPreview = resolveEventCoverSrc(form.cover_image);
 
   if (loading) {
     return (
@@ -300,14 +322,75 @@ export function AdminEventForm({ eventId }: { eventId?: string }) {
           />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="cover_image">Cover image path</Label>
-            <Input
-              id="cover_image"
-              value={form.cover_image}
-              onChange={(e) => set("cover_image", e.target.value)}
-              placeholder="/4.png"
-            />
+          <div className="space-y-2 sm:col-span-2">
+            <Label htmlFor="cover_image">Cover image</Label>
+            <div className="grid gap-4 sm:grid-cols-[minmax(0,16rem)_1fr] sm:items-start">
+              <div className="relative aspect-video overflow-hidden rounded-xl border bg-brand-surface">
+                {coverPreview ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- admin preview for bundled, media, and remote URLs
+                  <img
+                    src={coverPreview}
+                    alt="Event cover preview"
+                    className="size-full object-cover"
+                  />
+                ) : (
+                  <div className="flex size-full items-center justify-center px-4 text-center text-xs text-muted-foreground">
+                    No cover yet
+                  </div>
+                )}
+              </div>
+              <div className="space-y-3">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="sr-only"
+                  onChange={(e) => void onUploadCover(e.target.files)}
+                />
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={uploading}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {uploading ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Upload className="size-4" />
+                    )}
+                    {uploading ? "Uploading…" : "Upload image"}
+                  </Button>
+                  {form.cover_image ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={uploading}
+                      onClick={() => {
+                        set("cover_image", "");
+                        setUploadError(null);
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  ) : null}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  JPG, PNG, WebP, or GIF up to 5MB. Or paste a site path like{" "}
+                  <span className="font-mono">/4.png</span> / a full https URL below.
+                </p>
+                <Input
+                  id="cover_image"
+                  value={form.cover_image}
+                  onChange={(e) => set("cover_image", e.target.value)}
+                  placeholder="/4.png or https://…"
+                />
+                {uploadError ? <p className="text-sm text-destructive">{uploadError}</p> : null}
+                {coverPreview && isBundledEventCover(coverPreview) ? (
+                  <p className="text-xs text-muted-foreground">Using a built-in site image.</p>
+                ) : null}
+              </div>
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="related_course_slug">Related course slug</Label>

@@ -9,7 +9,13 @@ import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getPublicEvent, type EventPublic } from "@/lib/api";
-import { eventLifecycleLabel, eventTypeLabel, formatEventWhen } from "@/lib/events";
+import {
+  eventLifecycleLabel,
+  eventTypeLabel,
+  formatEventWhen,
+  isBundledEventCover,
+  resolveEventCoverSrc,
+} from "@/lib/events";
 
 type Props = {
   initialEvent: EventPublic;
@@ -32,7 +38,7 @@ export function EventDetail({ initialEvent }: Props) {
     };
   }, [initialEvent.slug]);
 
-  const cover = event.cover_image && event.cover_image.startsWith("/") ? event.cover_image : null;
+  const cover = resolveEventCoverSrc(event.cover_image);
 
   return (
     <div className="pb-16">
@@ -73,7 +79,18 @@ export function EventDetail({ initialEvent }: Props) {
             </div>
             {cover && (
               <div className="relative aspect-video overflow-hidden rounded-2xl border bg-background shadow-card">
-                <Image src={cover} alt={event.title} fill className="object-cover" sizes="(max-width: 1024px) 100vw, 50vw" />
+                {isBundledEventCover(cover) ? (
+                  <Image
+                    src={cover}
+                    alt={event.title}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 1024px) 100vw, 50vw"
+                  />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element -- uploaded media and remote covers
+                  <img src={cover} alt={event.title} className="size-full object-cover" />
+                )}
               </div>
             )}
           </div>

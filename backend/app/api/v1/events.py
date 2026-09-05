@@ -2,10 +2,17 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, File, Query, UploadFile, status
 
-from app.api.deps import CurrentUser, OptionalUser, get_event_service, require_event_ops
+from app.api.deps import (
+    CurrentUser,
+    OptionalUser,
+    get_event_service,
+    get_storage_service,
+    require_event_ops,
+)
 from app.models.user import User
+from app.schemas.articles import UploadResponse
 from app.schemas.auth import MessageResponse
 from app.schemas.events import (
     CheckInResponse,
@@ -20,6 +27,7 @@ from app.schemas.events import (
     RegisterResponse,
 )
 from app.services.events import EventService
+from app.services.storage import StorageService
 
 router = APIRouter(tags=["events"])
 
@@ -104,6 +112,16 @@ def admin_create_event(
     events: EventService = Depends(get_event_service),
 ) -> EventAdmin:
     return events.create(payload, host=current_user)
+
+
+@router.post("/admin/events/uploads", response_model=UploadResponse)
+async def admin_upload_event_image(
+    _: User = Depends(require_event_ops),
+    storage: StorageService = Depends(get_storage_service),
+    file: UploadFile = File(...),
+) -> UploadResponse:
+    url = await storage.save_image(file)
+    return UploadResponse(url=url)
 
 
 @router.get("/admin/events/{event_id}", response_model=EventAdmin)

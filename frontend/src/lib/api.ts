@@ -978,6 +978,25 @@ export function createAdminEvent(payload: EventWritePayload) {
   });
 }
 
+export async function uploadAdminEventImage(file: File) {
+  const headers = new Headers();
+  const token = getAccessToken();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const body = new FormData();
+  body.append("file", file);
+  const response = await fetch("/api/v1/admin/events/uploads", {
+    method: "POST",
+    headers,
+    body,
+    credentials: "include",
+  });
+  if (!response.ok) {
+    const data = (await response.json().catch(() => null)) as { detail?: string } | null;
+    throw new ApiError(response.status, data?.detail || "Upload failed");
+  }
+  return response.json() as Promise<{ url: string }>;
+}
+
 export function updateAdminEvent(id: string, payload: Partial<EventWritePayload>) {
   return apiFetch<EventAdmin>(`/api/v1/admin/events/${encodeURIComponent(id)}`, {
     method: "PATCH",

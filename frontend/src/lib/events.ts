@@ -27,6 +27,18 @@ export function eventTypeLabel(type: string) {
   return EVENT_TYPE_LABELS[type] ?? "Event";
 }
 
+/** Bundled `/public` assets use next/image; uploaded `/api` media and https URLs use `<img>`. */
+export function isBundledEventCover(src: string) {
+  return src.startsWith("/") && !src.startsWith("/api");
+}
+
+export function resolveEventCoverSrc(src: string | null | undefined): string | null {
+  if (!src?.trim()) return null;
+  const value = src.trim();
+  if (value.startsWith("/") || value.startsWith("https://")) return value;
+  return null;
+}
+
 export function eventLifecycleLabel(lifecycle: string) {
   return EVENT_LIFECYCLE_LABELS[lifecycle] ?? lifecycle;
 }

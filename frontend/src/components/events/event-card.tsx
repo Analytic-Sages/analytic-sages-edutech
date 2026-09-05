@@ -5,13 +5,23 @@ import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import type { EventCardPublic } from "@/lib/api";
-import { eventLifecycleLabel, eventTypeLabel, formatEventWhen } from "@/lib/events";
+import {
+  eventLifecycleLabel,
+  eventTypeLabel,
+  formatEventWhen,
+  isBundledEventCover,
+  resolveEventCoverSrc,
+} from "@/lib/events";
 
 function Cover({ src, alt }: { src: string | null; alt: string }) {
-  if (src && src.startsWith("/")) {
+  const resolved = resolveEventCoverSrc(src);
+  if (!resolved) {
+    return <div className="size-full bg-brand-navy/10" aria-hidden />;
+  }
+  if (isBundledEventCover(resolved)) {
     return (
       <Image
-        src={src}
+        src={resolved}
         alt={alt}
         fill
         className="object-cover"
@@ -19,7 +29,10 @@ function Cover({ src, alt }: { src: string | null; alt: string }) {
       />
     );
   }
-  return <div className="size-full bg-brand-navy/10" aria-hidden />;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- uploaded media and remote covers
+    <img src={resolved} alt={alt} className="size-full object-cover" />
+  );
 }
 
 export function EventCard({ event }: { event: EventCardPublic }) {

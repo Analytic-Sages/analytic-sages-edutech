@@ -289,3 +289,23 @@ def test_operations_can_manage_events_but_not_users():
     assert client.get("/api/v1/admin/users", headers=_auth(ops)).status_code == 403
     assert client.get("/api/v1/admin/overview", headers=_auth(ops)).status_code == 403
     _cleanup_slug(created.json()["slug"])
+
+
+def test_operations_can_upload_event_cover_image():
+    ops = _make_user(f"ops-upload-{uuid.uuid4()}@example.com", role=UserRole.OPERATIONS)
+    student = _make_user(f"student-upload-{uuid.uuid4()}@example.com", role=UserRole.STUDENT)
+    png_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
+    allowed = client.post(
+        "/api/v1/admin/events/uploads",
+        headers=_auth(ops),
+        files={"file": ("cover.png", png_bytes, "image/png")},
+    )
+    assert allowed.status_code == 200, allowed.text
+    assert allowed.json()["url"].startswith("/api/v1/media/")
+
+    forbidden = client.post(
+        "/api/v1/admin/events/uploads",
+        headers=_auth(student),
+        files={"file": ("cover.png", png_bytes, "image/png")},
+    )
+    assert forbidden.status_code == 403
