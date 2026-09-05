@@ -105,50 +105,57 @@ export function MarketingHeader() {
               <Menu className="size-6" />
               <span className="sr-only">Open menu</span>
             </SheetTrigger>
-            <SheetContent side="right" className="w-72">
-              <Logo size="lg" className="mb-2" />
-              <nav className="mt-6 flex flex-col gap-5">
+            <SheetContent
+              side="right"
+              className="w-[min(100%,20rem)] gap-0 p-0 sm:max-w-sm"
+            >
+              <div className="flex items-center border-b px-6 py-5 pr-14">
+                <Logo size="lg" />
+              </div>
+              <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-6 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
                 {publicMarketingNav().map((item) => {
                   const active =
                     pathname === item.href || pathname.startsWith(`${item.href}/`);
                   return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "text-lg font-medium",
-                      active ? "text-brand-navy dark:text-brand-orange" : "text-foreground"
-                    )}
-                  >
-                    {item.title}
-                  </Link>
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        "rounded-lg px-1 py-2.5 text-lg font-medium",
+                        active
+                          ? "text-brand-navy dark:text-brand-orange"
+                          : "text-foreground"
+                      )}
+                    >
+                      {item.title}
+                    </Link>
                   );
                 })}
-                <hr className="my-2" />
+                <hr className="my-4" />
                 {signedIn ? (
-                  <>
-                    <Link href="/my-courses" className="text-lg font-medium">
+                  <div className="flex flex-col gap-3">
+                    <Link href="/my-courses" className="rounded-lg px-1 py-2.5 text-lg font-medium">
                       My Courses
                     </Link>
                     <ButtonLink
                       href="/dashboard"
-                      className="h-11 bg-brand-orange text-base text-white hover:bg-brand-orange/90"
+                      className="h-11 w-full bg-brand-orange text-base text-white hover:bg-brand-orange/90"
                     >
                       Dashboard
                     </ButtonLink>
-                  </>
+                  </div>
                 ) : (
-                  <>
-                    <Link href="/login" className="text-lg font-medium">
+                  <div className="flex flex-col gap-3">
+                    <Link href="/login" className="rounded-lg px-1 py-2.5 text-lg font-medium">
                       Log in
                     </Link>
                     <ButtonLink
                       href="/register"
-                      className="h-11 bg-brand-orange text-base text-white hover:bg-brand-orange/90"
+                      className="h-11 w-full bg-brand-orange text-base text-white hover:bg-brand-orange/90"
                     >
                       Get Started
                     </ButtonLink>
-                  </>
+                  </div>
                 )}
               </nav>
             </SheetContent>
