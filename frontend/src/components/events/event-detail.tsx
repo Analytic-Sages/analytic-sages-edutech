@@ -17,6 +17,7 @@ import {
   formatEventWhen,
   isBundledEventCover,
   resolveEventCoverSrc,
+  SESSION_RECORDING_CTA,
 } from "@/lib/events";
 
 type Props = {
@@ -83,7 +84,7 @@ export function EventDetail({ initialEvent }: Props) {
                       rel="noopener noreferrer"
                       className="bg-brand-orange text-white hover:bg-brand-orange/90"
                     >
-                      Watch recording
+                      {SESSION_RECORDING_CTA}
                     </ButtonAnchor>
                   </div>
                 ) : null}

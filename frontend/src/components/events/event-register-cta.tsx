@@ -25,6 +25,7 @@ import {
   hasEventSchedule,
   outlookCalendarUrl,
   registerLoginPath,
+  SESSION_RECORDING_CTA,
 } from "@/lib/events";
 import { trackLead } from "@/lib/marketing-pixels";
 
@@ -119,7 +120,7 @@ export function EventRegisterCta({ event, onUpdated }: Props) {
                   rel="noopener noreferrer"
                   className="w-full bg-brand-orange text-white hover:bg-brand-orange/90"
                 >
-                  Watch recording
+                  {SESSION_RECORDING_CTA}
                 </ButtonAnchor>
       );
     }

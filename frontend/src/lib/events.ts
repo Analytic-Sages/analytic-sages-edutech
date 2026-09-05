@@ -40,6 +40,8 @@ export function eventPlatformLabel(platform: string, platformLabel?: string | nu
   return EVENT_PLATFORM_LABELS[platform] ?? "Live session";
 }
 
+export const SESSION_RECORDING_CTA = "Open session recording";
+
 export function eventVenueSummary(event: {
   lifecycle: string;
   platform_display?: string | null;
@@ -58,10 +60,10 @@ export function eventVenueSummary(event: {
     return `Date to be announced. Join details for ${platform} will appear when the session is scheduled.`;
   }
   if (event.can_watch_recording && event.recording_url) {
-    return `Recording available · Originally hosted on ${platform}.`;
+    return `Session recording available · ${platform}.`;
   }
   if (event.has_recording) {
-    return `Recording available · Originally hosted on ${platform}.`;
+    return `Session recording available · ${platform}.`;
   }
   if (event.lifecycle === "completed") {
     return `This ${platform} session has ended. The recording will appear here when posted.`;
