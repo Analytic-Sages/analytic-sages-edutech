@@ -24,8 +24,8 @@ from app.services.email import EmailService
 logger = logging.getLogger(__name__)
 
 SLUG_RE = re.compile(r"[^a-z0-9]+")
-PUBLISHERS = {UserRole.ADMIN, UserRole.EDITOR}
-WRITERS = {UserRole.ADMIN, UserRole.EDITOR, UserRole.AUTHOR}
+PUBLISHERS = {UserRole.ADMIN, UserRole.EDITOR, UserRole.OPERATIONS}
+WRITERS = {UserRole.ADMIN, UserRole.EDITOR, UserRole.AUTHOR, UserRole.OPERATIONS}
 
 
 def slugify(value: str) -> str:
@@ -53,7 +53,15 @@ class InsightService:
         profile = AuthorProfile(
             user_id=user.id,
             display_name=user.full_name or user.email.split("@")[0],
-            title="Editor" if user.role == UserRole.EDITOR else "Author" if user.role == UserRole.AUTHOR else "Analytic Sages",
+            title=(
+                "Editor"
+                if user.role == UserRole.EDITOR
+                else "Author"
+                if user.role == UserRole.AUTHOR
+                else "Operations"
+                if user.role == UserRole.OPERATIONS
+                else "Analytic Sages"
+            ),
         )
         self.db.add(profile)
         self.db.flush()

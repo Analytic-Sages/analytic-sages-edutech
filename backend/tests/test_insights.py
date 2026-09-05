@@ -165,6 +165,66 @@ def test_author_cannot_publish_editor_can():
         _cleanup_user(instructor_email)
 
 
+def test_operations_can_publish_insights():
+    author_email = f"author-ops-pub-{uuid.uuid4()}@example.com"
+    ops_email = f"ops-pub-{uuid.uuid4()}@example.com"
+    partners_email = f"partners-pub-{uuid.uuid4()}@example.com"
+    _cleanup_user(author_email)
+    _cleanup_user(ops_email)
+    _cleanup_user(partners_email)
+    author = _make_user(author_email, UserRole.AUTHOR)
+    ops = _make_user(ops_email, UserRole.OPERATIONS)
+    partners = _make_user(partners_email, UserRole.PARTNERSHIPS)
+    try:
+        created = client.post(
+            "/api/v1/studio/articles",
+            headers=_auth(author),
+            json={
+                "title": "Ops Can Publish This Draft",
+                "excerpt": "Operations publish path.",
+                "category": "Education",
+                "body": {
+                    "version": 1,
+                    "blocks": [{"type": "paragraph", "text": "Ready for operations review."}],
+                },
+            },
+        )
+        assert created.status_code == 201, created.text
+        article_id = created.json()["id"]
+
+        assert client.post(
+            f"/api/v1/studio/articles/{article_id}/submit",
+            headers=_auth(author),
+        ).status_code == 200
+
+        listed = client.get("/api/v1/studio/articles", headers=_auth(ops))
+        assert listed.status_code == 200
+        assert any(row["id"] == article_id for row in listed.json())
+
+        published = client.post(
+            f"/api/v1/studio/articles/{article_id}/publish",
+            headers=_auth(ops),
+        )
+        assert published.status_code == 200, published.text
+        assert published.json()["status"] == "published"
+
+        forbidden = client.post(
+            f"/api/v1/studio/articles/{article_id}/unpublish",
+            headers=_auth(partners),
+        )
+        assert forbidden.status_code == 403
+    finally:
+        db = SessionLocal()
+        try:
+            db.query(Article).filter(Article.slug.like("ops-can-publish%")).delete()
+            db.commit()
+        finally:
+            db.close()
+        _cleanup_user(author_email)
+        _cleanup_user(ops_email)
+        _cleanup_user(partners_email)
+
+
 def test_rejects_script_and_unknown_embed():
     email = f"author-bad-{uuid.uuid4()}@example.com"
     _cleanup_user(email)

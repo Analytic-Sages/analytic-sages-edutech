@@ -10,5 +10,6 @@ export function resolvePostLoginPath(role: string | undefined, nextPath: string)
   if (role === "author") return "/studio";
   if (role === "instructor") return "/staff";
   if (role === "operations") return "/admin/events";
+  if (role === "partnerships") return "/admin/opportunities";
   return next;
 }

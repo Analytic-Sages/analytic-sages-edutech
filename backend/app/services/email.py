@@ -83,8 +83,15 @@ class EmailService:
             subject = "You're invited to Analytic Sages operations"
             title = "Operations invite"
             intro = (
-                "You've been invited to manage Analytic Sages events. "
-                "Set your password to verify your email and open the events dashboard."
+                "You've been invited to manage Analytic Sages events, opportunities, and Insights publishing. "
+                "Set your password to verify your email and open the operations dashboard."
+            )
+        elif role == "partnerships":
+            subject = "You're invited to Analytic Sages grants & partnerships"
+            title = "Grant manager invite"
+            intro = (
+                "You've been invited as a grants & partnerships manager. "
+                "Set your password to verify your email and open the Opportunities Hub."
             )
         elif role == "editor":
             subject = "You're invited to edit Analytic Sages Insights"
@@ -131,6 +138,7 @@ class EmailService:
         greeting = f"Hi {full_name}," if full_name else "Hi,"
         role_labels = {
             "operations": "operations manager",
+            "partnerships": "grants & partnerships manager",
             "editor": "Insights editor",
             "author": "Insights author",
             "instructor": "instructor",

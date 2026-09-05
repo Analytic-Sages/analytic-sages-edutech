@@ -132,3 +132,30 @@ def test_change_staff_role_from_instructor_to_operations():
     finally:
         _cleanup_user(staff_email)
         _cleanup_user(admin_email)
+
+
+def test_invite_partnerships_role():
+    admin_email = f"admin-partners-{uuid.uuid4()}@example.com"
+    staff_email = f"staff-partners-{uuid.uuid4()}@example.com"
+    admin = _make_user(admin_email, UserRole.ADMIN)
+    _make_user(staff_email, UserRole.STUDENT)
+    try:
+        response = client.post(
+            "/api/v1/admin/partnerships",
+            headers=_auth(admin),
+            json={"email": staff_email, "full_name": "Grant Manager"},
+        )
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["promoted"] is True
+        assert body["role"] == "partnerships"
+        db = SessionLocal()
+        try:
+            user = db.scalar(select(User).where(User.email == staff_email))
+            assert user is not None
+            assert user.role == UserRole.PARTNERSHIPS
+        finally:
+            db.close()
+    finally:
+        _cleanup_user(staff_email)
+        _cleanup_user(admin_email)

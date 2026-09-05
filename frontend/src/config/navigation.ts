@@ -62,6 +62,12 @@ export const adminNav: NavItem[] = [
 export const operationsNav: NavItem[] = [
   { title: "Events", href: "/admin/events", icon: "events" },
   { title: "Courses", href: "/admin/courses", icon: "courses" },
+  { title: "Opportunities", href: "/admin/opportunities", icon: "opportunities" },
+  { title: "Insights", href: "/admin/insights", icon: "insights" },
+];
+
+export const partnershipsNav: NavItem[] = [
+  { title: "Opportunities", href: "/admin/opportunities", icon: "opportunities" },
 ];
 
 export const editorNav: NavItem[] = [

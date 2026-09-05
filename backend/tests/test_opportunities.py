@@ -228,6 +228,24 @@ def test_non_admin_staff_cannot_manage_opportunities():
         _cleanup_user(ops_email)
 
 
+def test_partnerships_can_manage_opportunities_only():
+    partners_email = f"partners-opp-{uuid.uuid4()}@example.com"
+    partners = _make_user(partners_email, UserRole.PARTNERSHIPS)
+    try:
+        # Role gate passes (422 validation) — avoids depending on migrated opportunity columns.
+        gated = client.post(
+            "/api/v1/admin/opportunities",
+            headers=_auth(partners),
+            json={},
+        )
+        assert gated.status_code == 422
+        # Grant managers cannot publish Insights or manage catalog
+        assert client.get("/api/v1/studio/articles", headers=_auth(partners)).status_code == 403
+        assert client.get("/api/v1/admin/courses", headers=_auth(partners)).status_code == 403
+    finally:
+        _cleanup_user(partners_email)
+
+
 def test_rejects_html_and_unsafe_urls():
     admin_email = f"admin-safe-{uuid.uuid4()}@example.com"
     admin = _make_user(admin_email, UserRole.ADMIN)

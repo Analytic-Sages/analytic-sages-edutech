@@ -4,8 +4,23 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
-import { adminNav, editorNav, operationsNav } from "@/config/navigation";
+import {
+  adminNav,
+  editorNav,
+  operationsNav,
+  partnershipsNav,
+} from "@/config/navigation";
 import { ApiError, getMe } from "@/lib/api";
+
+function isOperationsPath(pathname: string) {
+  return (
+    pathname.startsWith("/admin/events") ||
+    pathname.startsWith("/admin/courses") ||
+    pathname.startsWith("/admin/cohorts/") ||
+    pathname.startsWith("/admin/opportunities") ||
+    pathname.startsWith("/admin/insights")
+  );
+}
 
 export function AdminPortal({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -34,15 +49,20 @@ export function AdminPortal({ children }: { children: React.ReactNode }) {
           return;
         }
         if (user.role === "operations") {
-          const allowed =
-            pathname.startsWith("/admin/events") ||
-            pathname.startsWith("/admin/courses") ||
-            pathname.startsWith("/admin/cohorts/");
-          if (!allowed) {
+          if (!isOperationsPath(pathname)) {
             router.replace("/admin/events");
             return;
           }
           setNav(operationsNav);
+          setReady(true);
+          return;
+        }
+        if (user.role === "partnerships") {
+          if (!pathname.startsWith("/admin/opportunities")) {
+            router.replace("/admin/opportunities");
+            return;
+          }
+          setNav(partnershipsNav);
           setReady(true);
           return;
         }

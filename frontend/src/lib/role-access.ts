@@ -6,6 +6,7 @@ export type AppRole =
   | "author"
   | "instructor"
   | "operations"
+  | "partnerships"
   | "student";
 
 export type RoleAccess = {
@@ -20,6 +21,7 @@ export type RoleAccess = {
 export const STAFF_ROLES: AppRole[] = [
   "admin",
   "operations",
+  "partnerships",
   "editor",
   "author",
   "instructor",
@@ -61,15 +63,28 @@ export const ROLE_ACCESS: Record<AppRole, RoleAccess> = {
   operations: {
     label: "Operations",
     home: "/admin/events",
-    summary: "Events and course catalog ops — not users, payments, or opportunities.",
-    areas: ["Events", "Courses"],
+    summary: "Events, catalog, Opportunities Hub, and Insights publishing.",
+    areas: ["Events", "Courses", "Opportunities", "Insights"],
     can: [
       "Create and publish public events",
       "Manage course catalog / instructors attachment",
+      "Publish and manage opportunities",
+      "Review and publish Insights articles",
     ],
     cannot: [
       "Users, payments, billing",
-      "Opportunities hub admin",
+      "Analytics and settings",
+    ],
+  },
+  partnerships: {
+    label: "Grant manager",
+    home: "/admin/opportunities",
+    summary: "Opportunities Hub only — grants and partnerships listings.",
+    areas: ["Opportunities"],
+    can: ["Publish and manage opportunities", "Manage opportunity sources"],
+    cannot: [
+      "Users, payments, billing",
+      "Events / courses ops",
       "Insights publishing",
       "Analytics and settings",
     ],

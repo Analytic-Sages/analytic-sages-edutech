@@ -23,6 +23,7 @@ def _invite_response(result) -> InviteInstructorResponse:
     user = result.user
     role_labels = {
         "operations": "operations",
+        "partnerships": "grants & partnerships",
         "editor": "editor",
         "author": "author",
         "instructor": "instructor",
@@ -131,6 +132,15 @@ def invite_operations(
     auth: AuthService = Depends(get_auth_service),
 ) -> InviteInstructorResponse:
     return _invite_response(auth.invite_operations(email=payload.email, full_name=payload.full_name))
+
+
+@router.post("/partnerships", response_model=InviteInstructorResponse)
+def invite_partnerships(
+    payload: InviteInstructorRequest,
+    _: User = Depends(require_admin),
+    auth: AuthService = Depends(get_auth_service),
+) -> InviteInstructorResponse:
+    return _invite_response(auth.invite_partnerships(email=payload.email, full_name=payload.full_name))
 
 
 @router.post("/editors", response_model=InviteInstructorResponse)

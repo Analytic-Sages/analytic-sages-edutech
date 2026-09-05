@@ -184,7 +184,7 @@ export function AdminOverviewContent() {
             </p>
             {staffUsers.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No staff yet. Invite instructors, operations, editors, or authors from Users.
+                No staff yet. Invite instructors, operations, grant managers, editors, or authors from Users.
               </p>
             ) : (
               staffUsers.map((user) => <StaffUserRow key={user.id} user={user} />)

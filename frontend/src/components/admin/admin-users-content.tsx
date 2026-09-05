@@ -27,16 +27,18 @@ import {
   inviteEditor,
   inviteInstructor,
   inviteOperations,
+  invitePartnerships,
   type AdminUserRow,
 } from "@/lib/api";
 import { isStaffRole, roleAccess, STAFF_ROLES } from "@/lib/role-access";
 
-type StaffInviteRole = "instructor" | "operations" | "editor" | "author";
+type StaffInviteRole = "instructor" | "operations" | "partnerships" | "editor" | "author";
 type UserFilter = "all" | "staff" | "students";
 
 const ROLE_LABELS: Record<StaffInviteRole, string> = {
   instructor: "instructor",
   operations: "operations",
+  partnerships: "grant manager",
   editor: "editor",
   author: "author",
 };
@@ -136,11 +138,13 @@ export function AdminUsersContent() {
       const result =
         inviteRole === "operations"
           ? await inviteOperations(inviteEmail.trim(), inviteName.trim() || undefined)
-          : inviteRole === "editor"
-            ? await inviteEditor(inviteEmail.trim(), inviteName.trim() || undefined)
-            : inviteRole === "author"
-              ? await inviteAuthor(inviteEmail.trim(), inviteName.trim() || undefined)
-              : await inviteInstructor(inviteEmail.trim(), inviteName.trim() || undefined);
+          : inviteRole === "partnerships"
+            ? await invitePartnerships(inviteEmail.trim(), inviteName.trim() || undefined)
+            : inviteRole === "editor"
+              ? await inviteEditor(inviteEmail.trim(), inviteName.trim() || undefined)
+              : inviteRole === "author"
+                ? await inviteAuthor(inviteEmail.trim(), inviteName.trim() || undefined)
+                : await inviteInstructor(inviteEmail.trim(), inviteName.trim() || undefined);
       setInviteSuccess(result.message);
       setInviteEmail("");
       setInviteName("");
@@ -241,7 +245,8 @@ export function AdminUsersContent() {
                 onChange={(e) => setInviteRole(e.target.value as StaffInviteRole)}
               >
                 <option value="instructor">Instructor (classroom)</option>
-                <option value="operations">Operations</option>
+                <option value="operations">Operations (events, opps, Insights)</option>
+                <option value="partnerships">Grant manager (Opportunities Hub)</option>
                 <option value="editor">Editor (publishes Insights)</option>
                 <option value="author">Author (drafts only)</option>
               </select>

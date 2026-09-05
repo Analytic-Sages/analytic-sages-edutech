@@ -1254,6 +1254,16 @@ export function inviteOperations(email: string, fullName?: string) {
   });
 }
 
+export function invitePartnerships(email: string, fullName?: string) {
+  return apiFetch<InviteInstructorResponse>("/api/v1/admin/partnerships", {
+    method: "POST",
+    body: JSON.stringify({
+      email,
+      full_name: fullName || null,
+    }),
+  });
+}
+
 export function inviteEditor(email: string, fullName?: string) {
   return apiFetch<InviteInstructorResponse>("/api/v1/admin/editors", {
     method: "POST",

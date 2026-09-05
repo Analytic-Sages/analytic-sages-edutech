@@ -219,8 +219,10 @@ require_catalog_ops = require_roles(UserRole.ADMIN, UserRole.OPERATIONS)
 require_opportunity_ops = require_roles(
     UserRole.ADMIN, UserRole.OPERATIONS, UserRole.PARTNERSHIPS
 )
-require_publisher = require_roles(UserRole.ADMIN, UserRole.EDITOR)
-require_writer = require_roles(UserRole.ADMIN, UserRole.EDITOR, UserRole.AUTHOR)
+require_publisher = require_roles(UserRole.ADMIN, UserRole.EDITOR, UserRole.OPERATIONS)
+require_writer = require_roles(
+    UserRole.ADMIN, UserRole.EDITOR, UserRole.AUTHOR, UserRole.OPERATIONS
+)
 require_student = require_roles(
     UserRole.ADMIN,
     UserRole.INSTRUCTOR,
