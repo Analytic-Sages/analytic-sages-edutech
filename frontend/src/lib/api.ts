@@ -894,6 +894,11 @@ export type EventCardPublic = {
   has_recording?: boolean;
 };
 
+export type KeepLearningOffer = {
+  kind: "course" | "program";
+  slug: string;
+};
+
 export type EventPublic = EventCardPublic & {
   description: string;
   learn_topics: string[];
@@ -906,6 +911,7 @@ export type EventPublic = EventCardPublic & {
   can_watch_recording: boolean;
   youtube_live_url: string | null;
   recording_url: string | null;
+  keep_learning?: KeepLearningOffer[];
   seo_title: string | null;
   seo_description: string | null;
 };
@@ -956,6 +962,7 @@ export type EventAdmin = {
   audience: string[];
   prerequisites: string;
   related_course_slug: string | null;
+  keep_learning: KeepLearningOffer[];
   seo_title: string | null;
   seo_description: string | null;
   published: boolean;
@@ -989,6 +996,7 @@ export type EventWritePayload = {
   audience?: string[];
   prerequisites?: string;
   related_course_slug?: string | null;
+  keep_learning?: KeepLearningOffer[];
   seo_title?: string | null;
   seo_description?: string | null;
   published?: boolean;

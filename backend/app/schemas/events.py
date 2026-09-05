@@ -27,6 +27,33 @@ def platform_display_name(platform: str | None, platform_label: str | None = Non
     return PLATFORM_LABELS.get(value, PLATFORM_LABELS[EventPlatform.YOUTUBE.value])
 
 
+class KeepLearningOffer(BaseModel):
+    kind: str = Field(pattern=r"^(course|program)$")
+    slug: str = Field(min_length=2, max_length=160, pattern=SLUG_PATTERN)
+
+
+def normalize_keep_learning(value: object) -> list[dict[str, str]]:
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        return []
+    offers: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for raw in value:
+        try:
+            offer = KeepLearningOffer.model_validate(raw)
+        except Exception:
+            continue
+        key = (offer.kind, offer.slug)
+        if key in seen:
+            continue
+        seen.add(key)
+        offers.append({"kind": offer.kind, "slug": offer.slug})
+        if len(offers) >= 3:
+            break
+    return offers
+
+
 class EventCardPublic(BaseModel):
     id: UUID
     slug: str
@@ -63,6 +90,7 @@ class EventPublic(EventCardPublic):
     can_watch_recording: bool = False
     youtube_live_url: str | None = None
     recording_url: str | None = None
+    keep_learning: list[KeepLearningOffer] = Field(default_factory=list)
     seo_title: str | None = None
     seo_description: str | None = None
 
@@ -119,6 +147,7 @@ class EventWriteBase(BaseModel):
     audience: list[str] = Field(default_factory=list)
     prerequisites: str = ""
     related_course_slug: str | None = Field(default=None, max_length=160)
+    keep_learning: list[KeepLearningOffer] = Field(default_factory=list)
     seo_title: str | None = Field(default=None, max_length=255)
     seo_description: str | None = Field(default=None, max_length=400)
     published: bool = False
@@ -132,6 +161,11 @@ class EventWriteBase(BaseModel):
         if isinstance(value, list):
             return [str(item).strip() for item in value if str(item).strip()]
         return []
+
+    @field_validator("keep_learning", mode="before")
+    @classmethod
+    def _normalize_keep_learning(cls, value: object) -> list[dict[str, str]]:
+        return normalize_keep_learning(value)
 
     @field_validator(
         "cover_image",
@@ -176,6 +210,7 @@ class EventUpdate(BaseModel):
     audience: list[str] | None = None
     prerequisites: str | None = None
     related_course_slug: str | None = Field(default=None, max_length=160)
+    keep_learning: list[KeepLearningOffer] | None = None
     seo_title: str | None = Field(default=None, max_length=255)
     seo_description: str | None = Field(default=None, max_length=400)
     published: bool | None = None
@@ -189,6 +224,13 @@ class EventUpdate(BaseModel):
         if isinstance(value, list):
             return [str(item).strip() for item in value if str(item).strip()]
         return None
+
+    @field_validator("keep_learning", mode="before")
+    @classmethod
+    def _normalize_keep_learning(cls, value: object) -> list[dict[str, str]] | None:
+        if value is None:
+            return None
+        return normalize_keep_learning(value)
 
     @field_validator(
         "cover_image",
@@ -233,6 +275,7 @@ class EventAdmin(BaseModel):
     audience: list[str] = Field(default_factory=list)
     prerequisites: str
     related_course_slug: str | None
+    keep_learning: list[KeepLearningOffer] = Field(default_factory=list)
     seo_title: str | None
     seo_description: str | None
     published: bool

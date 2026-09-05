@@ -13,11 +13,14 @@ import {
   cancelAdminEvent,
   createAdminEvent,
   getAdminEvent,
+  listPublicCohorts,
+  listSelfPacedCourses,
   updateAdminEvent,
   uploadAdminEventImage,
   type EventAdmin,
   type EventPlatform,
   type EventType,
+  type KeepLearningOffer,
 } from "@/lib/api";
 import {
   EVENT_PLATFORM_LABELS,
@@ -27,6 +30,19 @@ import {
   resolveEventCoverSrc,
   slugifyEventValue,
 } from "@/lib/events";
+import {
+  BDE_COHORT_SLUG,
+  blockchainDataEngineeringProgram,
+} from "@/lib/blockchain-data-engineering-program";
+import { comingSoonCohortSlugs, getProgramPageHref } from "@/lib/program-pages";
+import { FEATURED_FREE_COURSE, mergeFreeCatalog } from "@/lib/self-paced";
+
+type KeepLearningOption = {
+  key: string;
+  kind: "course" | "program";
+  slug: string;
+  label: string;
+};
 
 type FormState = {
   slug: string;
@@ -46,7 +62,7 @@ type FormState = {
   learn_topics: string;
   audience: string;
   prerequisites: string;
-  related_course_slug: string;
+  keep_learning: KeepLearningOffer[];
   seo_title: string;
   seo_description: string;
   published: boolean;
@@ -70,7 +86,7 @@ const EMPTY: FormState = {
   learn_topics: "",
   audience: "",
   prerequisites: "",
-  related_course_slug: "",
+  keep_learning: [],
   seo_title: "",
   seo_description: "",
   published: false,
@@ -92,6 +108,12 @@ function toLocalInput(iso: string | null, timeZone: string) {
 }
 
 function fromEvent(event: EventAdmin): FormState {
+  const keep =
+    event.keep_learning?.length > 0
+      ? event.keep_learning
+      : event.related_course_slug
+        ? [{ kind: "course" as const, slug: event.related_course_slug }]
+        : [];
   return {
     slug: event.slug,
     title: event.title,
@@ -110,7 +132,7 @@ function fromEvent(event: EventAdmin): FormState {
     learn_topics: event.learn_topics.join("\n"),
     audience: event.audience.join("\n"),
     prerequisites: event.prerequisites,
-    related_course_slug: event.related_course_slug ?? "",
+    keep_learning: keep,
     seo_title: event.seo_title ?? "",
     seo_description: event.seo_description ?? "",
     published: event.published,
@@ -130,6 +152,9 @@ function withSeconds(value: string) {
 }
 
 function toPayload(form: FormState) {
+  const keep_learning = form.keep_learning.slice(0, 3);
+  const related =
+    keep_learning.find((offer) => offer.kind === "course")?.slug || null;
   return {
     slug: slugifyEventValue(form.slug),
     title: form.title.trim(),
@@ -148,7 +173,8 @@ function toPayload(form: FormState) {
     learn_topics: lines(form.learn_topics),
     audience: lines(form.audience),
     prerequisites: form.prerequisites.trim(),
-    related_course_slug: form.related_course_slug.trim() || null,
+    related_course_slug: related,
+    keep_learning,
     seo_title: form.seo_title.trim() || null,
     seo_description: form.seo_description.trim() || null,
     published: form.published,
@@ -169,6 +195,61 @@ export function AdminEventForm({ eventId }: { eventId?: string }) {
   const [error, setError] = useState<string | null>(null);
   const [cancelled, setCancelled] = useState(false);
   const [slugTouched, setSlugTouched] = useState(Boolean(eventId));
+  const [keepOptions, setKeepOptions] = useState<KeepLearningOption[]>([]);
+
+  useEffect(() => {
+    let ignore = false;
+    Promise.all([
+      listSelfPacedCourses().catch(() => []),
+      listPublicCohorts().catch(() => []),
+    ]).then(([courses, cohorts]) => {
+      if (ignore) return;
+      const options: KeepLearningOption[] = [];
+      for (const course of mergeFreeCatalog(courses)) {
+        options.push({
+          key: `course:${course.slug}`,
+          kind: "course",
+          slug: course.slug,
+          label: `Free · ${course.title}`,
+        });
+      }
+      if (!options.some((option) => option.slug === FEATURED_FREE_COURSE.slug)) {
+        options.unshift({
+          key: `course:${FEATURED_FREE_COURSE.slug}`,
+          kind: "course",
+          slug: FEATURED_FREE_COURSE.slug,
+          label: `Free · ${FEATURED_FREE_COURSE.title}`,
+        });
+      }
+      const blocked = comingSoonCohortSlugs();
+      for (const cohort of cohorts) {
+        if (blocked.has(cohort.slug)) continue;
+        if (cohort.status !== "open" && cohort.status !== "active") continue;
+        if (!getProgramPageHref(cohort.slug)) continue;
+        options.push({
+          key: `program:${cohort.slug}`,
+          kind: "program",
+          slug: cohort.slug,
+          label: `Paid · ${cohort.course_title || cohort.name}`,
+        });
+      }
+      if (
+        blockchainDataEngineeringProgram.registrationLive &&
+        !options.some((option) => option.slug === BDE_COHORT_SLUG || option.slug === blockchainDataEngineeringProgram.pageSlug)
+      ) {
+        options.push({
+          key: `program:${blockchainDataEngineeringProgram.pageSlug}`,
+          kind: "program",
+          slug: blockchainDataEngineeringProgram.pageSlug,
+          label: `Paid · ${blockchainDataEngineeringProgram.h1}`,
+        });
+      }
+      setKeepOptions(options);
+    });
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!eventId) return;
@@ -206,6 +287,27 @@ export function AdminEventForm({ eventId }: { eventId?: string }) {
   function onSlugChange(value: string) {
     setSlugTouched(true);
     set("slug", slugifyEventValue(value));
+  }
+
+  function toggleKeepLearning(option: KeepLearningOption) {
+    setForm((current) => {
+      const exists = current.keep_learning.some(
+        (offer) => offer.kind === option.kind && offer.slug === option.slug,
+      );
+      if (exists) {
+        return {
+          ...current,
+          keep_learning: current.keep_learning.filter(
+            (offer) => !(offer.kind === option.kind && offer.slug === option.slug),
+          ),
+        };
+      }
+      if (current.keep_learning.length >= 3) return current;
+      return {
+        ...current,
+        keep_learning: [...current.keep_learning, { kind: option.kind, slug: option.slug }],
+      };
+    });
   }
 
   async function onSubmit(event: React.FormEvent) {
@@ -477,13 +579,35 @@ export function AdminEventForm({ eventId }: { eventId?: string }) {
               </div>
             </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="related_course_slug">Related course slug</Label>
-            <Input
-              id="related_course_slug"
-              value={form.related_course_slug}
-              onChange={(e) => set("related_course_slug", e.target.value)}
-            />
+          <div className="space-y-2 sm:col-span-2">
+            <Label>Keep learning (up to 3)</Label>
+            <p className="text-xs text-muted-foreground">
+              Pick the courses or programmes shown in the event sidebar so they match this session.
+              Leave empty to use the default free course and open programmes.
+            </p>
+            <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border p-3">
+              {keepOptions.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Loading options…</p>
+              ) : (
+                keepOptions.map((option) => {
+                  const checked = form.keep_learning.some(
+                    (offer) => offer.kind === option.kind && offer.slug === option.slug,
+                  );
+                  return (
+                    <label key={option.key} className="flex cursor-pointer items-start gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5"
+                        checked={checked}
+                        disabled={!checked && form.keep_learning.length >= 3}
+                        onChange={() => toggleKeepLearning(option)}
+                      />
+                      <span>{option.label}</span>
+                    </label>
+                  );
+                })
+              )}
+            </div>
           </div>
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="youtube_live_url">Live URL</Label>

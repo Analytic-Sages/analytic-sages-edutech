@@ -13,6 +13,7 @@ import {
 import {
   listPublicCohorts,
   listSelfPacedCourses,
+  type KeepLearningOffer,
   type PublicCohortCard,
   type SelfPacedCourseCard,
 } from "@/lib/api";
@@ -61,72 +62,86 @@ function courseOffer(course: SelfPacedCourseCard): LearningOffer {
   };
 }
 
-function bdeFallbackOffer(): LearningOffer {
-  const program = blockchainDataEngineeringProgram;
+function programOfferBySlug(slug: string): LearningOffer | null {
+  if (slug === BDE_COHORT_SLUG || slug === blockchainDataEngineeringProgram.pageSlug) {
+    const program = blockchainDataEngineeringProgram;
+    return {
+      id: `program-${program.pageSlug}`,
+      title: program.h1,
+      href: `/programs/${program.pageSlug}`,
+      image: program.postcardImage,
+      badge: "Paid · Open",
+      subtitle: `${program.duration} · Instructor-led`,
+    };
+  }
+  const href = getProgramPageHref(slug);
+  const image = getProgramPostcard(slug);
+  if (!href || !image) return null;
   return {
-    id: "program-bde",
-    title: program.h1,
-    href: `/programs/${program.pageSlug}`,
-    image: program.postcardImage,
-    badge: "Paid · Open",
-    subtitle: `${program.duration} · Instructor-led`,
+    id: `program-${slug}`,
+    title: slug.replace(/-/g, " "),
+    href,
+    image,
+    badge: "Programme",
   };
 }
 
-function buildOffers(
-  relatedSlug: string | null | undefined,
+function resolvePreferred(
+  preferred: KeepLearningOffer[],
   courses: SelfPacedCourseCard[],
   cohorts: PublicCohortCard[],
 ): LearningOffer[] {
   const offers: LearningOffer[] = [];
   const seen = new Set<string>();
+  const courseBySlug = new Map(courses.map((course) => [course.slug, course]));
+  // Ensure featured free is resolvable even if API lag
+  if (!courseBySlug.has(FEATURED_FREE_COURSE.slug)) {
+    courseBySlug.set(FEATURED_FREE_COURSE.slug, FEATURED_FREE_COURSE);
+  }
+  const cohortBySlug = new Map(cohorts.map((cohort) => [cohort.slug, cohort]));
 
+  for (const item of preferred.slice(0, MAX_OFFERS)) {
+    let offer: LearningOffer | null = null;
+    if (item.kind === "course") {
+      const course = courseBySlug.get(item.slug);
+      if (course) offer = courseOffer(course);
+    } else if (item.kind === "program") {
+      const cohort = cohortBySlug.get(item.slug);
+      offer = cohort ? cohortOffer(cohort) : programOfferBySlug(item.slug);
+    }
+    if (!offer || seen.has(offer.href)) continue;
+    seen.add(offer.href);
+    offers.push(offer);
+  }
+  return offers;
+}
+
+function defaultOffers(courses: SelfPacedCourseCard[], cohorts: PublicCohortCard[]): LearningOffer[] {
+  const offers: LearningOffer[] = [];
+  const seen = new Set<string>();
   const push = (offer: LearningOffer | null) => {
     if (!offer || seen.has(offer.href) || offers.length >= MAX_OFFERS) return;
     seen.add(offer.href);
     offers.push(offer);
   };
 
-  if (relatedSlug) {
-    const related =
-      courses.find((course) => course.slug === relatedSlug) ||
-      (relatedSlug === FEATURED_FREE_COURSE.slug ? FEATURED_FREE_COURSE : null);
-    if (related) {
-      push(courseOffer(related));
-    } else {
-      push({
-        id: `related-${relatedSlug}`,
-        title: "Continue with the related course",
-        href: `/courses/${relatedSlug}`,
-        image: "/4.png",
-        badge: "Course",
-      });
-    }
-  }
-
-  for (const course of mergeFreeCatalog(courses)) {
-    push(courseOffer(course));
-  }
+  const free = mergeFreeCatalog(courses);
+  if (free[0]) push(courseOffer(free[0]));
 
   const blocked = comingSoonCohortSlugs();
-  const openCohorts = cohorts
+  const open = cohorts
     .filter((cohort) => !blocked.has(cohort.slug) && (cohort.status === "open" || cohort.status === "active"))
     .sort((a, b) => {
       if (a.slug === BDE_COHORT_SLUG) return -1;
       if (b.slug === BDE_COHORT_SLUG) return 1;
       return 0;
     });
-
-  for (const cohort of openCohorts) {
-    push(cohortOffer(cohort));
-  }
-
+  for (const cohort of open) push(cohortOffer(cohort));
   if (!offers.some((offer) => offer.href.includes(blockchainDataEngineeringProgram.pageSlug))) {
     if (blockchainDataEngineeringProgram.registrationLive) {
-      push(bdeFallbackOffer());
+      push(programOfferBySlug(blockchainDataEngineeringProgram.pageSlug));
     }
   }
-
   return offers;
 }
 
@@ -152,16 +167,19 @@ function OfferCard({ offer }: { offer: LearningOffer }) {
         <p className="line-clamp-2 text-sm font-medium leading-snug text-foreground group-hover:text-brand-navy">
           {offer.title}
         </p>
-        {offer.subtitle ? (
-          <p className="text-xs text-muted-foreground">{offer.subtitle}</p>
-        ) : null}
+        {offer.subtitle ? <p className="text-xs text-muted-foreground">{offer.subtitle}</p> : null}
         <p className="text-xs font-medium text-brand-orange">View details</p>
       </div>
     </Link>
   );
 }
 
-export function EventKeepLearning({ relatedCourseSlug }: { relatedCourseSlug?: string | null }) {
+type Props = {
+  preferred?: KeepLearningOffer[] | null;
+  relatedCourseSlug?: string | null;
+};
+
+export function EventKeepLearning({ preferred, relatedCourseSlug }: Props) {
   const [offers, setOffers] = useState<LearningOffer[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -172,15 +190,24 @@ export function EventKeepLearning({ relatedCourseSlug }: { relatedCourseSlug?: s
       listPublicCohorts().catch(() => [] as PublicCohortCard[]),
     ])
       .then(([courses, cohorts]) => {
-        if (!cancelled) setOffers(buildOffers(relatedCourseSlug, courses, cohorts));
-      })
+        if (cancelled) return;
+        const selected =
+          preferred && preferred.length > 0
+            ? preferred
+            : relatedCourseSlug
+              ? [{ kind: "course" as const, slug: relatedCourseSlug }]
+              : [];
+        const resolved = selected.length
+          ? resolvePreferred(selected, courses, cohorts)
+          : [];
+        setOffers(resolved.length ? resolved : defaultOffers(courses, cohorts));      })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [relatedCourseSlug]);
+  }, [preferred, relatedCourseSlug]);
 
   if (!loading && offers.length === 0) return null;
 
@@ -189,7 +216,7 @@ export function EventKeepLearning({ relatedCourseSlug }: { relatedCourseSlug?: s
       <CardHeader className="pb-3">
         <CardTitle className="text-lg">Keep learning</CardTitle>
         <p className="text-sm text-muted-foreground">
-          Free courses and open programmes you can join next.
+          Courses and programmes recommended for this session.
         </p>
       </CardHeader>
       <CardContent className="space-y-3">

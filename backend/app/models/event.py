@@ -83,6 +83,7 @@ class Event(Base):
     audience: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
     prerequisites: Mapped[str] = mapped_column(Text, nullable=False, default="")
     related_course_slug: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    keep_learning: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
     seo_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
     seo_description: Mapped[str | None] = mapped_column(String(400), nullable=True)
     published: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

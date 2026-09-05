@@ -152,7 +152,10 @@ export function EventDetail({ initialEvent }: Props) {
               <EventRegisterCta event={event} onUpdated={setEvent} />
             </CardContent>
           </Card>
-          <EventKeepLearning relatedCourseSlug={event.related_course_slug} />
+          <EventKeepLearning
+            preferred={event.keep_learning}
+            relatedCourseSlug={event.related_course_slug}
+          />
         </aside>
       </div>
     </div>

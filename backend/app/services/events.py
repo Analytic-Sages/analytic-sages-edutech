@@ -21,6 +21,7 @@ from app.schemas.events import (
     EventUpdate,
     JoinResponse,
     RegisterResponse,
+    normalize_keep_learning,
     platform_display_name,
 )
 from app.services.email import EmailService
@@ -171,6 +172,20 @@ class EventService:
             has_recording=bool(event.recording_url),
         )
 
+    def _keep_learning(self, event: Event) -> list[dict[str, str]]:
+        offers = normalize_keep_learning(event.keep_learning)
+        if offers:
+            return offers
+        if event.related_course_slug:
+            return [{"kind": "course", "slug": event.related_course_slug}]
+        return []
+
+    def _related_slug_from_keep_learning(self, offers: list[dict[str, str]]) -> str | None:
+        for offer in offers:
+            if offer.get("kind") == "course":
+                return offer.get("slug")
+        return None
+
     def _public(self, event: Event, user: User | None) -> EventPublic:
         now = self._utcnow()
         registered = self._active_registration(user, event.id) is not None
@@ -189,6 +204,7 @@ class EventService:
             can_watch_recording=can_watch,
             youtube_live_url=event.youtube_live_url if registered else None,
             recording_url=event.recording_url if can_watch else None,
+            keep_learning=self._keep_learning(event),
             seo_title=event.seo_title,
             seo_description=event.seo_description,
         )
@@ -220,6 +236,7 @@ class EventService:
             audience=self._as_str_list(event.audience),
             prerequisites=event.prerequisites or "",
             related_course_slug=event.related_course_slug,
+            keep_learning=self._keep_learning(event),
             seo_title=event.seo_title,
             seo_description=event.seo_description,
             published=event.published,
@@ -522,7 +539,13 @@ class EventService:
             learn_topics=payload.learn_topics,
             audience=payload.audience,
             prerequisites=payload.prerequisites,
-            related_course_slug=payload.related_course_slug,
+            related_course_slug=payload.related_course_slug
+            or self._related_slug_from_keep_learning(
+                [offer.model_dump() if hasattr(offer, "model_dump") else offer for offer in payload.keep_learning]
+            ),
+            keep_learning=normalize_keep_learning(
+                [offer.model_dump() if hasattr(offer, "model_dump") else offer for offer in payload.keep_learning]
+            ),
             seo_title=payload.seo_title,
             seo_description=payload.seo_description,
             published=payload.published,
@@ -560,6 +583,11 @@ class EventService:
         if "platform" in data and data["platform"] is not None:
             platform = data["platform"]
             data["platform"] = platform.value if isinstance(platform, EventPlatform) else str(platform)
+        if "keep_learning" in data:
+            offers = normalize_keep_learning(data["keep_learning"])
+            data["keep_learning"] = offers
+            if "related_course_slug" not in data:
+                data["related_course_slug"] = self._related_slug_from_keep_learning(offers)
         for key, value in data.items():
             setattr(event, key, value)
         self.db.commit()
