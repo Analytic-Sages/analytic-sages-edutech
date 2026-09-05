@@ -160,6 +160,69 @@ export class ApiError extends Error {
 
 const PUBLIC_LOAD_ERROR = "We're having trouble loading this information. Please try again.";
 
+type ValidationIssue = {
+  type?: string;
+  loc?: Array<string | number>;
+  msg?: string;
+};
+
+const API_FIELD_LABELS: Record<string, string> = {
+  slug: "URL slug",
+  title: "Title",
+  short_description: "Short description",
+  description: "Description",
+  cover_image: "Cover image",
+  starts_at: "Start time",
+  ends_at: "End time",
+  timezone: "Timezone",
+  host_name: "Host name",
+  event_type: "Event type",
+  email: "Email",
+  password: "Password",
+};
+
+function apiFieldLabel(loc: Array<string | number> | undefined): string {
+  const parts = [...(loc ?? [])].reverse();
+  const field = parts.find((part) => typeof part === "string" && part !== "body" && part !== "query");
+  if (typeof field !== "string") return "This field";
+  return API_FIELD_LABELS[field] ?? field.replace(/_/g, " ");
+}
+
+/** Turn FastAPI/Pydantic `detail` into a short message safe to show in the UI. */
+export function formatApiDetail(detail: unknown): string {
+  if (typeof detail === "string" && detail.trim()) return detail;
+  if (!Array.isArray(detail) || detail.length === 0) {
+    return "Something went wrong. Please check the form and try again.";
+  }
+
+  const messages = detail.map((raw) => {
+    const issue = (raw ?? {}) as ValidationIssue;
+    const label = apiFieldLabel(issue.loc);
+    const field = [...(issue.loc ?? [])].reverse().find((part) => typeof part === "string");
+
+    if (issue.type === "string_pattern_mismatch" && field === "slug") {
+      return `${label}: use lowercase letters, numbers, and hyphens only (e.g. data-infrastructure).`;
+    }
+    if (issue.type === "missing") return `${label} is required.`;
+    if (issue.type === "string_too_short") return `${label} is too short.`;
+    if (issue.type === "string_too_long") return `${label} is too long.`;
+    if (issue.type === "value_error") {
+      const msg = (issue.msg || "").replace(/^Value error,\s*/i, "").trim();
+      return msg ? `${label}: ${msg}` : `${label} is invalid.`;
+    }
+    if (issue.msg) {
+      const msg = issue.msg
+        .replace(/^String should match pattern .+$/i, "has an invalid format")
+        .replace(/^Value error,\s*/i, "")
+        .trim();
+      return `${label}: ${msg}`;
+    }
+    return `${label} is invalid.`;
+  });
+
+  return messages.filter(Boolean).join(" ") || "Please check the form and try again.";
+}
+
 function networkErrorMessage() {
   if (process.env.NODE_ENV !== "production") {
     console.warn(`API unreachable at ${getApiBaseUrl() || "same-origin /api"}`);
@@ -209,7 +272,7 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promi
     let detail = "Request failed";
     try {
       const data = await response.json();
-      detail = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+      detail = formatApiDetail(data.detail);
     } catch {
       if (response.status >= 500) {
         detail = PUBLIC_LOAD_ERROR;
@@ -991,8 +1054,8 @@ export async function uploadAdminEventImage(file: File) {
     credentials: "include",
   });
   if (!response.ok) {
-    const data = (await response.json().catch(() => null)) as { detail?: string } | null;
-    throw new ApiError(response.status, data?.detail || "Upload failed");
+    const data = (await response.json().catch(() => null)) as { detail?: unknown } | null;
+    throw new ApiError(response.status, formatApiDetail(data?.detail) || "Upload failed");
   }
   return response.json() as Promise<{ url: string }>;
 }

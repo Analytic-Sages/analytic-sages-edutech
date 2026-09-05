@@ -27,6 +27,21 @@ export function eventTypeLabel(type: string) {
   return EVENT_TYPE_LABELS[type] ?? "Event";
 }
 
+/** Lowercase kebab-case for event URL slugs (matches backend SLUG_PATTERN). */
+export function slugifyEventValue(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 160);
+}
+
+export function isValidEventSlug(value: string): boolean {
+  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) && value.length >= 3 && value.length <= 160;
+}
+
 /** Bundled `/public` assets use next/image; uploaded `/api` media and https URLs use `<img>`. */
 export function isBundledEventCover(src: string) {
   return src.startsWith("/") && !src.startsWith("/api");

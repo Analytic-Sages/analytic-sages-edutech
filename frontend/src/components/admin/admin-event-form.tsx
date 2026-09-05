@@ -18,7 +18,7 @@ import {
   type EventAdmin,
   type EventType,
 } from "@/lib/api";
-import { EVENT_TYPE_LABELS, isBundledEventCover, resolveEventCoverSrc } from "@/lib/events";
+import { EVENT_TYPE_LABELS, isBundledEventCover, isValidEventSlug, resolveEventCoverSrc, slugifyEventValue } from "@/lib/events";
 
 type FormState = {
   slug: string;
@@ -117,7 +117,7 @@ function withSeconds(value: string) {
 
 function toPayload(form: FormState) {
   return {
-    slug: form.slug.trim(),
+    slug: slugifyEventValue(form.slug),
     title: form.title.trim(),
     event_type: form.event_type,
     short_description: form.short_description.trim(),
@@ -152,6 +152,7 @@ export function AdminEventForm({ eventId }: { eventId?: string }) {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cancelled, setCancelled] = useState(false);
+  const [slugTouched, setSlugTouched] = useState(Boolean(eventId));
 
   useEffect(() => {
     if (!eventId) return;
@@ -161,6 +162,7 @@ export function AdminEventForm({ eventId }: { eventId?: string }) {
         if (ignore) return;
         setForm(fromEvent(event));
         setCancelled(event.cancelled);
+        setSlugTouched(true);
       })
       .catch((err) => {
         if (!ignore) setError(err instanceof ApiError ? err.detail : "Could not load event.");
@@ -177,12 +179,33 @@ export function AdminEventForm({ eventId }: { eventId?: string }) {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
+  function onTitleChange(value: string) {
+    setForm((current) => ({
+      ...current,
+      title: value,
+      slug: !eventId && !slugTouched ? slugifyEventValue(value) : current.slug,
+    }));
+  }
+
+  function onSlugChange(value: string) {
+    setSlugTouched(true);
+    set("slug", slugifyEventValue(value));
+  }
+
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
     setSaving(true);
     setError(null);
+    const slug = slugifyEventValue(form.slug);
+    if (!isValidEventSlug(slug)) {
+      setError(
+        "URL slug must be at least 3 characters using lowercase letters, numbers, and hyphens (e.g. data-infrastructure).",
+      );
+      setSaving(false);
+      return;
+    }
     try {
-      const payload = toPayload(form);
+      const payload = toPayload({ ...form, slug });
       if (eventId) {
         await updateAdminEvent(eventId, payload);
       } else {
@@ -255,11 +278,21 @@ export function AdminEventForm({ eventId }: { eventId?: string }) {
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="title">Title</Label>
-            <Input id="title" value={form.title} onChange={(e) => set("title", e.target.value)} required />
+            <Input id="title" value={form.title} onChange={(e) => onTitleChange(e.target.value)} required />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="slug">Slug</Label>
-            <Input id="slug" value={form.slug} onChange={(e) => set("slug", e.target.value)} required />
+            <Label htmlFor="slug">URL slug</Label>
+            <Input
+              id="slug"
+              value={form.slug}
+              onChange={(e) => onSlugChange(e.target.value)}
+              placeholder="data-infrastructure"
+              required
+            />
+            <p className="text-xs text-muted-foreground">
+              Used in the event link. Lowercase letters, numbers, and hyphens only — filled from the title
+              automatically.
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="event_type">Type</Label>
