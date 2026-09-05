@@ -291,6 +291,39 @@ def test_operations_can_manage_events_but_not_users():
     _cleanup_slug(created.json()["slug"])
 
 
+def test_free_event_recording_is_public_and_platform_shown():
+    slug = f"recorded-{uuid.uuid4().hex[:8]}"
+    _seed_event(
+        slug=slug,
+        published=True,
+        starts_at=datetime.now(UTC) - timedelta(days=2),
+        ends_at=datetime.now(UTC) - timedelta(days=1),
+        youtube_live_url=None,
+        recording_url="https://www.youtube.com/watch?v=recording123",
+    )
+    db = SessionLocal()
+    try:
+        event = db.scalar(select(Event).where(Event.slug == slug))
+        assert event is not None
+        event.platform = "x_space"
+        event.platform_label = None
+        event.event_type = EventType.X_SPACE
+        db.commit()
+    finally:
+        db.close()
+
+    detail = client.get(f"/api/v1/events/{slug}")
+    assert detail.status_code == 200, detail.text
+    body = detail.json()
+    assert body["has_recording"] is True
+    assert body["can_watch_recording"] is True
+    assert body["recording_url"] == "https://www.youtube.com/watch?v=recording123"
+    assert body["platform"] == "x_space"
+    assert body["platform_display"] == "X Space"
+    assert body["event_type"] == "x_space"
+    _cleanup_slug(slug)
+
+
 def test_operations_can_upload_event_cover_image():
     ops = _make_user(f"ops-upload-{uuid.uuid4()}@example.com", role=UserRole.OPERATIONS)
     student = _make_user(f"student-upload-{uuid.uuid4()}@example.com", role=UserRole.STUDENT)

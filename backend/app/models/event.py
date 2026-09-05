@@ -32,6 +32,14 @@ class EventType(str, enum.Enum):
     AMA = "ama"
     COMMUNITY = "community"
     CAREER = "career"
+    X_SPACE = "x_space"
+    OTHER = "other"
+
+
+class EventPlatform(str, enum.Enum):
+    YOUTUBE = "youtube"
+    X_SPACE = "x_space"
+    ZOOM = "zoom"
     OTHER = "other"
 
 
@@ -67,6 +75,8 @@ class Event(Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
     host_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    platform: Mapped[str] = mapped_column(String(40), nullable=False, default=EventPlatform.YOUTUBE.value)
+    platform_label: Mapped[str | None] = mapped_column(String(80), nullable=True)
     youtube_live_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     recording_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     learn_topics: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)

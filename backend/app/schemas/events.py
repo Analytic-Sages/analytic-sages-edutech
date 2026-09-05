@@ -5,10 +5,26 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.models.event import EventType
+from app.models.event import EventPlatform, EventType
 
 
 SLUG_PATTERN = r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
+
+PLATFORM_LABELS = {
+    EventPlatform.YOUTUBE.value: "YouTube",
+    EventPlatform.X_SPACE.value: "X Space",
+    EventPlatform.ZOOM.value: "Zoom",
+    EventPlatform.OTHER.value: "Live session",
+}
+
+
+def platform_display_name(platform: str | None, platform_label: str | None = None) -> str:
+    value = (platform or EventPlatform.YOUTUBE.value).strip().lower()
+    if value == EventPlatform.OTHER.value:
+        custom = (platform_label or "").strip()
+        if custom:
+            return custom
+    return PLATFORM_LABELS.get(value, PLATFORM_LABELS[EventPlatform.YOUTUBE.value])
 
 
 class EventCardPublic(BaseModel):
@@ -25,10 +41,14 @@ class EventCardPublic(BaseModel):
     currency: str
     is_free: bool
     host_name: str | None
+    platform: str = EventPlatform.YOUTUBE.value
+    platform_label: str | None = None
+    platform_display: str = "YouTube"
     lifecycle: str
     registered: bool = False
     can_register: bool = False
     related_course_slug: str | None = None
+    has_recording: bool = False
 
 
 class EventPublic(EventCardPublic):
@@ -91,6 +111,8 @@ class EventWriteBase(BaseModel):
     registration_deadline: datetime | None = None
     capacity: int | None = Field(default=None, ge=1)
     host_name: str | None = Field(default=None, max_length=255)
+    platform: EventPlatform = EventPlatform.YOUTUBE
+    platform_label: str | None = Field(default=None, max_length=80)
     youtube_live_url: str | None = Field(default=None, max_length=500)
     recording_url: str | None = Field(default=None, max_length=500)
     learn_topics: list[str] = Field(default_factory=list)
@@ -111,7 +133,14 @@ class EventWriteBase(BaseModel):
             return [str(item).strip() for item in value if str(item).strip()]
         return []
 
-    @field_validator("cover_image", "youtube_live_url", "recording_url", "related_course_slug", "host_name")
+    @field_validator(
+        "cover_image",
+        "youtube_live_url",
+        "recording_url",
+        "related_course_slug",
+        "host_name",
+        "platform_label",
+    )
     @classmethod
     def _empty_to_none(cls, value: str | None) -> str | None:
         if value is None:
@@ -139,6 +168,8 @@ class EventUpdate(BaseModel):
     registration_deadline: datetime | None = None
     capacity: int | None = Field(default=None, ge=1)
     host_name: str | None = Field(default=None, max_length=255)
+    platform: EventPlatform | None = None
+    platform_label: str | None = Field(default=None, max_length=80)
     youtube_live_url: str | None = Field(default=None, max_length=500)
     recording_url: str | None = Field(default=None, max_length=500)
     learn_topics: list[str] | None = None
@@ -159,6 +190,21 @@ class EventUpdate(BaseModel):
             return [str(item).strip() for item in value if str(item).strip()]
         return None
 
+    @field_validator(
+        "cover_image",
+        "youtube_live_url",
+        "recording_url",
+        "related_course_slug",
+        "host_name",
+        "platform_label",
+    )
+    @classmethod
+    def _empty_to_none(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        return stripped or None
+
 
 class EventAdmin(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -178,6 +224,9 @@ class EventAdmin(BaseModel):
     registration_deadline: datetime | None
     capacity: int | None
     host_name: str | None
+    platform: str = EventPlatform.YOUTUBE.value
+    platform_label: str | None = None
+    platform_display: str = "YouTube"
     youtube_live_url: str | None
     recording_url: str | None
     learn_topics: list[str] = Field(default_factory=list)

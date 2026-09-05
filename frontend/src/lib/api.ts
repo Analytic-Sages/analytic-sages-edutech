@@ -865,7 +865,10 @@ export type EventType =
   | "ama"
   | "community"
   | "career"
+  | "x_space"
   | "other";
+
+export type EventPlatform = "youtube" | "x_space" | "zoom" | "other";
 
 export type EventCardPublic = {
   id: string;
@@ -881,10 +884,14 @@ export type EventCardPublic = {
   currency: string;
   is_free: boolean;
   host_name: string | null;
+  platform?: EventPlatform | string;
+  platform_label?: string | null;
+  platform_display?: string;
   lifecycle: EventLifecycle | string;
   registered: boolean;
   can_register: boolean;
   related_course_slug: string | null;
+  has_recording?: boolean;
 };
 
 export type EventPublic = EventCardPublic & {
@@ -940,6 +947,9 @@ export type EventAdmin = {
   registration_deadline: string | null;
   capacity: number | null;
   host_name: string | null;
+  platform: EventPlatform | string;
+  platform_label: string | null;
+  platform_display: string;
   youtube_live_url: string | null;
   recording_url: string | null;
   learn_topics: string[];
@@ -971,6 +981,8 @@ export type EventWritePayload = {
   registration_deadline?: string | null;
   capacity?: number | null;
   host_name?: string | null;
+  platform?: EventPlatform | string;
+  platform_label?: string | null;
   youtube_live_url?: string | null;
   recording_url?: string | null;
   learn_topics?: string[];

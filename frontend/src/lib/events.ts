@@ -10,7 +10,15 @@ export const EVENT_TYPE_LABELS: Record<string, string> = {
   ama: "AMA",
   community: "Community",
   career: "Career",
+  x_space: "X Space",
   other: "Event",
+};
+
+export const EVENT_PLATFORM_LABELS: Record<string, string> = {
+  youtube: "YouTube",
+  x_space: "X Space",
+  zoom: "Zoom",
+  other: "Other",
 };
 
 export const EVENT_LIFECYCLE_LABELS: Record<string, string> = {
@@ -25,6 +33,43 @@ export const EVENT_LIFECYCLE_LABELS: Record<string, string> = {
 
 export function eventTypeLabel(type: string) {
   return EVENT_TYPE_LABELS[type] ?? "Event";
+}
+
+export function eventPlatformLabel(platform: string, platformLabel?: string | null) {
+  if (platform === "other" && platformLabel?.trim()) return platformLabel.trim();
+  return EVENT_PLATFORM_LABELS[platform] ?? "Live session";
+}
+
+export function eventVenueSummary(event: {
+  lifecycle: string;
+  platform_display?: string | null;
+  platform?: string | null;
+  platform_label?: string | null;
+  has_recording?: boolean;
+  can_watch_recording?: boolean;
+  recording_url?: string | null;
+  youtube_live_url?: string | null;
+}) {
+  const platform =
+    event.platform_display?.trim() ||
+    eventPlatformLabel(event.platform || "youtube", event.platform_label);
+
+  if (event.lifecycle === "coming_soon") {
+    return `Date to be announced. Join details for ${platform} will appear when the session is scheduled.`;
+  }
+  if (event.can_watch_recording && event.recording_url) {
+    return `Recording available · Originally hosted on ${platform}.`;
+  }
+  if (event.has_recording) {
+    return `Recording available · Originally hosted on ${platform}.`;
+  }
+  if (event.lifecycle === "completed") {
+    return `This ${platform} session has ended. The recording will appear here when posted.`;
+  }
+  if (event.lifecycle === "live") {
+    return `Live now on ${platform}.`;
+  }
+  return `Live on ${platform}. Recording will be posted here after the session when available.`;
 }
 
 /** Lowercase kebab-case for event URL slugs (matches backend SLUG_PATTERN). */

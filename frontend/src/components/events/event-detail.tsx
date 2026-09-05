@@ -6,12 +6,14 @@ import { CalendarDays, Clock, UserRound } from "lucide-react";
 import { EventRegisterCta } from "@/components/events/event-register-cta";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
+import { ButtonAnchor } from "@/components/ui/button-anchor";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getPublicEvent, type EventPublic } from "@/lib/api";
 import {
   eventLifecycleLabel,
   eventTypeLabel,
+  eventVenueSummary,
   formatEventWhen,
   isBundledEventCover,
   resolveEventCoverSrc,
@@ -70,11 +72,21 @@ export function EventDetail({ initialEvent }: Props) {
                   </p>
                 )}
                 <p className="flex items-center gap-2">
-                  <Clock className="size-4" />
-                  {event.lifecycle === "coming_soon"
-                    ? "Date to be announced. Join details will appear here when the session is scheduled."
-                    : "YouTube Live. Recording posted here after the session when available."}
+                  <Clock className="size-4 shrink-0" />
+                  <span>{eventVenueSummary(event)}</span>
                 </p>
+                {event.can_watch_recording && event.recording_url ? (
+                  <div className="pt-2">
+                    <ButtonAnchor
+                      href={event.recording_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-brand-orange text-white hover:bg-brand-orange/90"
+                    >
+                      Watch recording
+                    </ButtonAnchor>
+                  </div>
+                ) : null}
               </div>
             </div>
             {cover && (

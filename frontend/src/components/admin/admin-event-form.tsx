@@ -16,9 +16,17 @@ import {
   updateAdminEvent,
   uploadAdminEventImage,
   type EventAdmin,
+  type EventPlatform,
   type EventType,
 } from "@/lib/api";
-import { EVENT_TYPE_LABELS, isBundledEventCover, isValidEventSlug, resolveEventCoverSrc, slugifyEventValue } from "@/lib/events";
+import {
+  EVENT_PLATFORM_LABELS,
+  EVENT_TYPE_LABELS,
+  isBundledEventCover,
+  isValidEventSlug,
+  resolveEventCoverSrc,
+  slugifyEventValue,
+} from "@/lib/events";
 
 type FormState = {
   slug: string;
@@ -31,6 +39,8 @@ type FormState = {
   ends_at: string;
   timezone: string;
   host_name: string;
+  platform: EventPlatform;
+  platform_label: string;
   youtube_live_url: string;
   recording_url: string;
   learn_topics: string;
@@ -53,6 +63,8 @@ const EMPTY: FormState = {
   ends_at: "",
   timezone: "Africa/Lagos",
   host_name: "Analytic Sages",
+  platform: "youtube",
+  platform_label: "",
   youtube_live_url: "",
   recording_url: "",
   learn_topics: "",
@@ -91,6 +103,8 @@ function fromEvent(event: EventAdmin): FormState {
     ends_at: toLocalInput(event.ends_at, event.timezone),
     timezone: event.timezone,
     host_name: event.host_name ?? "",
+    platform: (event.platform as EventPlatform) || "youtube",
+    platform_label: event.platform_label ?? "",
     youtube_live_url: event.youtube_live_url ?? "",
     recording_url: event.recording_url ?? "",
     learn_topics: event.learn_topics.join("\n"),
@@ -127,6 +141,8 @@ function toPayload(form: FormState) {
     ends_at: form.ends_at ? withSeconds(form.ends_at) : null,
     timezone: form.timezone.trim() || "Africa/Lagos",
     host_name: form.host_name.trim() || null,
+    platform: form.platform,
+    platform_label: form.platform === "other" ? form.platform_label.trim() || null : null,
     youtube_live_url: form.youtube_live_url.trim() || null,
     recording_url: form.recording_url.trim() || null,
     learn_topics: lines(form.learn_topics),
@@ -300,7 +316,17 @@ export function AdminEventForm({ eventId }: { eventId?: string }) {
               id="event_type"
               className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
               value={form.event_type}
-              onChange={(e) => set("event_type", e.target.value as EventType)}
+              onChange={(e) => {
+                const nextType = e.target.value as EventType;
+                setForm((current) => ({
+                  ...current,
+                  event_type: nextType,
+                  platform:
+                    nextType === "x_space" && current.platform === "youtube"
+                      ? "x_space"
+                      : current.platform,
+                }));
+              }}
             >
               {Object.entries(EVENT_TYPE_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
@@ -309,6 +335,32 @@ export function AdminEventForm({ eventId }: { eventId?: string }) {
               ))}
             </select>
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="platform">Live platform</Label>
+            <select
+              id="platform"
+              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+              value={form.platform}
+              onChange={(e) => set("platform", e.target.value as EventPlatform)}
+            >
+              {Object.entries(EVENT_PLATFORM_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+          {form.platform === "other" ? (
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="platform_label">Platform name</Label>
+              <Input
+                id="platform_label"
+                value={form.platform_label}
+                onChange={(e) => set("platform_label", e.target.value)}
+                placeholder="e.g. Google Meet, Discord"
+              />
+            </div>
+          ) : null}
           <div className="space-y-2">
             <Label htmlFor="starts_at">Starts</Label>
             <Input
@@ -434,12 +486,12 @@ export function AdminEventForm({ eventId }: { eventId?: string }) {
             />
           </div>
           <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="youtube_live_url">YouTube Live URL</Label>
+            <Label htmlFor="youtube_live_url">Live URL</Label>
             <Input
               id="youtube_live_url"
               value={form.youtube_live_url}
               onChange={(e) => set("youtube_live_url", e.target.value)}
-              placeholder="https://www.youtube.com/watch?v=..."
+              placeholder="https://… (YouTube, X Space, Zoom, etc.)"
             />
           </div>
           <div className="space-y-2 sm:col-span-2">
@@ -448,7 +500,11 @@ export function AdminEventForm({ eventId }: { eventId?: string }) {
               id="recording_url"
               value={form.recording_url}
               onChange={(e) => set("recording_url", e.target.value)}
+              placeholder="https://…"
             />
+            <p className="text-xs text-muted-foreground">
+              When set on a free event, visitors can open the recording from the event page.
+            </p>
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">

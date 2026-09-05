@@ -9,7 +9,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from app.models.event import Event, EventRegistration, EventRegistrationStatus, EventType
+from app.models.event import Event, EventPlatform, EventRegistration, EventRegistrationStatus, EventType
 from app.models.user import User
 from app.schemas.events import (
     CheckInResponse,
@@ -21,6 +21,7 @@ from app.schemas.events import (
     EventUpdate,
     JoinResponse,
     RegisterResponse,
+    platform_display_name,
 )
 from app.services.email import EmailService
 
@@ -130,15 +131,22 @@ class EventService:
         return now >= (starts_at - JOIN_WINDOW) and bool(event.youtube_live_url)
 
     def _can_watch_recording(self, event: Event, user: User | None) -> bool:
-        if not event.recording_url:
+        if not event.recording_url or not event.published or event.cancelled:
             return False
+        # Free events: once a recording URL is set, it is publicly watchable.
+        if event.price == 0:
+            return True
         if not self._active_registration(user, event.id):
             return False
         lifecycle = self.compute_lifecycle(event)
         return lifecycle in {"completed", "live"}
 
+    def _platform_value(self, event: Event) -> str:
+        return (event.platform or EventPlatform.YOUTUBE.value).strip().lower()
+
     def _card(self, event: Event, user: User | None, now: datetime | None = None) -> EventCardPublic:
         current = now or self._utcnow()
+        platform = self._platform_value(event)
         return EventCardPublic(
             id=event.id,
             slug=event.slug,
@@ -153,15 +161,20 @@ class EventService:
             currency=event.currency,
             is_free=event.price == 0,
             host_name=event.host_name,
+            platform=platform,
+            platform_label=event.platform_label,
+            platform_display=platform_display_name(platform, event.platform_label),
             lifecycle=self.compute_lifecycle(event, current),
             registered=self._active_registration(user, event.id) is not None,
             can_register=self._can_register(event, user, current),
             related_course_slug=event.related_course_slug,
+            has_recording=bool(event.recording_url),
         )
 
     def _public(self, event: Event, user: User | None) -> EventPublic:
         now = self._utcnow()
         registered = self._active_registration(user, event.id) is not None
+        can_watch = self._can_watch_recording(event, user)
         card = self._card(event, user, now)
         return EventPublic(
             **card.model_dump(),
@@ -173,14 +186,15 @@ class EventService:
             capacity=event.capacity,
             cancelled=event.cancelled,
             can_join=self._can_join(event, user, now),
-            can_watch_recording=self._can_watch_recording(event, user),
+            can_watch_recording=can_watch,
             youtube_live_url=event.youtube_live_url if registered else None,
-            recording_url=event.recording_url if registered else None,
+            recording_url=event.recording_url if can_watch else None,
             seo_title=event.seo_title,
             seo_description=event.seo_description,
         )
 
     def _admin(self, event: Event) -> EventAdmin:
+        platform = self._platform_value(event)
         return EventAdmin(
             id=event.id,
             slug=event.slug,
@@ -197,6 +211,9 @@ class EventService:
             registration_deadline=event.registration_deadline,
             capacity=event.capacity,
             host_name=event.host_name,
+            platform=platform,
+            platform_label=event.platform_label,
+            platform_display=platform_display_name(platform, event.platform_label),
             youtube_live_url=event.youtube_live_url,
             recording_url=event.recording_url,
             learn_topics=self._as_str_list(event.learn_topics),
@@ -494,6 +511,12 @@ class EventService:
             capacity=payload.capacity,
             host_user_id=host.id if host else None,
             host_name=payload.host_name or (host.full_name if host else None),
+            platform=(
+                payload.platform.value
+                if isinstance(payload.platform, EventPlatform)
+                else str(payload.platform)
+            ),
+            platform_label=payload.platform_label,
             youtube_live_url=payload.youtube_live_url,
             recording_url=payload.recording_url,
             learn_topics=payload.learn_topics,
@@ -534,6 +557,9 @@ class EventService:
             data["registration_deadline"] = self._aware(data["registration_deadline"], timezone_name)
         if "currency" in data and data["currency"]:
             data["currency"] = data["currency"].upper()
+        if "platform" in data and data["platform"] is not None:
+            platform = data["platform"]
+            data["platform"] = platform.value if isinstance(platform, EventPlatform) else str(platform)
         for key, value in data.items():
             setattr(event, key, value)
         self.db.commit()
