@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { PUBLIC_SITE_ORIGIN } from "@/lib/program-pages";
 import { siteConfig } from "@/config/site";
 
-export const DEFAULT_OG_IMAGE = "/4.png";
+export const DEFAULT_OG_IMAGE = "/og/analytic-sages-og.png";
+export const DEFAULT_OG_IMAGE_ALT =
+  "Analytic Sages — Build the skills behind blockchain data.";
+export const DEFAULT_OG_IMAGE_WIDTH = 1200;
+export const DEFAULT_OG_IMAGE_HEIGHT = 630;
 export const ORGANIZATION_LOGO = "/logo-colored.png";
 
 export function absoluteUrl(path = "/"): string {
@@ -33,7 +37,12 @@ export function socialSameAs(): string[] {
 }
 
 export function brandedTitle(title: string): string {
-  if (title === siteConfig.seoTitle || title === "Analytic Sages" || title.endsWith(" | Analytic Sages")) {
+  if (
+    title === siteConfig.seoTitle ||
+    title === "Analytic Sages" ||
+    title.startsWith("Analytic Sages |") ||
+    title.endsWith(" | Analytic Sages")
+  ) {
     return title;
   }
   return `${title} | Analytic Sages`;
@@ -44,6 +53,11 @@ type PageMetadataInput = {
   description: string;
   path: string;
   image?: string | null;
+  imageAlt?: string;
+  imageWidth?: number;
+  imageHeight?: number;
+  /** Optional Twitter/X description when it should differ from Open Graph. */
+  twitterDescription?: string;
   /** Homepage should not become "Analytic Sages | Analytic Sages". */
   absoluteTitle?: boolean;
   type?: "website" | "article";
@@ -54,12 +68,20 @@ export function pageMetadata({
   description,
   path,
   image,
+  imageAlt,
+  imageWidth,
+  imageHeight,
+  twitterDescription,
   absoluteTitle = false,
   type = "website",
 }: PageMetadataInput): Metadata {
   const url = absoluteUrl(path);
   const ogTitle = brandedTitle(title);
   const ogImage = absoluteAssetUrl(image || DEFAULT_OG_IMAGE);
+  const isDefaultOgImage = !image || image === DEFAULT_OG_IMAGE;
+  const ogImageAlt = imageAlt || (isDefaultOgImage ? DEFAULT_OG_IMAGE_ALT : ogTitle);
+  const ogImageWidth = imageWidth ?? (isDefaultOgImage ? DEFAULT_OG_IMAGE_WIDTH : undefined);
+  const ogImageHeight = imageHeight ?? (isDefaultOgImage ? DEFAULT_OG_IMAGE_HEIGHT : undefined);
   const metadata: Metadata = {
     title: absoluteTitle ? { absolute: title } : title,
     description,
@@ -70,14 +92,21 @@ export function pageMetadata({
       url,
       siteName: siteConfig.name,
       type,
-      images: [{ url: ogImage, alt: ogTitle }],
+      images: [
+        {
+          url: ogImage,
+          alt: ogImageAlt,
+          ...(ogImageWidth != null ? { width: ogImageWidth } : {}),
+          ...(ogImageHeight != null ? { height: ogImageHeight } : {}),
+        },
+      ],
     },
     twitter: {
       card: "summary_large_image",
       site: siteConfig.twitterHandle,
       creator: siteConfig.twitterHandle,
       title: ogTitle,
-      description,
+      description: twitterDescription ?? description,
       images: [ogImage],
     },
   };

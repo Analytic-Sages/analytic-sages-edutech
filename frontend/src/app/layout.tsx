@@ -10,7 +10,13 @@ import { CookieConsentBanner } from "@/components/layout/cookie-consent-banner";
 import { OrganizationJsonLd } from "@/components/seo/organization-json-ld";
 import { siteConfig } from "@/config/site";
 import { PUBLIC_SITE_ORIGIN } from "@/lib/program-pages";
-import { DEFAULT_OG_IMAGE, absoluteAssetUrl } from "@/lib/seo";
+import {
+  DEFAULT_OG_IMAGE,
+  DEFAULT_OG_IMAGE_ALT,
+  DEFAULT_OG_IMAGE_HEIGHT,
+  DEFAULT_OG_IMAGE_WIDTH,
+  absoluteAssetUrl,
+} from "@/lib/seo";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -28,7 +34,14 @@ export const metadata: Metadata = {
     title: siteConfig.seoTitle,
     description: siteConfig.description,
     url: PUBLIC_SITE_ORIGIN,
-    images: [{ url: absoluteAssetUrl(DEFAULT_OG_IMAGE), alt: siteConfig.seoTitle }],
+    images: [
+      {
+        url: absoluteAssetUrl(DEFAULT_OG_IMAGE),
+        alt: DEFAULT_OG_IMAGE_ALT,
+        width: DEFAULT_OG_IMAGE_WIDTH,
+        height: DEFAULT_OG_IMAGE_HEIGHT,
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",

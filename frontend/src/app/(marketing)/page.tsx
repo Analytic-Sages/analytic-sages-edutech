@@ -1,4 +1,3 @@
-import { siteConfig } from "@/config/site";
 import { pageMetadata } from "@/lib/seo";
 import { ArrowRight } from "lucide-react";
 import { FeaturesSection } from "@/components/marketing/features-section";
@@ -17,11 +16,17 @@ import { WhySection } from "@/components/marketing/why-section";
 import { ButtonLink } from "@/components/ui/button-link";
 
 export const metadata = pageMetadata({
-  title: siteConfig.seoTitle,
-  description: siteConfig.description,
+  title: "Analytic Sages | Global Blockchain Data & Technology Education",
+  description:
+    "Build the skills behind blockchain data. Learn blockchain analytics, engineering, intelligence and AI.",
   path: "/",
   absoluteTitle: true,
-  image: "/4.png",
+  image: "/og/analytic-sages-og.png",
+  imageAlt: "Analytic Sages — Build the skills behind blockchain data.",
+  imageWidth: 1200,
+  imageHeight: 630,
+  twitterDescription:
+    "Build the skills behind blockchain data. Learn. Build. Get Opportunities.",
 });
 
 export default function HomePage() {
