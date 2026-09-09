@@ -3,7 +3,6 @@
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { PartnershipInquiryForm } from "@/components/marketing/partnership-inquiry-form";
-import { ProgramDuneGrid } from "@/components/marketing/program-dune-grid";
 import { SectionBackground } from "@/components/marketing/section-background";
 import {
   Accordion,
@@ -13,7 +12,6 @@ import {
 } from "@/components/ui/accordion";
 import { ButtonLink } from "@/components/ui/button-link";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
-import { getProgramPage } from "@/lib/program-pages";
 import {
   contributionPipeline,
   partnerCapabilities,
@@ -25,7 +23,6 @@ import {
   partnerOutcomes,
   partnershipModes,
   talentPipelineSteps,
-  technologyExperience,
   whyAnalyticSages,
 } from "@/lib/partner-with-us";
 import { cn } from "@/lib/utils";
@@ -87,8 +84,6 @@ function SectionShell({
 
 export function PartnerWithUsPageContent() {
   const reducedMotion = useReducedMotion();
-  const learnerProjects =
-    getProgramPage("cohort-9-sql-blockchain-data-analytics")?.duneDashboards ?? [];
 
   return (
     <>
@@ -164,8 +159,8 @@ export function PartnerWithUsPageContent() {
             Build the talent behind it.
           </h2>
           <p className="mt-6 text-lg leading-relaxed text-muted-foreground">
-            Every blockchain ecosystem generates data. Understanding that data — and developing
-            the people capable of working with it — is essential to long-term ecosystem growth.
+            Every blockchain ecosystem generates data. Understanding that data, and developing
+            the people capable of working with it, is essential to long-term ecosystem growth.
           </p>
           <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
             Analytic Sages connects blockchain data education, technical training and practical
@@ -245,7 +240,7 @@ export function PartnerWithUsPageContent() {
           </h2>
           <p className="mt-6 text-lg leading-relaxed text-white/75">
             Blockchain ecosystems produce enormous amounts of data. The opportunity is not simply
-            to collect it — but to develop the people, tools and intelligence needed to understand
+            to collect it, but to develop the people, tools and intelligence needed to understand
             it.
           </p>
         </FadeIn>
@@ -419,31 +414,7 @@ export function PartnerWithUsPageContent() {
         </dl>
       </SectionShell>
 
-      {/* Learner projects */}
-      <SectionShell id="learner-projects" variant="lines">
-        <FadeIn className="max-w-3xl">
-          <h2 className="font-heading text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-            From learning
-            <br />
-            to building.
-          </h2>
-          <p className="mt-6 text-lg text-muted-foreground">
-            Our learners don&apos;t just complete courses. They apply what they learn to build
-            dashboards, data products, research and technical projects.
-          </p>
-        </FadeIn>
-        {learnerProjects.length > 0 ? (
-          <div className="mt-12">
-            <ProgramDuneGrid items={learnerProjects.slice(0, 4)} />
-          </div>
-        ) : (
-          <p className="mt-10 text-muted-foreground">
-            Learner project showcases will appear here as published work is added.
-          </p>
-        )}
-      </SectionShell>
-
-      {/* Case studies — verified only */}
+      {/* Case studies (verified only) */}
       <SectionShell className="bg-brand-surface">
         <FadeIn className="max-w-3xl">
           <h2 className="font-heading text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
@@ -453,7 +424,7 @@ export function PartnerWithUsPageContent() {
           </h2>
           <p className="mt-6 text-lg text-muted-foreground">
             Case studies appear here when we can share verified partnership outcomes. Until then,
-            explore learner work above and discuss how a program could map to your ecosystem.
+            discuss how a program could map to your ecosystem.
           </p>
         </FadeIn>
         {partnerCaseStudies.length > 0 ? (
@@ -526,30 +497,6 @@ export function PartnerWithUsPageContent() {
             </FadeIn>
           ))}
         </div>
-      </SectionShell>
-
-      {/* Technology experience — not a fake partner logo wall */}
-      <SectionShell variant="dots">
-        <FadeIn className="max-w-3xl">
-          <p className={eyebrowClass}>Technology & ecosystem experience</p>
-          <h2 className="mt-4 font-heading text-3xl font-bold tracking-tight sm:text-4xl">
-            Tools our learners actually use.
-          </h2>
-          <p className="mt-4 text-muted-foreground">
-            These are technologies and platforms featured in our technical education — not a
-            fabricated partner logo wall.
-          </p>
-        </FadeIn>
-        <ul className="mt-10 flex flex-wrap gap-3">
-          {technologyExperience.map((name) => (
-            <li
-              key={name}
-              className="rounded-full border bg-card px-4 py-2 text-sm font-medium text-foreground"
-            >
-              {name}
-            </li>
-          ))}
-        </ul>
       </SectionShell>
 
       {/* FAQ */}

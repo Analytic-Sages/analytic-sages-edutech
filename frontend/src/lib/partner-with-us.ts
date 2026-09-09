@@ -1,4 +1,4 @@
-/** Typed content for /partner-with-us — keep metrics and partnerships verified only. */
+/** Typed content for /partner-with-us. Keep metrics and partnerships verified only. */
 
 export type PartnerCapability = {
   number: string;
@@ -49,7 +49,7 @@ export type PartnerCaseStudy = {
   outcome: string;
 };
 
-/** Verified stats — aligned with TrustStats / About. */
+/** Verified stats, aligned with TrustStats / About. */
 export const partnerImpactMetrics: ImpactMetric[] = [
   { value: "2,000+", label: "Community members" },
   { value: "450+", label: "Blockchain analysts trained" },
@@ -245,7 +245,7 @@ export const partnerOutcomes: PartnerOutcome[] = [
   },
   {
     title: "Real Projects",
-    body: "Participants don't just consume content — they build.",
+    body: "Participants don't just consume content. They build.",
   },
   {
     title: "Ecosystem Intelligence",
@@ -295,7 +295,7 @@ export const whyAnalyticSages = [
   },
   {
     title: "Outcome Oriented",
-    body: "We measure what participants learn, build and contribute — not simply how many register.",
+    body: "We measure what participants learn, build and contribute, not simply how many register.",
   },
 ];
 
@@ -304,15 +304,6 @@ export const whyAnalyticSages = [
  * Leave empty until a relationship is verified in-repo / by product.
  */
 export const partnerCaseStudies: PartnerCaseStudy[] = [];
-
-export const technologyExperience = [
-  "Dune Analytics",
-  "SQL",
-  "Python",
-  "Blockchain explorers",
-  "APIs & RPCs",
-  "Data visualization",
-];
 
 export const partnerFaqs: PartnerFAQ[] = [
   {
@@ -323,7 +314,7 @@ export const partnerFaqs: PartnerFAQ[] = [
   {
     question: "What can Analytic Sages build with an ecosystem?",
     answer:
-      "Ecosystem learning tracks, technical cohorts, blockchain data programs, research and dashboards, practical challenges, and longer-term strategic talent initiatives — designed around your stack and goals.",
+      "Ecosystem learning tracks, technical cohorts, blockchain data programs, research and dashboards, practical challenges, and longer-term strategic talent initiatives, designed around your stack and goals.",
   },
   {
     question: "Can a program be customized around our protocol?",
@@ -333,7 +324,7 @@ export const partnerFaqs: PartnerFAQ[] = [
   {
     question: "What types of talent can you develop?",
     answer:
-      "Blockchain analysts, data engineers, researchers, AI engineers, quantitative researchers and technical builders — people prepared to understand and contribute to your ecosystem.",
+      "Blockchain analysts, data engineers, researchers, AI engineers, quantitative researchers and technical builders: people prepared to understand and contribute to your ecosystem.",
   },
   {
     question: "How does a partnership begin?",

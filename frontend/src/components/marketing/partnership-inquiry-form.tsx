@@ -59,14 +59,14 @@ function buildMessage(data: FormData) {
     `Organization: ${data.organization}`,
     `Website: ${data.website}`,
     `Organization type: ${data.organizationType}`,
-    `Primary ecosystem / protocol: ${data.primaryEcosystem?.trim() || "—"}`,
+    `Primary ecosystem / protocol: ${data.primaryEcosystem?.trim() || "N/A"}`,
     `Looking to achieve: ${data.goal}`,
-    `Program interest: ${data.programInterest || "—"}`,
-    `Target region: ${data.targetRegion || "—"}`,
-    `Timeline: ${data.timeline || "—"}`,
+    `Program interest: ${data.programInterest || "N/A"}`,
+    `Target region: ${data.targetRegion || "N/A"}`,
+    `Timeline: ${data.timeline || "N/A"}`,
     "",
     "Additional context:",
-    data.additionalContext?.trim() || "—",
+    data.additionalContext?.trim() || "N/A",
   ];
   return lines.join("\n").slice(0, 4000);
 }
@@ -117,7 +117,7 @@ export function PartnershipInquiryForm({ className }: { className?: string }) {
       <div className={cn("rounded-2xl border border-white/15 bg-white/5 p-6 sm:p-8", className)}>
         <h3 className="font-heading text-xl font-semibold text-white">Conversation started</h3>
         <p className="mt-3 text-sm leading-relaxed text-white/75 sm:text-base">
-          Thanks — we received your partnership inquiry and will reply to{" "}
+          Thanks. We received your partnership inquiry and will reply to{" "}
           <span className="font-medium text-white">{sentTo}</span>. For urgent matters, email{" "}
           <a
             href={`mailto:${siteConfig.emails.admin}`}
