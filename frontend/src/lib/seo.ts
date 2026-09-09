@@ -40,7 +40,7 @@ export function brandedTitle(title: string): string {
   if (
     title === siteConfig.seoTitle ||
     title === "Analytic Sages" ||
-    title.startsWith("Analytic Sages |") ||
+    title.includes("Analytic Sages |") ||
     title.endsWith(" | Analytic Sages")
   ) {
     return title;

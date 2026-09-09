@@ -50,13 +50,21 @@ export function MarketingFooter() {
                   </Link>
                 </li>
               ))}
+              <li>
+                <Link
+                  href="/partner-with-us"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Partner With Us
+                </Link>
+              </li>
               {isPartnersPublic() ? (
                 <li>
                   <Link
                     href="/partners"
                     className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    Partners
+                    Referral Partners
                   </Link>
                 </li>
               ) : null}

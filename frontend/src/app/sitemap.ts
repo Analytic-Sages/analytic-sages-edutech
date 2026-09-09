@@ -39,6 +39,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     `/events/${FEATURED_EVENT_SLUG}`,
     ...(isOpportunitiesPublic() ? OPPORTUNITY_PATHS : []),
     "/about",
+    "/partner-with-us",
     "/insights",
     "/faq",
     "/community",
