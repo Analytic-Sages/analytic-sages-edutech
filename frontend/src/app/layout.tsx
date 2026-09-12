@@ -4,6 +4,10 @@ import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthSessionSync } from "@/components/providers/auth-session-sync";
 import { TawkToChat } from "@/components/layout/tawk-to-chat";
+import {
+  GoogleTagManager,
+  GoogleTagManagerNoscript,
+} from "@/components/layout/google-tag-manager";
 import { VisitorAnalytics } from "@/components/layout/visitor-analytics";
 import { MarketingPixels } from "@/components/layout/marketing-pixels";
 import { CookieConsentBanner } from "@/components/layout/cookie-consent-banner";
@@ -60,7 +64,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <GoogleTagManager />
+      </head>
       <body className={`${inter.variable} ${manrope.variable} min-h-screen font-sans antialiased`}>
+        <GoogleTagManagerNoscript />
         <ThemeProvider>
           <AuthSessionSync />
           <QueryProvider>{children}</QueryProvider>
