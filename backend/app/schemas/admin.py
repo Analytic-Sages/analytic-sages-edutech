@@ -13,6 +13,9 @@ class AdminUserRow(BaseModel):
     role: str
     email_verified: bool
     is_active: bool
+    phone_number: str | None = None
+    phone_country_code: str | None = None
+    country_of_residence: str | None = None
     in_featured_cohort: bool = False
     created_at: datetime
 

@@ -1,9 +1,10 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 from app.core.roles import UserRole
+from app.services.phone import normalize_iso2, normalize_phone
 
 
 class UserPublic(BaseModel):
@@ -15,6 +16,10 @@ class UserPublic(BaseModel):
     role: UserRole
     email_verified: bool
     is_active: bool
+    phone_number: str | None = None
+    phone_country_code: str | None = None
+    phone_verified: bool = False
+    country_of_residence: str | None = None
     created_at: datetime
 
 
@@ -22,7 +27,61 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     full_name: str | None = Field(default=None, max_length=255)
+    phone_number: str | None = Field(default=None, max_length=32)
+    phone_country_code: str | None = Field(default=None, max_length=2)
+    country_of_residence: str | None = Field(default=None, max_length=2)
     next: str | None = Field(default=None, max_length=512)
+
+    @model_validator(mode="after")
+    def normalize_contact_fields(self) -> "RegisterRequest":
+        phone, phone_cc = normalize_phone(
+            self.phone_number,
+            phone_country_code=self.phone_country_code,
+        )
+        residence = normalize_iso2(self.country_of_residence, field="country_of_residence")
+        self.phone_number = phone
+        self.phone_country_code = phone_cc
+        self.country_of_residence = residence
+        return self
+
+
+class UpdateProfileRequest(BaseModel):
+    """Partial profile update. Omitted fields are left unchanged; empty clears phone/residence."""
+
+    full_name: str | None = Field(default=None, max_length=255)
+    phone_number: str | None = Field(default=None, max_length=32)
+    phone_country_code: str | None = Field(default=None, max_length=2)
+    country_of_residence: str | None = Field(default=None, max_length=2)
+    clear_phone: bool = False
+    clear_country_of_residence: bool = False
+
+    @model_validator(mode="after")
+    def normalize_contact_fields(self) -> "UpdateProfileRequest":
+        if self.clear_phone or (
+            self.phone_number is not None and not str(self.phone_number).strip()
+        ):
+            self.phone_number = None
+            self.phone_country_code = None
+            self.clear_phone = True
+        elif self.phone_number is not None or self.phone_country_code is not None:
+            phone, phone_cc = normalize_phone(
+                self.phone_number,
+                phone_country_code=self.phone_country_code,
+            )
+            self.phone_number = phone
+            self.phone_country_code = phone_cc
+
+        if self.clear_country_of_residence or (
+            self.country_of_residence is not None and not str(self.country_of_residence).strip()
+        ):
+            self.country_of_residence = None
+            self.clear_country_of_residence = True
+        elif self.country_of_residence is not None:
+            self.country_of_residence = normalize_iso2(
+                self.country_of_residence,
+                field="country_of_residence",
+            )
+        return self
 
 
 class LoginRequest(BaseModel):

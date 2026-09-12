@@ -48,7 +48,10 @@ function matchesQuery(user: AdminUserRow, query: string) {
   if (!q) return false;
   return (
     user.email.toLowerCase().includes(q) ||
-    (user.full_name || "").toLowerCase().includes(q)
+    (user.full_name || "").toLowerCase().includes(q) ||
+    (user.phone_number || "").toLowerCase().includes(q) ||
+    (user.phone_country_code || "").toLowerCase().includes(q) ||
+    (user.country_of_residence || "").toLowerCase().includes(q)
   );
 }
 
@@ -437,6 +440,16 @@ export function AdminUsersContent() {
                             </div>
                             <div>
                               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Contact
+                              </p>
+                              <p className="mt-1 text-muted-foreground">
+                                Phone: {user.phone_number || "—"}
+                                {user.phone_country_code ? ` (${user.phone_country_code})` : ""}
+                              </p>
+                              <p className="mt-1 text-muted-foreground">
+                                Residence: {user.country_of_residence || "—"}
+                              </p>
+                              <p className="mt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                                 Cannot
                               </p>
                               <ul className="mt-1 list-disc space-y-0.5 pl-4 text-muted-foreground">

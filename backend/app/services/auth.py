@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.roles import UserRole
 from app.core.security import SecurityService
 from app.models.user import EmailVerificationToken, PasswordResetToken, RefreshToken, User
-from app.schemas.auth import AuthResponse, RegisterRequest, UserPublic
+from app.schemas.auth import AuthResponse, RegisterRequest, UpdateProfileRequest, UserPublic
 from app.services.email import EmailService
 
 STAFF_INVITE_ROLES = {
@@ -60,6 +60,10 @@ class AuthService:
             full_name=payload.full_name,
             role=UserRole.STUDENT,
             email_verified=False,
+            phone_number=payload.phone_number,
+            phone_country_code=payload.phone_country_code,
+            phone_verified=False,
+            country_of_residence=payload.country_of_residence,
         )
         self.db.add(user)
         self.db.flush()
@@ -441,6 +445,38 @@ class AuthService:
         self.db.commit()
         self.db.refresh(user)
         return user, access_token, refresh_token
+
+    def update_profile(self, user: User, payload: UpdateProfileRequest) -> User:
+        data = payload.model_dump(exclude_unset=True)
+        if "full_name" in data:
+            name = data["full_name"]
+            user.full_name = name.strip() if isinstance(name, str) and name.strip() else None
+
+        phone_touched = (
+            payload.clear_phone
+            or "phone_number" in data
+            or "phone_country_code" in data
+        )
+        if phone_touched:
+            previous = user.phone_number
+            if payload.clear_phone:
+                user.phone_number = None
+                user.phone_country_code = None
+            else:
+                user.phone_number = payload.phone_number
+                user.phone_country_code = payload.phone_country_code
+            if user.phone_number != previous:
+                user.phone_verified = False
+
+        if payload.clear_country_of_residence or "country_of_residence" in data:
+            user.country_of_residence = (
+                None if payload.clear_country_of_residence else payload.country_of_residence
+            )
+
+        self.db.add(user)
+        self.db.commit()
+        self.db.refresh(user)
+        return user
 
     def issue_session(self, user: User) -> tuple[str, str]:
         access_token = self.security.create_access_token(

@@ -25,6 +25,10 @@ class User(Base):
     email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     google_id: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    phone_number: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    phone_country_code: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    phone_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    country_of_residence: Mapped[str | None] = mapped_column(String(2), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

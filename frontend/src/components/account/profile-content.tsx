@@ -2,13 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
+import type { Country } from "react-phone-number-input";
+import { isValidPhoneNumber } from "react-phone-number-input";
+import {
+  CountrySelectField,
+  PhoneField,
+} from "@/components/forms/phone-country-fields";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { ApiError, getMe, type AuthUser } from "@/lib/api";
+import { ApiError, getMe, updateMyProfile, type AuthUser } from "@/lib/api";
 import { displayName, initialsFor } from "@/lib/user-display";
 
 function formatJoined(iso: string) {
@@ -27,12 +34,23 @@ export function ProfileContent() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [phone, setPhone] = useState("");
+  const [phoneCountry, setPhoneCountry] = useState<Country | undefined>("NG");
+  const [residence, setResidence] = useState("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     getMe()
       .then((me) => {
-        if (!cancelled) setUser(me);
+        if (cancelled) return;
+        setUser(me);
+        setPhone(me.phone_number || "");
+        setPhoneCountry((me.phone_country_code as Country | null) || "NG");
+        setResidence(me.country_of_residence || "");
       })
       .catch((err) => {
         if (!cancelled) {
@@ -46,6 +64,40 @@ export function ProfileContent() {
       cancelled = true;
     };
   }, []);
+
+  async function saveContact() {
+    if (!user) return;
+    setSaveError(null);
+    setSaveSuccess(null);
+    setPhoneError(null);
+
+    if (phone && !isValidPhoneNumber(phone)) {
+      setPhoneError("Enter a valid phone number");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const clearPhone = !phone;
+      const clearResidence = !residence;
+      const updated = await updateMyProfile({
+        phone_number: clearPhone ? null : phone,
+        phone_country_code: clearPhone ? null : phoneCountry || null,
+        country_of_residence: clearResidence ? null : residence,
+        clear_phone: clearPhone,
+        clear_country_of_residence: clearResidence,
+      });
+      setUser(updated);
+      setPhone(updated.phone_number || "");
+      setPhoneCountry((updated.phone_country_code as Country | null) || "NG");
+      setResidence(updated.country_of_residence || "");
+      setSaveSuccess("Contact details saved.");
+    } catch (err) {
+      setSaveError(err instanceof ApiError ? err.detail : "Could not save profile");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -70,10 +122,10 @@ export function ProfileContent() {
   const name = displayName(user.full_name, user.email);
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-2xl space-y-6">
       <PageHeader
         title="Profile"
-        description="This is the account you are signed in with. Editing name, email, and photo is not live yet."
+        description="Account details for the user you are signed in as. You can update phone and country of residence below."
       />
       <Card className="shadow-card">
         <CardHeader className="flex flex-row items-center gap-4">
@@ -125,6 +177,39 @@ export function ProfileContent() {
               <dd className="mt-1">{formatJoined(user.created_at)}</dd>
             </div>
           </dl>
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="text-lg">Contact details</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Optional phone and residence fields. Phone country and country of residence are stored
+            separately.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <PhoneField
+            value={phone}
+            country={phoneCountry}
+            onChange={(nextPhone, nextCountry) => {
+              setPhone(nextPhone);
+              setPhoneCountry(nextCountry);
+              setPhoneError(null);
+            }}
+            error={phoneError || undefined}
+          />
+          <CountrySelectField value={residence} onChange={setResidence} />
+          {saveError ? <p className="text-sm text-destructive">{saveError}</p> : null}
+          {saveSuccess ? <p className="text-sm text-success">{saveSuccess}</p> : null}
+          <Button
+            type="button"
+            disabled={saving}
+            onClick={saveContact}
+            className="bg-brand-navy text-white hover:bg-brand-navy/90"
+          >
+            {saving ? "Saving…" : "Save contact details"}
+          </Button>
         </CardContent>
       </Card>
     </div>

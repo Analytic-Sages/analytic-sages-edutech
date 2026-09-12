@@ -11,6 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/auth/password-input";
+import {
+  CountrySelectField,
+  PhoneField,
+} from "@/components/forms/phone-country-fields";
 import { Separator } from "@/components/ui/separator";
 import { siteConfig } from "@/config/site";
 import {
@@ -28,6 +32,8 @@ import { getLastAuthMethod, setLastAuthMethod, type AuthMethod } from "@/lib/aut
 import { resolvePostLoginPath } from "@/lib/auth-redirect";
 import { trackCompleteRegistration } from "@/lib/marketing-pixels";
 import { cn } from "@/lib/utils";
+import type { Country } from "react-phone-number-input";
+import { isValidPhoneNumber } from "react-phone-number-input";
 
 const authSchema = z.object({
   email: z.string().email("Enter a valid email address"),
@@ -62,6 +68,10 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [lastMethod, setLastMethod] = useState<AuthMethod | null>(null);
   const [providers, setProviders] = useState<AuthProviders | null>(null);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [phoneCountry, setPhoneCountry] = useState<Country | undefined>("NG");
+  const [residence, setResidence] = useState("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
 
   const {
     register,
@@ -114,8 +124,13 @@ export function AuthForm({ mode }: AuthFormProps) {
   const onSubmit = async (data: AuthFormData) => {
     setFormError(null);
     setFormSuccess(null);
+    setPhoneError(null);
     try {
       if (mode === "register") {
+        if (phone && !isValidPhoneNumber(phone)) {
+          setPhoneError("Enter a valid phone number");
+          return;
+        }
         await apiFetch<{ message: string }>("/api/v1/auth/register", {
           method: "POST",
           auth: false,
@@ -123,6 +138,9 @@ export function AuthForm({ mode }: AuthFormProps) {
             email: data.email,
             password: data.password,
             full_name: data.full_name || null,
+            phone_number: phone || null,
+            phone_country_code: phone && phoneCountry ? phoneCountry : null,
+            country_of_residence: residence || null,
             next: nextPath !== "/dashboard" ? nextPath : null,
           }),
         });
@@ -282,6 +300,21 @@ export function AuthForm({ mode }: AuthFormProps) {
               <p className="text-xs text-destructive">{errors.password.message}</p>
             )}
           </div>
+          {mode === "register" && (
+            <>
+              <PhoneField
+                value={phone}
+                country={phoneCountry}
+                onChange={(nextPhone, nextCountry) => {
+                  setPhone(nextPhone);
+                  setPhoneCountry(nextCountry);
+                  setPhoneError(null);
+                }}
+                error={phoneError || undefined}
+              />
+              <CountrySelectField value={residence} onChange={setResidence} />
+            </>
+          )}
           {formError && <p className="text-sm text-destructive">{formError}</p>}
           {formSuccess && <p className="text-sm text-success">{formSuccess}</p>}
           <Button

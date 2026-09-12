@@ -279,6 +279,24 @@
   }
 }
 
+/* react-phone-number-input — align with form inputs */
+.PhoneInput {
+  --PhoneInput-color--focus: var(--brand-navy);
+}
+.PhoneInputCountry {
+  margin-left: 0.5rem;
+  margin-right: 0.25rem;
+}
+.PhoneInputCountryIcon {
+  width: 1.35rem;
+  height: 1rem;
+  box-shadow: none;
+}
+.PhoneInputCountrySelectArrow {
+  opacity: 0.55;
+  margin-left: 0.25rem;
+}
+
 /* Tawk stays invisible until Talk to the team. */
 body:not(.as-tawk-open) iframe[src*="tawk"],
 body:not(.as-tawk-open) iframe[title*="tawk" i],

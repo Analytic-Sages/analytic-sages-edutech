@@ -26,6 +26,7 @@ from app.schemas.auth import (
     RegisterRequest,
     ResendVerificationRequest,
     ResetPasswordRequest,
+    UpdateProfileRequest,
     UserPublic,
     VerifyEmailRequest,
 )
@@ -161,6 +162,16 @@ def logout(
 @router.get("/me", response_model=UserPublic)
 def get_me(current_user: CurrentUser) -> UserPublic:
     return UserPublic.model_validate(current_user)
+
+
+@router.patch("/me", response_model=UserPublic)
+def update_me(
+    payload: UpdateProfileRequest,
+    current_user: CurrentUser,
+    auth_service: AuthService = Depends(get_auth_service),
+) -> UserPublic:
+    user = auth_service.update_profile(current_user, payload)
+    return UserPublic.model_validate(user)
 
 
 @router.post("/verify-email", response_model=AuthResponse)

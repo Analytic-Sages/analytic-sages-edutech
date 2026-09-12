@@ -245,6 +245,9 @@ class AdminService:
                 role=user.role.value,
                 email_verified=user.email_verified,
                 is_active=user.is_active,
+                phone_number=user.phone_number,
+                phone_country_code=user.phone_country_code,
+                country_of_residence=user.country_of_residence,
                 in_featured_cohort=user.id in member_ids,
                 created_at=user.created_at,
             )

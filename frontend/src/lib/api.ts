@@ -521,6 +521,10 @@ export type AuthUser = {
   role: string;
   email_verified: boolean;
   is_active: boolean;
+  phone_number?: string | null;
+  phone_country_code?: string | null;
+  phone_verified?: boolean;
+  country_of_residence?: string | null;
   created_at: string;
 };
 
@@ -1097,6 +1101,20 @@ export function getMe() {
   return apiFetch<AuthUser>("/api/v1/auth/me");
 }
 
+export function updateMyProfile(payload: {
+  full_name?: string | null;
+  phone_number?: string | null;
+  phone_country_code?: string | null;
+  country_of_residence?: string | null;
+  clear_phone?: boolean;
+  clear_country_of_residence?: boolean;
+}) {
+  return apiFetch<AuthUser>("/api/v1/auth/me", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function confirmMockPayment(orderId: string, status = "confirmed") {
   return apiFetch<{ message: string }>("/api/v1/webhooks/payments/mock/confirm", {
     method: "POST",
@@ -1186,6 +1204,9 @@ export type AdminUserRow = {
   role: string;
   email_verified: boolean;
   is_active: boolean;
+  phone_number?: string | null;
+  phone_country_code?: string | null;
+  country_of_residence?: string | null;
   in_featured_cohort: boolean;
   created_at: string;
 };
