@@ -39,13 +39,13 @@ export default function HomePage() {
           <div className="grid items-center gap-16 lg:grid-cols-2 lg:gap-24 xl:gap-32">
             <div className="max-w-2xl">
               <p className="mb-5 text-base font-semibold tracking-wide text-brand-orange uppercase sm:text-lg">
-                Global Technology Education Platform
+                GLOBAL BLOCKCHAIN DATA & TECHNOLOGY EDUCATION
               </p>
               <h1 className="font-heading text-5xl font-bold tracking-tight text-foreground sm:text-6xl lg:text-7xl xl:text-8xl xl:leading-[1.05]">
-                Learn the Technologies Shaping the Future.
+                Learn. Build. Understand Blockchain.
               </h1>
               <p className="mt-8 max-w-xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-                Build practical expertise across data, AI, quantitative finance, blockchain, and
+                Build practical expertise across data, AI, quantitative trading, blockchain, and
                 emerging technologies through expert-led and self-paced learning.
               </p>
               <div className="mt-12">
