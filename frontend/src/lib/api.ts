@@ -1106,8 +1106,6 @@ export function updateMyProfile(payload: {
   phone_number?: string | null;
   phone_country_code?: string | null;
   country_of_residence?: string | null;
-  clear_phone?: boolean;
-  clear_country_of_residence?: boolean;
 }) {
   return apiFetch<AuthUser>("/api/v1/auth/me", {
     method: "PATCH",

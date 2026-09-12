@@ -452,26 +452,15 @@ class AuthService:
             name = data["full_name"]
             user.full_name = name.strip() if isinstance(name, str) and name.strip() else None
 
-        phone_touched = (
-            payload.clear_phone
-            or "phone_number" in data
-            or "phone_country_code" in data
-        )
-        if phone_touched:
+        if "phone_number" in data or "phone_country_code" in data:
             previous = user.phone_number
-            if payload.clear_phone:
-                user.phone_number = None
-                user.phone_country_code = None
-            else:
-                user.phone_number = payload.phone_number
-                user.phone_country_code = payload.phone_country_code
+            user.phone_number = payload.phone_number
+            user.phone_country_code = payload.phone_country_code
             if user.phone_number != previous:
                 user.phone_verified = False
 
-        if payload.clear_country_of_residence or "country_of_residence" in data:
-            user.country_of_residence = (
-                None if payload.clear_country_of_residence else payload.country_of_residence
-            )
+        if "country_of_residence" in data:
+            user.country_of_residence = payload.country_of_residence
 
         self.db.add(user)
         self.db.commit()

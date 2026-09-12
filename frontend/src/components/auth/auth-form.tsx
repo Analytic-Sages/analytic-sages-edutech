@@ -72,6 +72,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [phoneCountry, setPhoneCountry] = useState<Country | undefined>("NG");
   const [residence, setResidence] = useState("");
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [residenceError, setResidenceError] = useState<string | null>(null);
 
   const {
     register,
@@ -127,8 +128,18 @@ export function AuthForm({ mode }: AuthFormProps) {
     setPhoneError(null);
     try {
       if (mode === "register") {
-        if (phone && !isValidPhoneNumber(phone)) {
+        setPhoneError(null);
+        setResidenceError(null);
+        if (!phone || !isValidPhoneNumber(phone)) {
           setPhoneError("Enter a valid phone number");
+          return;
+        }
+        if (!phoneCountry) {
+          setPhoneError("Select a phone country");
+          return;
+        }
+        if (!residence) {
+          setResidenceError("Select your country of residence");
           return;
         }
         await apiFetch<{ message: string }>("/api/v1/auth/register", {
@@ -138,9 +149,9 @@ export function AuthForm({ mode }: AuthFormProps) {
             email: data.email,
             password: data.password,
             full_name: data.full_name || null,
-            phone_number: phone || null,
-            phone_country_code: phone && phoneCountry ? phoneCountry : null,
-            country_of_residence: residence || null,
+            phone_number: phone,
+            phone_country_code: phoneCountry,
+            country_of_residence: residence,
             next: nextPath !== "/dashboard" ? nextPath : null,
           }),
         });
@@ -312,7 +323,14 @@ export function AuthForm({ mode }: AuthFormProps) {
                 }}
                 error={phoneError || undefined}
               />
-              <CountrySelectField value={residence} onChange={setResidence} />
+              <CountrySelectField
+                value={residence}
+                onChange={(next) => {
+                  setResidence(next);
+                  setResidenceError(null);
+                }}
+                error={residenceError || undefined}
+              />
             </>
           )}
           {formError && <p className="text-sm text-destructive">{formError}</p>}

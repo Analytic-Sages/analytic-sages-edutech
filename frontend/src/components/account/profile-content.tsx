@@ -38,6 +38,7 @@ export function ProfileContent() {
   const [phoneCountry, setPhoneCountry] = useState<Country | undefined>("NG");
   const [residence, setResidence] = useState("");
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [residenceError, setResidenceError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -70,22 +71,27 @@ export function ProfileContent() {
     setSaveError(null);
     setSaveSuccess(null);
     setPhoneError(null);
+    setResidenceError(null);
 
-    if (phone && !isValidPhoneNumber(phone)) {
+    if (!phone || !isValidPhoneNumber(phone)) {
       setPhoneError("Enter a valid phone number");
+      return;
+    }
+    if (!phoneCountry) {
+      setPhoneError("Select a phone country");
+      return;
+    }
+    if (!residence) {
+      setResidenceError("Select your country of residence");
       return;
     }
 
     setSaving(true);
     try {
-      const clearPhone = !phone;
-      const clearResidence = !residence;
       const updated = await updateMyProfile({
-        phone_number: clearPhone ? null : phone,
-        phone_country_code: clearPhone ? null : phoneCountry || null,
-        country_of_residence: clearResidence ? null : residence,
-        clear_phone: clearPhone,
-        clear_country_of_residence: clearResidence,
+        phone_number: phone,
+        phone_country_code: phoneCountry,
+        country_of_residence: residence,
       });
       setUser(updated);
       setPhone(updated.phone_number || "");
@@ -184,8 +190,7 @@ export function ProfileContent() {
         <CardHeader>
           <CardTitle className="text-lg">Contact details</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Optional phone and residence fields. Phone country and country of residence are stored
-            separately.
+            Phone country and country of residence are stored separately.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -199,7 +204,14 @@ export function ProfileContent() {
             }}
             error={phoneError || undefined}
           />
-          <CountrySelectField value={residence} onChange={setResidence} />
+          <CountrySelectField
+            value={residence}
+            onChange={(next) => {
+              setResidence(next);
+              setResidenceError(null);
+            }}
+            error={residenceError || undefined}
+          />
           {saveError ? <p className="text-sm text-destructive">{saveError}</p> : null}
           {saveSuccess ? <p className="text-sm text-success">{saveSuccess}</p> : null}
           <Button

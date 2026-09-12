@@ -27,7 +27,7 @@ type PhoneFieldProps = {
 export function PhoneField({
   id = "phone",
   label = "Phone / WhatsApp number",
-  hint = "Optional — useful for cohort and event updates.",
+  hint,
   value,
   country,
   onChange,
@@ -76,7 +76,7 @@ type CountrySelectFieldProps = {
 export function CountrySelectField({
   id = "country_of_residence",
   label = "Country of residence",
-  hint = "Optional — helps us improve programs and events for different regions.",
+  hint,
   value,
   onChange,
   error,
@@ -139,19 +139,6 @@ export function CountrySelectField({
             autoFocus
           />
           <ul className="max-h-48 overflow-y-auto" role="listbox">
-            <li>
-              <button
-                type="button"
-                className="w-full rounded-md px-2 py-2 text-left text-sm text-muted-foreground hover:bg-muted"
-                onClick={() => {
-                  onChange("");
-                  setQuery("");
-                  setOpen(false);
-                }}
-              >
-                Clear selection
-              </button>
-            </li>
             {filtered.map((opt) => (
               <li key={opt.code}>
                 <button
