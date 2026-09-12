@@ -43,8 +43,8 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-const selectClass =
-  "flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30";
+const selectBase =
+  "flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50";
 
 function buildSubject(data: FormData) {
   return `Partnership inquiry: ${data.organization} · ${data.goal}`.slice(0, 200);
@@ -71,9 +71,35 @@ function buildMessage(data: FormData) {
   return lines.join("\n").slice(0, 4000);
 }
 
-export function PartnershipInquiryForm({ className }: { className?: string }) {
+type PartnershipInquiryFormProps = {
+  className?: string;
+  /** Visual theme for light page sections vs navy CTA band. */
+  variant?: "light" | "dark";
+  /** Anchor id for CTAs (use once per page). */
+  anchorId?: string;
+  /** Prefix field ids when multiple forms exist on one page. */
+  idPrefix?: string;
+};
+
+export function PartnershipInquiryForm({
+  className,
+  variant = "dark",
+  anchorId,
+  idPrefix = "partner",
+}: PartnershipInquiryFormProps) {
   const [formError, setFormError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
+  const dark = variant === "dark";
+  const fid = (name: string) => `${idPrefix}-${name}`;
+
+  const labelClass = dark ? "text-white" : "text-foreground";
+  const inputClass = dark
+    ? "border-white/20 bg-white/5 text-white placeholder:text-white/40"
+    : undefined;
+  const selectClass = dark
+    ? cn(selectBase, "border-white/20 bg-white/5 text-white dark:bg-input/30")
+    : cn(selectBase, "dark:bg-input/30");
+  const errorClass = dark ? "text-sm text-brand-orange" : "text-sm text-destructive";
 
   const {
     register,
@@ -114,11 +140,33 @@ export function PartnershipInquiryForm({ className }: { className?: string }) {
 
   if (sentTo) {
     return (
-      <div className={cn("rounded-2xl border border-white/15 bg-white/5 p-6 sm:p-8", className)}>
-        <h3 className="font-heading text-xl font-semibold text-white">Conversation started</h3>
-        <p className="mt-3 text-sm leading-relaxed text-white/75 sm:text-base">
+      <div
+        id={anchorId}
+        className={cn(
+          "rounded-2xl border p-6 sm:p-8",
+          dark ? "border-white/15 bg-white/5" : "border-border bg-card",
+          className
+        )}
+      >
+        <h3
+          className={cn(
+            "font-heading text-xl font-semibold",
+            dark ? "text-white" : "text-foreground"
+          )}
+        >
+          Conversation started
+        </h3>
+        <p
+          className={cn(
+            "mt-3 text-sm leading-relaxed sm:text-base",
+            dark ? "text-white/75" : "text-muted-foreground"
+          )}
+        >
           Thanks. We received your partnership inquiry and will reply to{" "}
-          <span className="font-medium text-white">{sentTo}</span>. For urgent matters, email{" "}
+          <span className={cn("font-medium", dark ? "text-white" : "text-foreground")}>
+            {sentTo}
+          </span>
+          . For urgent matters, email{" "}
           <a
             href={`mailto:${siteConfig.emails.admin}`}
             className="font-medium text-brand-orange underline-offset-4 hover:underline"
@@ -133,84 +181,74 @@ export function PartnershipInquiryForm({ className }: { className?: string }) {
 
   return (
     <form
-      id="partner-inquiry"
+      id={anchorId}
       className={cn("space-y-5", className)}
       onSubmit={handleSubmit(onSubmit)}
       noValidate
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="fullName" className="text-white">
+          <Label htmlFor={fid("fullName")} className={labelClass}>
             Full Name *
           </Label>
           <Input
-            id="fullName"
+            id={fid("fullName")}
             autoComplete="name"
-            className="border-white/20 bg-white/5 text-white placeholder:text-white/40"
+            className={inputClass}
             {...register("fullName")}
           />
-          {errors.fullName ? (
-            <p className="text-sm text-brand-orange">{errors.fullName.message}</p>
-          ) : null}
+          {errors.fullName ? <p className={errorClass}>{errors.fullName.message}</p> : null}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="workEmail" className="text-white">
+          <Label htmlFor={fid("workEmail")} className={labelClass}>
             Work Email *
           </Label>
           <Input
-            id="workEmail"
+            id={fid("workEmail")}
             type="email"
             autoComplete="email"
-            className="border-white/20 bg-white/5 text-white placeholder:text-white/40"
+            className={inputClass}
             {...register("workEmail")}
           />
-          {errors.workEmail ? (
-            <p className="text-sm text-brand-orange">{errors.workEmail.message}</p>
-          ) : null}
+          {errors.workEmail ? <p className={errorClass}>{errors.workEmail.message}</p> : null}
         </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="organization" className="text-white">
+          <Label htmlFor={fid("organization")} className={labelClass}>
             Company / Organization *
           </Label>
           <Input
-            id="organization"
+            id={fid("organization")}
             autoComplete="organization"
-            className="border-white/20 bg-white/5 text-white placeholder:text-white/40"
+            className={inputClass}
             {...register("organization")}
           />
           {errors.organization ? (
-            <p className="text-sm text-brand-orange">{errors.organization.message}</p>
+            <p className={errorClass}>{errors.organization.message}</p>
           ) : null}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="website" className="text-white">
+          <Label htmlFor={fid("website")} className={labelClass}>
             Website *
           </Label>
           <Input
-            id="website"
+            id={fid("website")}
             placeholder="https://"
-            className="border-white/20 bg-white/5 text-white placeholder:text-white/40"
+            className={inputClass}
             {...register("website")}
           />
-          {errors.website ? (
-            <p className="text-sm text-brand-orange">{errors.website.message}</p>
-          ) : null}
+          {errors.website ? <p className={errorClass}>{errors.website.message}</p> : null}
         </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="organizationType" className="text-white">
+          <Label htmlFor={fid("organizationType")} className={labelClass}>
             Organization Type *
           </Label>
-          <select
-            id="organizationType"
-            className={cn(selectClass, "border-white/20 bg-white/5 text-white")}
-            {...register("organizationType")}
-          >
+          <select id={fid("organizationType")} className={selectClass} {...register("organizationType")}>
             <option value="" className="text-foreground">
               Select type
             </option>
@@ -221,28 +259,24 @@ export function PartnershipInquiryForm({ className }: { className?: string }) {
             ))}
           </select>
           {errors.organizationType ? (
-            <p className="text-sm text-brand-orange">{errors.organizationType.message}</p>
+            <p className={errorClass}>{errors.organizationType.message}</p>
           ) : null}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="primaryEcosystem" className="text-white">
+          <Label htmlFor={fid("primaryEcosystem")} className={labelClass}>
             Primary Ecosystem / Protocol
           </Label>
-          <Input
-            id="primaryEcosystem"
-            className="border-white/20 bg-white/5 text-white placeholder:text-white/40"
-            {...register("primaryEcosystem")}
-          />
+          <Input id={fid("primaryEcosystem")} className={inputClass} {...register("primaryEcosystem")} />
         </div>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="goal" className="text-white">
+        <Label htmlFor={fid("goal")} className={labelClass}>
           What are you looking to achieve? *
         </Label>
         <select
-          id="goal"
-          className={cn(selectClass, "h-auto min-h-10 border-white/20 bg-white/5 text-white")}
+          id={fid("goal")}
+          className={cn(selectClass, "h-auto min-h-10")}
           {...register("goal")}
         >
           <option value="" className="text-foreground">
@@ -254,19 +288,15 @@ export function PartnershipInquiryForm({ className }: { className?: string }) {
             </option>
           ))}
         </select>
-        {errors.goal ? <p className="text-sm text-brand-orange">{errors.goal.message}</p> : null}
+        {errors.goal ? <p className={errorClass}>{errors.goal.message}</p> : null}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="space-y-2">
-          <Label htmlFor="programInterest" className="text-white">
+          <Label htmlFor={fid("programInterest")} className={labelClass}>
             Program Interest
           </Label>
-          <select
-            id="programInterest"
-            className={cn(selectClass, "border-white/20 bg-white/5 text-white")}
-            {...register("programInterest")}
-          >
+          <select id={fid("programInterest")} className={selectClass} {...register("programInterest")}>
             <option value="" className="text-foreground">
               Optional
             </option>
@@ -278,14 +308,10 @@ export function PartnershipInquiryForm({ className }: { className?: string }) {
           </select>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="targetRegion" className="text-white">
+          <Label htmlFor={fid("targetRegion")} className={labelClass}>
             Target Region
           </Label>
-          <select
-            id="targetRegion"
-            className={cn(selectClass, "border-white/20 bg-white/5 text-white")}
-            {...register("targetRegion")}
-          >
+          <select id={fid("targetRegion")} className={selectClass} {...register("targetRegion")}>
             <option value="" className="text-foreground">
               Optional
             </option>
@@ -297,14 +323,10 @@ export function PartnershipInquiryForm({ className }: { className?: string }) {
           </select>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="timeline" className="text-white">
+          <Label htmlFor={fid("timeline")} className={labelClass}>
             Timeline
           </Label>
-          <select
-            id="timeline"
-            className={cn(selectClass, "border-white/20 bg-white/5 text-white")}
-            {...register("timeline")}
-          >
+          <select id={fid("timeline")} className={selectClass} {...register("timeline")}>
             <option value="" className="text-foreground">
               Optional
             </option>
@@ -318,19 +340,19 @@ export function PartnershipInquiryForm({ className }: { className?: string }) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="additionalContext" className="text-white">
+        <Label htmlFor={fid("additionalContext")} className={labelClass}>
           Additional Context
         </Label>
         <Textarea
-          id="additionalContext"
+          id={fid("additionalContext")}
           rows={4}
-          className="border-white/20 bg-white/5 text-white placeholder:text-white/40"
+          className={inputClass}
           placeholder="Share priorities, technical stack, or anything that helps us prepare."
           {...register("additionalContext")}
         />
       </div>
 
-      {formError ? <p className="text-sm text-brand-orange">{formError}</p> : null}
+      {formError ? <p className={errorClass}>{formError}</p> : null}
 
       <Button
         type="submit"

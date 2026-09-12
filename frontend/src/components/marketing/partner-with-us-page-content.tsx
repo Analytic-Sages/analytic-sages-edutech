@@ -194,6 +194,29 @@ export function PartnerWithUsPageContent() {
         </div>
       </SectionShell>
 
+      {/* Mid-page inquiry — early conversion for users who don't scroll to the footer CTA */}
+      <SectionShell id="partner-inquiry" variant="dots" className="bg-brand-surface">
+        <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start lg:gap-16">
+          <FadeIn>
+            <p className={eyebrowClass}>Partner with us</p>
+            <h2 className="mt-4 font-heading text-3xl font-bold tracking-tight sm:text-4xl">
+              Start a partnership conversation
+            </h2>
+            <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
+              Tell us about your ecosystem goals. We&apos;ll follow up to explore fit.
+            </p>
+            <p className="mt-6 text-sm text-muted-foreground">
+              Protocols · Foundations · Infrastructure Companies · Ecosystem Teams
+            </p>
+          </FadeIn>
+          <FadeIn delay={0.06}>
+            <div className="rounded-2xl border bg-card p-6 shadow-card sm:p-8">
+              <PartnershipInquiryForm variant="light" idPrefix="partner-mid" />
+            </div>
+          </FadeIn>
+        </div>
+      </SectionShell>
+
       {/* What we build */}
       <SectionShell id="our-work" variant="dots">
         <FadeIn className="max-w-3xl">
@@ -540,7 +563,7 @@ export function PartnerWithUsPageContent() {
               </p>
               <div className="mt-8 flex flex-wrap gap-4">
                 <ButtonLink
-                  href="#partner-inquiry"
+                  href="#partner-inquiry-footer"
                   className="h-12 bg-brand-orange px-8 text-base text-white hover:bg-brand-orange/90"
                 >
                   Partner With Analytic Sages
@@ -559,13 +582,16 @@ export function PartnerWithUsPageContent() {
               </p>
             </FadeIn>
             <FadeIn delay={0.08}>
-              <div className="rounded-2xl border border-white/15 bg-white/5 p-6 sm:p-8">
+              <div
+                id="partner-inquiry-footer"
+                className="rounded-2xl border border-white/15 bg-white/5 p-6 sm:p-8"
+              >
                 <h3 className="font-heading text-xl font-semibold">Start a partnership conversation</h3>
                 <p className="mt-2 text-sm text-white/65">
                   Tell us about your ecosystem goals. We&apos;ll follow up to explore fit.
                 </p>
                 <div className="mt-6">
-                  <PartnershipInquiryForm />
+                  <PartnershipInquiryForm variant="dark" idPrefix="partner-bottom" />
                 </div>
               </div>
             </FadeIn>
