@@ -18,6 +18,22 @@ QA_EVENT_TITLES = (
     "Test Dune Workshop",
 )
 
+# Bundled frontend/public assets — durable until object storage replaces /api/v1/media uploads.
+STATIC_EVENT_COVERS = {
+    "data-infastructure": "/build-on-blockchain.jpg",
+    "build-a-blockchain-token-intelligence-pipeline": "/token-intelligence-pipeline.jpg",
+}
+
+
+def apply_static_event_covers(db: Session) -> None:
+    """Point known live events at public flyer paths (durable until object storage)."""
+    for slug, cover in STATIC_EVENT_COVERS.items():
+        event = db.scalar(select(Event).where(Event.slug == slug))
+        if event is None:
+            continue
+        if (event.cover_image or "").strip() != cover:
+            event.cover_image = cover
+
 
 def unpublish_pytest_events(db: Session) -> None:
     leftovers = db.scalars(
@@ -37,6 +53,7 @@ def unpublish_pytest_events(db: Session) -> None:
 
 def seed_featured_event(db: Session) -> Event | None:
     unpublish_pytest_events(db)
+    apply_static_event_covers(db)
     leftover = db.scalar(select(Event).where(Event.slug == TEST_EVENT_SLUG))
     if leftover:
         db.delete(leftover)
