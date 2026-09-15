@@ -459,14 +459,14 @@ export const courses: Course[] = [
     slug: "blockchain-data-engineering",
     title: "Blockchain Data Engineering",
     description:
-      "Learn how modern blockchain datasets are collected, transformed, and served at scale using Python, dbt, PostgreSQL, and cloud infrastructure.",
+      "Learn how to extract, transform, store and deploy real onchain data pipelines using Python, SQL, Web3.py, PostgreSQL, dbt and modern data engineering tools.",
     longDescription:
-      "Go beyond queries and learn to architect indexers, ETL pipelines, and data infrastructure for multi-chain analytics. Covers PostgreSQL, ClickHouse, Airflow, and real-world scaling patterns used by analytics teams.",
+      "Learn Blockchain Data Engineering by building real onchain data systems - pipelines, warehouses, transformations, APIs and cloud deployment. Don't just learn tools. Learn how the system connects - from blockchain RPCs to production data products.",
     thumbnail: "/blockchain-data-engineering.png",
     category: "Data Engineering",
     difficulty: "Intermediate",
-    duration: "12 weeks",
-    lessonsCount: 44,
+    duration: "10 weeks",
+    lessonsCount: 30,
     price: 0,
     currency: "USD",
     comingSoon: true,
@@ -477,7 +477,7 @@ export const courses: Course[] = [
     },
     rating: 4.8,
     studentsCount: 920,
-    skills: ["ETL pipelines", "Indexers", "PostgreSQL", "Airflow", "Multi-chain data"],
+    skills: ["Python", "SQL", "Web3.py", "PostgreSQL", "dbt", "ETL pipelines"],
     requirements: ["Intermediate SQL", "Basic Python", "Understanding of blockchain basics"],
     roleDescription:
       "Learn how modern blockchain datasets are collected, transformed, and served at scale using Python, dbt, PostgreSQL, and cloud infrastructure.",

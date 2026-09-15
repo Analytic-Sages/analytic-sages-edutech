@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowRight, Clock, Star, Users } from "lucide-react";
 import { CatalogOfferBadges } from "@/components/course/catalog-offer-badges";
 import { Badge } from "@/components/ui/badge";
-import { ButtonLink } from "@/components/ui/button-link";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { catalogBrowseCta, catalogFooterPriceLabel } from "@/lib/catalog-price";
@@ -39,14 +39,20 @@ export function CourseCard({ course, variant = "catalog", className }: CourseCar
   const careerOutcomes = course.careerOutcomes ?? [];
   const priceLabel = catalogFooterPriceLabel(course);
   const browseCta = catalogBrowseCta(course);
+  const ctaLabel = variant === "enrolled" ? enrolledCta : browseCta;
 
   return (
     <Card
       className={cn(
-        "group overflow-hidden rounded-2xl shadow-card transition-all duration-300 hover:-translate-y-1.5 hover:shadow-float",
+        "group relative overflow-hidden rounded-2xl shadow-card transition-all duration-300 hover:-translate-y-1.5 hover:shadow-float",
         className
       )}
     >
+      <Link
+        href={href}
+        className="absolute inset-0 z-10"
+        aria-label={`${ctaLabel}: ${course.title}`}
+      />
       <div className="relative aspect-video overflow-hidden bg-brand-surface">
         <Image
           src={course.thumbnail}
@@ -96,7 +102,7 @@ export function CourseCard({ course, variant = "catalog", className }: CourseCar
           </span>
         </div>
         <CardTitle className="line-clamp-2 text-xl leading-snug group-hover:text-brand-navy dark:group-hover:text-brand-orange">
-          <Link href={href}>{course.title}</Link>
+          {course.title}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -157,23 +163,23 @@ export function CourseCard({ course, variant = "catalog", className }: CourseCar
         <span className="font-heading text-lg font-bold text-brand-navy dark:text-brand-orange">
           {priceLabel}
         </span>
-        <ButtonLink
-          href={href}
-          size="sm"
+        <span
+          aria-hidden
           className={cn(
-            "shrink-0",
+            buttonVariants({ size: "sm" }),
+            "pointer-events-none shrink-0",
             variant === "enrolled"
-              ? "bg-brand-navy hover:bg-brand-navy/90"
+              ? "bg-brand-navy text-white hover:bg-brand-navy/90"
               : course.comingSoon
                 ? "bg-muted text-foreground hover:bg-muted"
-                : "bg-brand-orange hover:bg-brand-orange/90",
-            !course.comingSoon && "text-white",
-            "transition-all hover:-translate-y-0.5"
+                : "bg-brand-orange text-white hover:bg-brand-orange/90",
+            !course.comingSoon && variant !== "enrolled" && "text-white",
+            "transition-all group-hover:-translate-y-0.5"
           )}
         >
-          {variant === "enrolled" ? enrolledCta : browseCta}
+          {ctaLabel}
           {variant !== "enrolled" ? <ArrowRight className="ml-1 size-3.5" /> : null}
-        </ButtonLink>
+        </span>
       </CardFooter>
     </Card>
   );

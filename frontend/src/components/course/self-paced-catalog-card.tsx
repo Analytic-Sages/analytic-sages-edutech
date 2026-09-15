@@ -2,10 +2,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Clock, Layers } from "lucide-react";
 import { CatalogOfferBadges } from "@/components/course/catalog-offer-badges";
-import { ButtonLink } from "@/components/ui/button-link";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { catalogBrowseCta, catalogFooterPriceLabel } from "@/lib/catalog-price";
 import type { SelfPacedCourseCard as SelfPacedCourseCardType } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 export function SelfPacedCatalogCard({
   course,
@@ -26,7 +27,12 @@ export function SelfPacedCatalogCard({
   const cta = catalogBrowseCta(offer);
 
   return (
-    <Card className="overflow-hidden rounded-2xl shadow-card transition-all duration-300 hover:-translate-y-1.5 hover:shadow-float">
+    <Card className="group relative overflow-hidden rounded-2xl shadow-card transition-all duration-300 hover:-translate-y-1.5 hover:shadow-float">
+      <Link
+        href={href}
+        className="absolute inset-0 z-10"
+        aria-label={`${cta}: ${course.title}`}
+      />
       <div className="relative aspect-video overflow-hidden bg-brand-surface">
         <Image
           src={thumb}
@@ -43,8 +49,8 @@ export function SelfPacedCatalogCard({
         />
       </div>
       <CardHeader>
-        <CardTitle className="line-clamp-2 text-xl leading-snug">
-          <Link href={href}>{course.title}</Link>
+        <CardTitle className="line-clamp-2 text-xl leading-snug group-hover:text-brand-navy dark:group-hover:text-brand-orange">
+          {course.title}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -66,14 +72,16 @@ export function SelfPacedCatalogCard({
         <span className="font-heading text-lg font-bold text-brand-navy dark:text-brand-orange">
           {priceLabel}
         </span>
-        <ButtonLink
-          href={href}
-          size="sm"
-          className="shrink-0 bg-brand-orange text-white hover:bg-brand-orange/90"
+        <span
+          aria-hidden
+          className={cn(
+            buttonVariants({ size: "sm" }),
+            "pointer-events-none shrink-0 bg-brand-orange text-white hover:bg-brand-orange/90"
+          )}
         >
           {cta}
           <ArrowRight className="ml-1 size-3.5" />
-        </ButtonLink>
+        </span>
       </CardFooter>
     </Card>
   );

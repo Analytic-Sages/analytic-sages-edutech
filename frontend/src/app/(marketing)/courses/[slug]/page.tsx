@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import { CheckCircle, Clock, Star, Users } from "lucide-react";
+import { BlockchainDataEngineeringLanding } from "@/components/marketing/blockchain-data-engineering-landing";
 import { SelfPacedCourseLanding } from "@/components/course/self-paced-course-landing";
 import { CourseEnrollCta } from "@/components/course/course-enroll-cta";
 import { PageHeader } from "@/components/layout/page-header";
@@ -10,8 +11,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ApiError, getSelfPacedCourse, type SelfPacedCoursePublic } from "@/lib/api";
 import { getCourseBySlug } from "@/lib/mock-data";
+import { getEngineeringProgramPage } from "@/lib/program-pages";
 import { featuredSelfPacedCourse } from "@/lib/self-paced";
-import { breadcrumbJsonLd, courseJsonLd, pageMetadata } from "@/lib/seo";
+import {
+  breadcrumbJsonLd,
+  courseJsonLd,
+  educationalProgramJsonLd,
+  pageMetadata,
+} from "@/lib/seo";
 import { JsonLd } from "@/components/seo/json-ld";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +36,15 @@ async function loadSelfPaced(slug: string): Promise<SelfPacedCoursePublic | null
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
+  const engineering = getEngineeringProgramPage(slug);
+  if (engineering) {
+    return pageMetadata({
+      title: engineering.seoTitle,
+      description: engineering.seoDescription,
+      path: `/courses/${engineering.pageSlug}`,
+      image: engineering.postcardImage,
+    });
+  }
   const live = (await loadSelfPaced(slug)) ?? featuredSelfPacedCourse(slug);
   if (live) {
     const description =
@@ -47,6 +63,43 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function CourseDetailsPage({ params }: Props) {
   const { slug } = await params;
+  const engineering = getEngineeringProgramPage(slug);
+  if (engineering) {
+    return (
+      <>
+        <JsonLd
+          data={educationalProgramJsonLd({
+            name: engineering.h1,
+            description: engineering.seoDescription,
+            path: `/courses/${engineering.pageSlug}`,
+            image: engineering.postcardImage,
+            timeToComplete: "P10W",
+            educationalProgramMode: engineering.learningMode,
+          })}
+        />
+        <JsonLd
+          data={courseJsonLd({
+            name: engineering.h1,
+            description: engineering.seoDescription,
+            path: `/courses/${engineering.pageSlug}`,
+            image: engineering.postcardImage,
+          })}
+        />
+        <JsonLd
+          data={breadcrumbJsonLd([
+            { name: "Home", path: "/" },
+            { name: "Self-Paced Courses", path: "/courses" },
+            { name: engineering.h1, path: `/courses/${engineering.pageSlug}` },
+          ])}
+        />
+        <BlockchainDataEngineeringLanding
+          program={engineering}
+          enrollmentMode="self-paced-coming-soon"
+        />
+      </>
+    );
+  }
+
   const live = (await loadSelfPaced(slug)) ?? featuredSelfPacedCourse(slug);
   if (live) {
     const description =
@@ -83,36 +136,36 @@ export default async function CourseDetailsPage({ params }: Props) {
         <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
           <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
             <div>
-          <PageHeader
-            breadcrumbs={[
-              { label: "Courses", href: "/courses" },
-              { label: course.title },
-            ]}
-            title={course.title}
-            description={course.description}
-          />
-          <div className="mt-6 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-            <Badge>{course.category}</Badge>
-            <Badge variant="outline">{course.difficulty}</Badge>
-            <span className="flex items-center gap-1">
-              <Star className="size-4 fill-brand-orange text-brand-orange" />
-              {course.rating}
-            </span>
-            <span className="flex items-center gap-1">
-              <Users className="size-4" />
-              {course.studentsCount.toLocaleString()} students
-            </span>
-            <span className="flex items-center gap-1">
-              <Clock className="size-4" />
-              {course.duration}
-            </span>
-          </div>
-          <CourseEnrollCta
-            slug={course.slug}
-            price={course.price}
-            currency={course.currency}
-            comingSoon={course.comingSoon}
-          />
+              <PageHeader
+                breadcrumbs={[
+                  { label: "Courses", href: "/courses" },
+                  { label: course.title },
+                ]}
+                title={course.title}
+                description={course.description}
+              />
+              <div className="mt-6 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                <Badge>{course.category}</Badge>
+                <Badge variant="outline">{course.difficulty}</Badge>
+                <span className="flex items-center gap-1">
+                  <Star className="size-4 fill-brand-orange text-brand-orange" />
+                  {course.rating}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Users className="size-4" />
+                  {course.studentsCount.toLocaleString()} students
+                </span>
+                <span className="flex items-center gap-1">
+                  <Clock className="size-4" />
+                  {course.duration}
+                </span>
+              </div>
+              <CourseEnrollCta
+                slug={course.slug}
+                price={course.price}
+                currency={course.currency}
+                comingSoon={course.comingSoon}
+              />
             </div>
             <div className="relative aspect-video overflow-hidden rounded-xl shadow-elevated">
               <Image
