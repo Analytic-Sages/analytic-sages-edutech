@@ -371,19 +371,29 @@ class PaymentService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
         return payment
 
-    def reconcile_nowpayments_payment(self, *, order_id: str, payment_id: str) -> Payment:
-        """Admin fallback for missed/failed IPNs: pull the live status straight from NOWPayments.
-
-        Requires the admin to supply the exact payment_id from the NOWPayments dashboard so a
-        pending order can never be confirmed without a real, matching payment record to back it.
-        """
+    def reconcile_payment(self, *, order_id: str, payment_id: str | None = None) -> Payment:
+        """Admin fallback for missed/failed webhooks: pull the live status straight from the provider."""
         payment = self.db.scalar(select(Payment).where(Payment.order_id == order_id))
         if not payment:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
-        if payment.provider != PaymentProviderName.NOWPAYMENTS:
+
+        if payment.provider == PaymentProviderName.NOWPAYMENTS:
+            return self._reconcile_nowpayments_payment(payment, payment_id=payment_id)
+        if payment.provider == PaymentProviderName.PAYSTACK:
+            return self._reconcile_paystack_payment(payment)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reconciliation is not supported for this provider",
+        )
+
+    def _reconcile_nowpayments_payment(self, payment: Payment, *, payment_id: str | None) -> Payment:
+        """Requires the admin to supply the exact payment_id from the NOWPayments dashboard so a
+        pending order can never be confirmed without a real, matching payment record to back it.
+        """
+        if not payment_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Payment is not a NOWPayments order",
+                detail="Enter the NOWPayments payment ID to reconcile this order",
             )
 
         from app.payments.nowpayments_provider import NOWPaymentsProvider, map_nowpayments_status
@@ -401,7 +411,7 @@ class PaymentService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="No NOWPayments payment found with that payment ID",
             )
-        if str(record.get("order_id") or "") != order_id:
+        if str(record.get("order_id") or "") != payment.order_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="That payment ID belongs to a different order",
@@ -409,9 +419,9 @@ class PaymentService:
 
         event = WebhookEvent(
             provider=PaymentProviderName.NOWPAYMENTS,
-            order_id=order_id,
+            order_id=payment.order_id,
             provider_payment_id=str(
-                record.get("payment_id") or record.get("invoice_id") or order_id
+                record.get("payment_id") or record.get("invoice_id") or payment.order_id
             ),
             status=map_nowpayments_status(str(record.get("payment_status") or "")),
             crypto_currency=record.get("pay_currency"),
@@ -419,6 +429,35 @@ class PaymentService:
                 str(record["pay_amount"]) if record.get("pay_amount") is not None else None
             ),
             raw={**record, "reconciled_by_admin": True},
+        )
+        return self.process_webhook_event(event)
+
+    def _reconcile_paystack_payment(self, payment: Payment) -> Payment:
+        """No admin input needed: Paystack verify is keyed by our own stored reference."""
+        from app.payments.paystack_provider import PaystackProvider
+
+        provider = get_payment_provider(PaymentProviderName.PAYSTACK, self.settings)
+        if not isinstance(provider, PaystackProvider) or not provider.is_live:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Paystack live mode is not configured",
+            )
+        if not payment.provider_payment_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No Paystack reference stored for this order",
+            )
+
+        verified = provider.fetch_verified_transaction(payment.provider_payment_id)
+        paystack_status = str(verified.get("status") or "").lower()
+        event = WebhookEvent(
+            provider=PaymentProviderName.PAYSTACK,
+            order_id=payment.order_id,
+            provider_payment_id=str(verified.get("id") or payment.provider_payment_id),
+            status=provider.map_status(event="charge.success", paystack_status=paystack_status),
+            crypto_currency=None,
+            crypto_amount=None,
+            raw={"verified": verified, "reconciled_by_admin": True},
         )
         return self.process_webhook_event(event)
 

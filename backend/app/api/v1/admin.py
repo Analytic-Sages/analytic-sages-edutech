@@ -104,9 +104,7 @@ def admin_reconcile_payment(
     admin: AdminService = Depends(get_admin_service),
     payment_service: PaymentService = Depends(get_payment_service),
 ) -> AdminPaymentRow:
-    payment = payment_service.reconcile_nowpayments_payment(
-        order_id=order_id, payment_id=payload.payment_id
-    )
+    payment = payment_service.reconcile_payment(order_id=order_id, payment_id=payload.payment_id)
     return admin.payment_row(payment)
 
 

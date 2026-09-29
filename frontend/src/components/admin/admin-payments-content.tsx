@@ -25,6 +25,7 @@ import {
 import { formatPrice } from "@/lib/mock-data";
 
 const RECONCILABLE_STATUSES = new Set(["pending", "confirming"]);
+const RECONCILABLE_PROVIDERS = new Set(["nowpayments", "paystack"]);
 // Real payments move off raw "pending" quickly once any funds arrive (IPN flips to
 // confirming/expired/failed). A plain "pending" row older than this is very likely
 // a visitor who never sent anything, not a stuck confirmation.
@@ -51,16 +52,15 @@ export function AdminPaymentsContent() {
     setOpenRowId((current) => (current === paymentRowId ? null : paymentRowId));
   }
 
-  async function handleReconcile(payment: AdminPaymentRow) {
-    const paymentId = paymentIdDraft.trim();
-    if (!paymentId) {
+  async function handleReconcile(payment: AdminPaymentRow, paymentId?: string) {
+    if (payment.provider === "nowpayments" && !paymentId?.trim()) {
       setReconcileError("Enter the NOWPayments payment ID shown in their dashboard.");
       return;
     }
     setReconcileError(null);
     setReconcilingId(payment.id);
     try {
-      const updated = await reconcileAdminPayment(payment.order_id, paymentId);
+      const updated = await reconcileAdminPayment(payment.order_id, paymentId?.trim());
       setPayments((rows) => rows.map((row) => (row.id === updated.id ? updated : row)));
       setOpenRowId(null);
       setPaymentIdDraft("");
@@ -158,7 +158,7 @@ export function AdminPaymentsContent() {
                     <div className="flex items-center gap-1.5">
                       <Badge className={paymentStatusClass(payment.status)}>{payment.status}</Badge>
                       {isStalePending(payment) && (
-                        <span className="text-xs text-muted-foreground" title="No NOWPayments activity within 24h — likely a visitor who never paid, not a stuck confirmation.">
+                        <span className="text-xs text-muted-foreground" title="No confirmed provider activity within 24h — likely a visitor who never paid, not a stuck confirmation.">
                           probably abandoned
                         </span>
                       )}
@@ -168,8 +168,9 @@ export function AdminPaymentsContent() {
                     {formatAdminDate(payment.confirmed_at || payment.created_at)}
                   </TableCell>
                   <TableCell>
-                    {payment.provider === "nowpayments" &&
-                      RECONCILABLE_STATUSES.has(payment.status) && (
+                    {RECONCILABLE_PROVIDERS.has(payment.provider) &&
+                      RECONCILABLE_STATUSES.has(payment.status) &&
+                      (payment.provider === "nowpayments" ? (
                         <div className="flex flex-col items-end gap-1">
                           {openRowId === payment.id ? (
                             <div className="flex items-center gap-1">
@@ -183,7 +184,7 @@ export function AdminPaymentsContent() {
                               <Button
                                 size="sm"
                                 disabled={reconcilingId === payment.id}
-                                onClick={() => handleReconcile(payment)}
+                                onClick={() => handleReconcile(payment, paymentIdDraft)}
                               >
                                 {reconcilingId === payment.id ? (
                                   <Loader2 className="size-4 animate-spin" />
@@ -214,7 +215,27 @@ export function AdminPaymentsContent() {
                             </p>
                           )}
                         </div>
-                      )}
+                      ) : (
+                        <div className="flex flex-col items-end gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={reconcilingId === payment.id}
+                            onClick={() => handleReconcile(payment)}
+                          >
+                            {reconcilingId === payment.id ? (
+                              <Loader2 className="size-4 animate-spin" />
+                            ) : (
+                              "Reconcile"
+                            )}
+                          </Button>
+                          {reconcilingId === null && reconcileError && (
+                            <p className="max-w-56 text-right text-xs text-destructive">
+                              {reconcileError}
+                            </p>
+                          )}
+                        </div>
+                      ))}
                   </TableCell>
                 </TableRow>
               ))}

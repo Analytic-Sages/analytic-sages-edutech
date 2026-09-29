@@ -36,7 +36,9 @@ class AdminPaymentRow(BaseModel):
 
 
 class ReconcilePaymentRequest(BaseModel):
-    payment_id: str = Field(min_length=1, description="NOWPayments payment_id from their dashboard")
+    payment_id: str | None = Field(
+        default=None, description="NOWPayments payment_id from their dashboard (not needed for Paystack)"
+    )
 
 
 class AdminCohortMemberRow(BaseModel):

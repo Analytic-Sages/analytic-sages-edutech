@@ -259,11 +259,11 @@ class PaystackProvider:
             )
 
         # Prefer live verify so we do not trust webhook body alone for fulfillment.
-        verified = self._fetch_verified_transaction(reference)
+        verified = self.fetch_verified_transaction(reference)
         order_id = self._order_id_from_reference(reference, verified, data)
 
         paystack_status = str(verified.get("status") or data.get("status") or "").lower()
-        payment_status = self._map_status(event=event, paystack_status=paystack_status)
+        payment_status = self.map_status(event=event, paystack_status=paystack_status)
 
         return WebhookEvent(
             provider=self.name,
@@ -279,7 +279,7 @@ class PaystackProvider:
             },
         )
 
-    def _fetch_verified_transaction(self, reference: str) -> dict[str, Any]:
+    def fetch_verified_transaction(self, reference: str) -> dict[str, Any]:
         secret = self.settings.paystack_secret_key
         url = f"{self._api_base()}/transaction/verify/{reference}"
         try:
@@ -337,7 +337,7 @@ class PaystackProvider:
         return reference
 
     @staticmethod
-    def _map_status(*, event: str, paystack_status: str) -> PaymentStatus:
+    def map_status(*, event: str, paystack_status: str) -> PaymentStatus:
         if event == "charge.success" and paystack_status == "success":
             return PaymentStatus.CONFIRMED
         if event in {"charge.failed", "paymentrequest.failed"} or paystack_status in {
