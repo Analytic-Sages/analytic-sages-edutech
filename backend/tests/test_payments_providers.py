@@ -190,7 +190,7 @@ def test_live_create_invoice_posts_to_nowpayments():
     )
 
 
-def test_fetch_payment_by_order_id_returns_matching_record():
+def test_fetch_payment_by_id_returns_record():
     settings = _settings(
         nowpayments_api_key="live-key",
         nowpayments_ipn_secret="ipn-secret",
@@ -201,10 +201,9 @@ def test_fetch_payment_by_order_id_returns_matching_record():
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.json.return_value = {
-        "data": [
-            {"order_id": "other_order", "payment_id": 111, "payment_status": "waiting"},
-            {"order_id": "ord_test123", "payment_id": 987, "payment_status": "finished"},
-        ]
+        "order_id": "ord_test123",
+        "payment_id": 987,
+        "payment_status": "finished",
     }
 
     mock_client = MagicMock()
@@ -212,15 +211,16 @@ def test_fetch_payment_by_order_id_returns_matching_record():
     mock_client.get.return_value = mock_response
 
     with patch("app.payments.nowpayments_provider.httpx.Client", return_value=mock_client):
-        record = provider.fetch_payment_by_order_id("ord_test123")
+        record = provider.fetch_payment_by_id("987")
 
     assert record is not None
     assert record["payment_id"] == 987
     args, kwargs = mock_client.get.call_args
-    assert kwargs["params"]["orderId"] == "ord_test123"
+    assert args[0] == "https://api.nowpayments.io/v1/payment/987"
+    assert kwargs["headers"]["x-api-key"] == "live-key"
 
 
-def test_fetch_payment_by_order_id_returns_none_when_no_match():
+def test_fetch_payment_by_id_returns_none_on_404():
     settings = _settings(
         nowpayments_api_key="live-key",
         nowpayments_ipn_secret="ipn-secret",
@@ -228,15 +228,14 @@ def test_fetch_payment_by_order_id_returns_none_when_no_match():
     provider = get_payment_provider(PaymentProviderName.NOWPAYMENTS, settings)
 
     mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {"data": []}
+    mock_response.status_code = 404
 
     mock_client = MagicMock()
     mock_client.__enter__.return_value = mock_client
     mock_client.get.return_value = mock_response
 
     with patch("app.payments.nowpayments_provider.httpx.Client", return_value=mock_client):
-        record = provider.fetch_payment_by_order_id("ord_missing")
+        record = provider.fetch_payment_by_id("does-not-exist")
 
     assert record is None
 

@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -31,13 +32,28 @@ export function AdminPaymentsContent() {
   const [loading, setLoading] = useState(true);
   const [reconcilingId, setReconcilingId] = useState<string | null>(null);
   const [reconcileError, setReconcileError] = useState<string | null>(null);
+  const [openRowId, setOpenRowId] = useState<string | null>(null);
+  const [paymentIdDraft, setPaymentIdDraft] = useState("");
+
+  function toggleReconcileForm(paymentRowId: string) {
+    setReconcileError(null);
+    setPaymentIdDraft("");
+    setOpenRowId((current) => (current === paymentRowId ? null : paymentRowId));
+  }
 
   async function handleReconcile(payment: AdminPaymentRow) {
+    const paymentId = paymentIdDraft.trim();
+    if (!paymentId) {
+      setReconcileError("Enter the NOWPayments payment ID shown in their dashboard.");
+      return;
+    }
     setReconcileError(null);
     setReconcilingId(payment.id);
     try {
-      const updated = await reconcileAdminPayment(payment.order_id);
+      const updated = await reconcileAdminPayment(payment.order_id, paymentId);
       setPayments((rows) => rows.map((row) => (row.id === updated.id ? updated : row)));
+      setOpenRowId(null);
+      setPaymentIdDraft("");
     } catch (err) {
       setReconcileError(
         err instanceof ApiError ? err.detail : "Failed to reconcile this payment"
@@ -92,7 +108,6 @@ export function AdminPaymentsContent() {
         title="Payments"
         description="Live Paystack and NOWPayments checkouts. A seat unlocks only after status is confirmed."
       />
-      {reconcileError && <p className="mb-4 text-sm text-destructive">{reconcileError}</p>}
       {payments.length === 0 ? (
         <EmptyState
           icon={<Loader2 className="size-6" />}
@@ -138,18 +153,50 @@ export function AdminPaymentsContent() {
                   <TableCell>
                     {payment.provider === "nowpayments" &&
                       RECONCILABLE_STATUSES.has(payment.status) && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={reconcilingId === payment.id}
-                          onClick={() => handleReconcile(payment)}
-                        >
-                          {reconcilingId === payment.id ? (
-                            <Loader2 className="size-4 animate-spin" />
+                        <div className="flex flex-col items-end gap-1">
+                          {openRowId === payment.id ? (
+                            <div className="flex items-center gap-1">
+                              <Input
+                                autoFocus
+                                placeholder="NOWPayments payment ID"
+                                value={paymentIdDraft}
+                                onChange={(event) => setPaymentIdDraft(event.target.value)}
+                                className="h-8 w-40 text-xs"
+                              />
+                              <Button
+                                size="sm"
+                                disabled={reconcilingId === payment.id}
+                                onClick={() => handleReconcile(payment)}
+                              >
+                                {reconcilingId === payment.id ? (
+                                  <Loader2 className="size-4 animate-spin" />
+                                ) : (
+                                  "Confirm"
+                                )}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleReconcileForm(payment.id)}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
                           ) : (
-                            "Reconcile"
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => toggleReconcileForm(payment.id)}
+                            >
+                              Reconcile
+                            </Button>
                           )}
-                        </Button>
+                          {openRowId === payment.id && reconcileError && (
+                            <p className="max-w-56 text-right text-xs text-destructive">
+                              {reconcileError}
+                            </p>
+                          )}
+                        </div>
                       )}
                   </TableCell>
                 </TableRow>

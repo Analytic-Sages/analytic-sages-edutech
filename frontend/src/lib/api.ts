@@ -1342,10 +1342,10 @@ export function getAdminPayments(limit = 200) {
   return apiFetch<AdminPaymentRow[]>(`/api/v1/admin/payments?limit=${limit}`);
 }
 
-export function reconcileAdminPayment(orderId: string) {
+export function reconcileAdminPayment(orderId: string, paymentId: string) {
   return apiFetch<AdminPaymentRow>(
     `/api/v1/admin/payments/${encodeURIComponent(orderId)}/reconcile`,
-    { method: "POST" }
+    { method: "POST", body: JSON.stringify({ payment_id: paymentId }) }
   );
 }
 

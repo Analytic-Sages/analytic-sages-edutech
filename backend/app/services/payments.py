@@ -371,8 +371,12 @@ class PaymentService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
         return payment
 
-    def reconcile_nowpayments_payment(self, *, order_id: str) -> Payment:
-        """Admin fallback for missed/failed IPNs: pull the live status straight from NOWPayments."""
+    def reconcile_nowpayments_payment(self, *, order_id: str, payment_id: str) -> Payment:
+        """Admin fallback for missed/failed IPNs: pull the live status straight from NOWPayments.
+
+        Requires the admin to supply the exact payment_id from the NOWPayments dashboard so a
+        pending order can never be confirmed without a real, matching payment record to back it.
+        """
         payment = self.db.scalar(select(Payment).where(Payment.order_id == order_id))
         if not payment:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
@@ -391,11 +395,16 @@ class PaymentService:
                 detail="NOWPayments live mode is not configured",
             )
 
-        record = provider.fetch_payment_by_order_id(order_id)
+        record = provider.fetch_payment_by_id(payment_id)
         if not record:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="No NOWPayments payment found for this order",
+                detail="No NOWPayments payment found with that payment ID",
+            )
+        if str(record.get("order_id") or "") != order_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="That payment ID belongs to a different order",
             )
 
         event = WebhookEvent(

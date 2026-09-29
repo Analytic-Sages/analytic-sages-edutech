@@ -113,8 +113,8 @@ class NOWPaymentsProvider:
         base = (self.settings.public_api_url or "http://localhost:8000").rstrip("/")
         return f"{base}/api/v1/webhooks/payments/nowpayments"
 
-    def fetch_payment_by_order_id(self, order_id: str) -> dict[str, Any] | None:
-        """Poll NOWPayments directly for an order's latest payment (missed/failed IPN fallback)."""
+    def fetch_payment_by_id(self, payment_id: str) -> dict[str, Any] | None:
+        """GET Payment Status (api-key auth). Used for admin reconciliation of missed IPNs."""
         api_key = self.settings.nowpayments_api_key
         if not api_key:
             raise HTTPException(
@@ -122,25 +122,24 @@ class NOWPaymentsProvider:
                 detail="NOWPayments is not configured",
             )
 
-        url = f"{self.settings.nowpayments_api_url.rstrip('/')}/payment/"
+        url = f"{self.settings.nowpayments_api_url.rstrip('/')}/payment/{payment_id}"
         try:
             with httpx.Client(timeout=30.0) as client:
-                response = client.get(
-                    url,
-                    headers={"x-api-key": api_key},
-                    params={"orderId": order_id, "limit": 100},
-                )
+                response = client.get(url, headers={"x-api-key": api_key})
         except httpx.HTTPError as exc:
-            logger.exception("NOWPayments payment lookup failed order_id=%s", order_id)
+            logger.exception("NOWPayments payment lookup failed payment_id=%s", payment_id)
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail="Unable to reach NOWPayments",
             ) from exc
 
+        if response.status_code == 404:
+            return None
+
         if response.status_code >= 400:
             logger.error(
-                "NOWPayments payment lookup error order_id=%s status=%s body=%s",
-                order_id,
+                "NOWPayments payment lookup error payment_id=%s status=%s body=%s",
+                payment_id,
                 response.status_code,
                 response.text[:500],
             )
@@ -150,23 +149,12 @@ class NOWPaymentsProvider:
             )
 
         try:
-            data = response.json()
+            return response.json()
         except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail="Invalid NOWPayments payment lookup response",
             ) from exc
-
-        records = [
-            record
-            for record in (data.get("data") or [])
-            if str(record.get("order_id") or "") == order_id
-        ]
-        if not records:
-            return None
-        # Prefer the most advanced payment record if there are re-deposits/retries.
-        records.sort(key=lambda record: record.get("payment_id") or 0)
-        return records[-1]
 
     def _create_invoice(self, request: CheckoutRequest) -> CheckoutSession:
         api_key = self.settings.nowpayments_api_key

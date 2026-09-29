@@ -35,6 +35,10 @@ class AdminPaymentRow(BaseModel):
     created_at: datetime
 
 
+class ReconcilePaymentRequest(BaseModel):
+    payment_id: str = Field(min_length=1, description="NOWPayments payment_id from their dashboard")
+
+
 class AdminCohortMemberRow(BaseModel):
     id: UUID
     user_id: UUID
