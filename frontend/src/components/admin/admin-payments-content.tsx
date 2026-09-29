@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -14,13 +15,37 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatAdminDate, paymentStatusClass } from "@/components/admin/admin-format";
-import { ApiError, getAdminPayments, type AdminPaymentRow } from "@/lib/api";
+import {
+  ApiError,
+  getAdminPayments,
+  reconcileAdminPayment,
+  type AdminPaymentRow,
+} from "@/lib/api";
 import { formatPrice } from "@/lib/mock-data";
+
+const RECONCILABLE_STATUSES = new Set(["pending", "confirming"]);
 
 export function AdminPaymentsContent() {
   const [payments, setPayments] = useState<AdminPaymentRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reconcilingId, setReconcilingId] = useState<string | null>(null);
+  const [reconcileError, setReconcileError] = useState<string | null>(null);
+
+  async function handleReconcile(payment: AdminPaymentRow) {
+    setReconcileError(null);
+    setReconcilingId(payment.id);
+    try {
+      const updated = await reconcileAdminPayment(payment.order_id);
+      setPayments((rows) => rows.map((row) => (row.id === updated.id ? updated : row)));
+    } catch (err) {
+      setReconcileError(
+        err instanceof ApiError ? err.detail : "Failed to reconcile this payment"
+      );
+    } finally {
+      setReconcilingId(null);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -67,6 +92,7 @@ export function AdminPaymentsContent() {
         title="Payments"
         description="Live Paystack and NOWPayments checkouts. A seat unlocks only after status is confirmed."
       />
+      {reconcileError && <p className="mb-4 text-sm text-destructive">{reconcileError}</p>}
       {payments.length === 0 ? (
         <EmptyState
           icon={<Loader2 className="size-6" />}
@@ -85,6 +111,7 @@ export function AdminPaymentsContent() {
                 <TableHead>Provider</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Date</TableHead>
+                <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -107,6 +134,23 @@ export function AdminPaymentsContent() {
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {formatAdminDate(payment.confirmed_at || payment.created_at)}
+                  </TableCell>
+                  <TableCell>
+                    {payment.provider === "nowpayments" &&
+                      RECONCILABLE_STATUSES.has(payment.status) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={reconcilingId === payment.id}
+                          onClick={() => handleReconcile(payment)}
+                        >
+                          {reconcilingId === payment.id ? (
+                            <Loader2 className="size-4 animate-spin" />
+                          ) : (
+                            "Reconcile"
+                          )}
+                        </Button>
+                      )}
                   </TableCell>
                 </TableRow>
               ))}

@@ -1342,6 +1342,13 @@ export function getAdminPayments(limit = 200) {
   return apiFetch<AdminPaymentRow[]>(`/api/v1/admin/payments?limit=${limit}`);
 }
 
+export function reconcileAdminPayment(orderId: string) {
+  return apiFetch<AdminPaymentRow>(
+    `/api/v1/admin/payments/${encodeURIComponent(orderId)}/reconcile`,
+    { method: "POST" }
+  );
+}
+
 export function getAdminCohort(slug: string) {
   return apiFetch<AdminCohortDetail>(`/api/v1/admin/cohorts/${encodeURIComponent(slug)}`);
 }

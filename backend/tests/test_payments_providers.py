@@ -190,6 +190,57 @@ def test_live_create_invoice_posts_to_nowpayments():
     )
 
 
+def test_fetch_payment_by_order_id_returns_matching_record():
+    settings = _settings(
+        nowpayments_api_key="live-key",
+        nowpayments_ipn_secret="ipn-secret",
+        nowpayments_api_url="https://api.nowpayments.io/v1",
+    )
+    provider = get_payment_provider(PaymentProviderName.NOWPAYMENTS, settings)
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "data": [
+            {"order_id": "other_order", "payment_id": 111, "payment_status": "waiting"},
+            {"order_id": "ord_test123", "payment_id": 987, "payment_status": "finished"},
+        ]
+    }
+
+    mock_client = MagicMock()
+    mock_client.__enter__.return_value = mock_client
+    mock_client.get.return_value = mock_response
+
+    with patch("app.payments.nowpayments_provider.httpx.Client", return_value=mock_client):
+        record = provider.fetch_payment_by_order_id("ord_test123")
+
+    assert record is not None
+    assert record["payment_id"] == 987
+    args, kwargs = mock_client.get.call_args
+    assert kwargs["params"]["orderId"] == "ord_test123"
+
+
+def test_fetch_payment_by_order_id_returns_none_when_no_match():
+    settings = _settings(
+        nowpayments_api_key="live-key",
+        nowpayments_ipn_secret="ipn-secret",
+    )
+    provider = get_payment_provider(PaymentProviderName.NOWPAYMENTS, settings)
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {"data": []}
+
+    mock_client = MagicMock()
+    mock_client.__enter__.return_value = mock_client
+    mock_client.get.return_value = mock_response
+
+    with patch("app.payments.nowpayments_provider.httpx.Client", return_value=mock_client):
+        record = provider.fetch_payment_by_order_id("ord_missing")
+
+    assert record is None
+
+
 def test_mock_paystack_when_secret_absent():
     settings = _settings()
     provider = get_payment_provider(PaymentProviderName.PAYSTACK, settings)

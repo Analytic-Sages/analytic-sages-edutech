@@ -1,6 +1,13 @@
 from fastapi import APIRouter, Depends, Query
 
-from app.api.deps import get_admin_service, get_auth_service, get_self_paced_service, require_admin, require_catalog_ops
+from app.api.deps import (
+    get_admin_service,
+    get_auth_service,
+    get_payment_service,
+    get_self_paced_service,
+    require_admin,
+    require_catalog_ops,
+)
 from app.models.user import User
 from app.schemas.admin import (
     AdminAnalytics,
@@ -14,6 +21,7 @@ from app.schemas.admin import (
 from app.schemas.self_paced import AdminCourseAnalytics, AdminCourseRow
 from app.services.admin import AdminService
 from app.services.auth import AuthService
+from app.services.payments import PaymentService
 from app.services.self_paced import SelfPacedService
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -85,6 +93,17 @@ def admin_payments(
     limit: int = Query(default=200, ge=1, le=500),
 ) -> list[AdminPaymentRow]:
     return admin.list_payments(limit=limit)
+
+
+@router.post("/payments/{order_id}/reconcile", response_model=AdminPaymentRow)
+def admin_reconcile_payment(
+    order_id: str,
+    _: User = Depends(require_admin),
+    admin: AdminService = Depends(get_admin_service),
+    payment_service: PaymentService = Depends(get_payment_service),
+) -> AdminPaymentRow:
+    payment = payment_service.reconcile_nowpayments_payment(order_id=order_id)
+    return admin.payment_row(payment)
 
 
 @router.get("/courses", response_model=list[AdminCourseRow])

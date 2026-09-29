@@ -371,6 +371,48 @@ class PaymentService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
         return payment
 
+    def reconcile_nowpayments_payment(self, *, order_id: str) -> Payment:
+        """Admin fallback for missed/failed IPNs: pull the live status straight from NOWPayments."""
+        payment = self.db.scalar(select(Payment).where(Payment.order_id == order_id))
+        if not payment:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
+        if payment.provider != PaymentProviderName.NOWPAYMENTS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Payment is not a NOWPayments order",
+            )
+
+        from app.payments.nowpayments_provider import NOWPaymentsProvider, map_nowpayments_status
+
+        provider = get_payment_provider(PaymentProviderName.NOWPAYMENTS, self.settings)
+        if not isinstance(provider, NOWPaymentsProvider) or not provider.is_live:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="NOWPayments live mode is not configured",
+            )
+
+        record = provider.fetch_payment_by_order_id(order_id)
+        if not record:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No NOWPayments payment found for this order",
+            )
+
+        event = WebhookEvent(
+            provider=PaymentProviderName.NOWPAYMENTS,
+            order_id=order_id,
+            provider_payment_id=str(
+                record.get("payment_id") or record.get("invoice_id") or order_id
+            ),
+            status=map_nowpayments_status(str(record.get("payment_status") or "")),
+            crypto_currency=record.get("pay_currency"),
+            crypto_amount=(
+                str(record["pay_amount"]) if record.get("pay_amount") is not None else None
+            ),
+            raw={**record, "reconciled_by_admin": True},
+        )
+        return self.process_webhook_event(event)
+
     def process_webhook_event(self, event: WebhookEvent) -> Payment:
         payment = self.db.scalar(select(Payment).where(Payment.order_id == event.order_id))
         if not payment:

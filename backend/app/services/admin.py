@@ -139,6 +139,9 @@ class AdminService:
     def list_payments(self, *, limit: int = 200) -> list[AdminPaymentRow]:
         return self._payment_rows(self._list_payments(limit=limit))
 
+    def payment_row(self, payment: Payment) -> AdminPaymentRow:
+        return self._payment_rows([payment])[0]
+
     def cohort_detail(self, slug: str) -> AdminCohortDetail:
         cohort = self.db.scalar(select(Cohort).where(Cohort.slug == slug))
         if not cohort:
