@@ -182,6 +182,16 @@ class Settings(BaseSettings):
             return True
         return bool(value)
 
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def pin_psycopg2_driver(cls, value: str) -> str:
+        """Force psycopg2 (the only driver we install) instead of SQLAlchemy's default resolution."""
+        if isinstance(value, str) and "+" not in value.split("://", 1)[0]:
+            scheme, _, rest = value.partition("://")
+            if scheme in {"postgres", "postgresql"}:
+                return f"postgresql+psycopg2://{rest}"
+        return value
+
 
 @lru_cache
 def get_settings() -> Settings:
