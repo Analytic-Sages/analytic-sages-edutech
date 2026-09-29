@@ -25,6 +25,16 @@ import {
 import { formatPrice } from "@/lib/mock-data";
 
 const RECONCILABLE_STATUSES = new Set(["pending", "confirming"]);
+// Real payments move off raw "pending" quickly once any funds arrive (IPN flips to
+// confirming/expired/failed). A plain "pending" row older than this is very likely
+// a visitor who never sent anything, not a stuck confirmation.
+const STALE_PENDING_HOURS = 24;
+
+function isStalePending(payment: AdminPaymentRow): boolean {
+  if (payment.status !== "pending") return false;
+  const ageMs = Date.now() - new Date(payment.created_at).getTime();
+  return ageMs > STALE_PENDING_HOURS * 60 * 60 * 1000;
+}
 
 export function AdminPaymentsContent() {
   const [payments, setPayments] = useState<AdminPaymentRow[]>([]);
@@ -145,7 +155,14 @@ export function AdminPaymentsContent() {
                   </TableCell>
                   <TableCell className="capitalize">{payment.provider}</TableCell>
                   <TableCell>
-                    <Badge className={paymentStatusClass(payment.status)}>{payment.status}</Badge>
+                    <div className="flex items-center gap-1.5">
+                      <Badge className={paymentStatusClass(payment.status)}>{payment.status}</Badge>
+                      {isStalePending(payment) && (
+                        <span className="text-xs text-muted-foreground" title="No NOWPayments activity within 24h — likely a visitor who never paid, not a stuck confirmation.">
+                          probably abandoned
+                        </span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {formatAdminDate(payment.confirmed_at || payment.created_at)}
