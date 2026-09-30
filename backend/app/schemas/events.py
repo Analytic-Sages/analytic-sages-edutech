@@ -282,7 +282,6 @@ class EventAdmin(BaseModel):
     cancelled: bool
     lifecycle: str
     registered_count: int = 0
-    registrants: list["EventRegistrantAdmin"] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 
@@ -297,3 +296,15 @@ class EventRegistrantAdmin(BaseModel):
     country_of_residence: str | None = None
     status: str
     registered_at: datetime
+
+
+class EventRegistrantEmailRequest(BaseModel):
+    recipient_user_ids: list[UUID] = Field(default_factory=list, max_length=500)
+    subject: str = Field(min_length=1, max_length=200)
+    message: str = Field(min_length=1, max_length=10000)
+    include_event_link: bool = True
+
+
+class EventRegistrantEmailResponse(BaseModel):
+    sent: int
+    failed: int = 0

@@ -282,6 +282,25 @@ class EmailService:
         )
         self._send(to=email, subject=f"You're registered · {event_title}", html=html, dev_label="event-rsvp", link=link)
 
+    def send_event_registrant_message(
+        self,
+        *,
+        email: str,
+        full_name: str | None,
+        subject: str,
+        message: str,
+        event_title: str,
+        event_link: str | None,
+    ) -> bool:
+        greeting = f"Hi {escape(full_name.split()[0])}," if full_name else "Hi,"
+        safe_message = escape(message).replace("\n", "<br>")
+        link_html = f'<p><a href="{escape(event_link)}">Open event page</a></p>' if event_link else ""
+        html = self._simple_html(
+            title=escape(subject),
+            body=f"<p>{greeting}</p><p>{safe_message}</p>{link_html}<p style=\"color:#666;font-size:12px\">Regarding: {escape(event_title)}</p>",
+        )
+        return self._send(to=email, subject=subject, html=html, dev_label="event-registrant-message", link=event_link or event_title)
+
     def add_subscriber(self, email: str) -> bool:
         """Add a guest email to the Insights Resend Audience / Segment. Idempotent."""
         address = email.strip().lower()

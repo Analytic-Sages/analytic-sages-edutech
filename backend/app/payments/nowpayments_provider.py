@@ -227,8 +227,8 @@ class NOWPaymentsProvider:
             provider=self.name,
             provider_payment_id=str(invoice_id),
             checkout_url=str(invoice_url),
-            crypto_currency=None,
-            crypto_amount=None,
+            crypto_currency=_as_optional_str(data.get("pay_currency")),
+            crypto_amount=_as_optional_str(data.get("pay_amount")),
             metadata={
                 "mode": "live",
                 "invoice_id": str(invoice_id),

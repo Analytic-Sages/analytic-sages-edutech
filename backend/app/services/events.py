@@ -244,25 +244,6 @@ class EventService:
             cancelled=event.cancelled,
             lifecycle=self.compute_lifecycle(event),
             registered_count=self._registered_count(event.id),
-            registrants=[
-                EventRegistrantAdmin(
-                    id=registration.id,
-                    user_id=registration.user_id,
-                    email=registration.user.email,
-                    full_name=registration.user.full_name,
-                    phone_number=registration.user.phone_number,
-                    phone_country_code=registration.user.phone_country_code,
-                    country_of_residence=registration.user.country_of_residence,
-                    status=registration.status.value,
-                    registered_at=registration.registered_at,
-                )
-                for registration in self.db.scalars(
-                    select(EventRegistration)
-                    .options(selectinload(EventRegistration.user))
-                    .where(EventRegistration.event_id == event.id)
-                    .order_by(EventRegistration.registered_at.desc())
-                ).all()
-            ],
             created_at=event.created_at,
             updated_at=event.updated_at,
         )
@@ -484,6 +465,28 @@ class EventService:
 
     def get_admin(self, event_id: UUID) -> EventAdmin:
         return self._admin(self._get_by_id(event_id))
+
+    def list_admin_registrants(self, event_id: UUID) -> list[EventRegistrantAdmin]:
+        event = self._get_by_id(event_id)
+        return [
+            EventRegistrantAdmin(
+                id=registration.id,
+                user_id=registration.user_id,
+                email=registration.user.email,
+                full_name=registration.user.full_name,
+                phone_number=registration.user.phone_number,
+                phone_country_code=registration.user.phone_country_code,
+                country_of_residence=registration.user.country_of_residence,
+                status=registration.status.value,
+                registered_at=registration.registered_at,
+            )
+            for registration in self.db.scalars(
+                select(EventRegistration)
+                .options(selectinload(EventRegistration.user))
+                .where(EventRegistration.event_id == event.id)
+                .order_by(EventRegistration.registered_at.desc())
+            ).all()
+        ]
 
     def _assert_slug_free(self, slug: str, *, exclude_id: UUID | None = None) -> None:
         query = select(Event).where(Event.slug == slug)

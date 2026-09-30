@@ -33,6 +33,10 @@ class AdminPaymentRow(BaseModel):
     course_title: str | None
     confirmed_at: datetime | None
     created_at: datetime
+    crypto_currency: str | None = None
+    crypto_expected_amount: str | None = None
+    crypto_actual_amount: str | None = None
+    crypto_shortfall: str | None = None
 
 
 class ReconcilePaymentRequest(BaseModel):

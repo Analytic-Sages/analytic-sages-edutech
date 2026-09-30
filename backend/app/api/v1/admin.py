@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, Query
 
 from app.api.deps import (
@@ -85,6 +87,19 @@ def admin_users(
     limit: int = Query(default=200, ge=1, le=500),
 ) -> list[AdminUserRow]:
     return admin.list_users(limit=limit)
+
+
+@router.post("/users/{user_id}/remove-staff-access", response_model=AdminUserRow)
+def remove_staff_access(
+    user_id: UUID,
+    _: User = Depends(require_admin),
+    auth: AuthService = Depends(get_auth_service),
+    admin: AdminService = Depends(get_admin_service),
+) -> AdminUserRow:
+    user = auth.remove_staff_access(user_id)
+    featured = admin._featured_cohort()
+    member_ids = admin._member_user_ids(featured.id) if featured else set()
+    return admin._user_rows([user], member_ids)[0]
 
 
 @router.get("/payments", response_model=list[AdminPaymentRow])

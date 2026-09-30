@@ -11,6 +11,7 @@ import {
   createCheckout,
   getAccessToken,
   listApiCourses,
+  type CheckoutResponse,
   type PaymentProvider,
 } from "@/lib/api";
 import { formatPrice, getCourseBySlug, isCourseLive } from "@/lib/mock-data";
@@ -48,6 +49,7 @@ export default function CheckoutPage() {
   );
   const [loadingProvider, setLoadingProvider] = useState<PaymentProvider | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [cryptoSession, setCryptoSession] = useState<CheckoutResponse | null>(null);
 
   useEffect(() => {
     listApiCourses()
@@ -87,7 +89,12 @@ export default function CheckoutPage() {
     try {
       const session = await createCheckout(courseId, provider);
       trackInitiateCheckout(title, price, currency);
-      window.location.assign(session.checkout_url);
+      if (provider === "nowpayments") {
+        setCryptoSession(session);
+        setLoadingProvider(null);
+      } else {
+        window.location.assign(session.checkout_url);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Checkout failed");
       setLoadingProvider(null);
@@ -143,6 +150,17 @@ export default function CheckoutPage() {
           </p>
         </CardContent>
       </Card>
+
+      {cryptoSession ? (
+        <div className="mb-6 rounded-xl border border-brand-orange/40 bg-brand-orange/5 p-5">
+          <p className="font-semibold">Your exact crypto payment amount</p>
+          <p className="mt-2 font-mono text-lg font-bold">{cryptoSession.crypto_amount || "The exact amount will appear in NOWPayments"} {cryptoSession.crypto_currency?.toUpperCase() || ""}</p>
+          <p className="mt-3 text-sm leading-6">Send the full amount shown by NOWPayments. Do not subtract network fees or service fees from the amount you send. Sending less can make the payment partially paid and delay access.</p>
+          <button type="button" className="mt-4 text-sm font-semibold underline underline-offset-4" onClick={() => window.location.assign(cryptoSession.checkout_url)}>Continue to NOWPayments</button>
+        </div>
+      ) : null}
+
+      {!cryptoSession ? <div className="mb-6 rounded-xl border border-brand-navy/15 bg-brand-surface p-4 text-sm leading-6"><strong>Crypto payment reminder:</strong> NOWPayments will show the exact crypto amount. Send the full amount without subtracting network or service fees.</div> : null}
 
       {!token && (
         <div className="mb-6 rounded-xl border border-brand-orange/30 bg-brand-orange/5 p-4 text-sm">

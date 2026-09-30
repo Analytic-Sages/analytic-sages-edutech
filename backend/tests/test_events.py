@@ -236,10 +236,15 @@ def test_admin_event_detail_includes_registered_user_contacts(monkeypatch):
     client.post("/api/v1/events/admin-registrants/register", headers=_auth(user), json={})
     admin = _make_user(f"event-admin-{uuid.uuid4()}@example.com", role=UserRole.ADMIN)
     event = client.get("/api/v1/admin/events", headers=_auth(admin))
-    row = next(item for item in event.json() if item["slug"] == "admin-registrants")
-    assert row["registrants"][0]["email"] == user.email
-    assert row["registrants"][0]["phone_number"] == "+2348012345678"
-    assert row["registrants"][0]["country_of_residence"] == "NG"
+    event_id = next(item["id"] for item in event.json() if item["slug"] == "admin-registrants")
+    registrants = client.get(f"/api/v1/admin/events/{event_id}/registrants", headers=_auth(admin))
+    assert registrants.status_code == 200
+    assert registrants.json()[0]["email"] == user.email
+    assert registrants.json()[0]["phone_number"] == "+2348012345678"
+    assert registrants.json()[0]["country_of_residence"] == "NG"
+    csv_response = client.get(f"/api/v1/admin/events/{event_id}/registrants.csv", headers=_auth(admin))
+    assert csv_response.status_code == 200
+    assert user.email in csv_response.text
 
 
 def test_coming_soon_event_is_visible_but_not_registerable():

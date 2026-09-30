@@ -270,6 +270,19 @@ class AdminService:
     def _payment_rows(self, payments: list[Payment]) -> list[AdminPaymentRow]:
         rows: list[AdminPaymentRow] = []
         for payment in payments:
+            last_webhook = (payment.metadata_json or {}).get("last_webhook") or {}
+            expected = last_webhook.get("pay_amount")
+            actual = last_webhook.get("actually_paid")
+            shortfall = None
+            if expected is not None and actual is not None:
+                try:
+                    from decimal import Decimal
+
+                    shortfall_value = Decimal(str(expected)) - Decimal(str(actual))
+                    if shortfall_value > 0:
+                        shortfall = format(shortfall_value, "f")
+                except (ValueError, ArithmeticError):
+                    shortfall = None
             rows.append(
                 AdminPaymentRow(
                     id=payment.id,
@@ -284,6 +297,10 @@ class AdminService:
                     course_title=payment.course.title if payment.course else None,
                     confirmed_at=payment.confirmed_at,
                     created_at=payment.created_at,
+                    crypto_currency=payment.crypto_currency or last_webhook.get("pay_currency"),
+                    crypto_expected_amount=str(expected) if expected is not None else None,
+                    crypto_actual_amount=str(actual) if actual is not None else None,
+                    crypto_shortfall=shortfall,
                 )
             )
         return rows

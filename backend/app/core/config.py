@@ -45,6 +45,8 @@ class Settings(BaseSettings):
     email_from: str = "noreply@analyticsages.com"
     email_api_key: str | None = None
     contact_email: str = "support@analyticsages.io"
+    # Comma-separated admin emails allowed to view and message event registrants.
+    event_registrant_manager_emails: str | None = None
     # Resend Audience ID (dashboard may label this Segment). Used for Insights subscribe + issue sends.
     resend_audience_id: str | None = None
 

@@ -973,7 +973,6 @@ export type EventAdmin = {
   cancelled: boolean;
   lifecycle: EventLifecycle | string;
   registered_count: number;
-  registrants: EventRegistrantAdmin[];
   created_at: string;
   updated_at: string;
 };
@@ -1069,6 +1068,35 @@ export function getAdminEvents() {
 
 export function getAdminEvent(id: string) {
   return apiFetch<EventAdmin>(`/api/v1/admin/events/${encodeURIComponent(id)}`);
+}
+
+export function getAdminEventRegistrants(id: string) {
+  return apiFetch<EventRegistrantAdmin[]>(`/api/v1/admin/events/${encodeURIComponent(id)}/registrants`);
+}
+
+export async function downloadAdminEventRegistrants(id: string) {
+  const headers = new Headers();
+  const token = getAccessToken();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const response = await fetch(`/api/v1/admin/events/${encodeURIComponent(id)}/registrants.csv`, {
+    headers,
+    credentials: "include",
+  });
+  if (!response.ok) {
+    const data = (await response.json().catch(() => null)) as { detail?: unknown } | null;
+    throw new ApiError(response.status, formatApiDetail(data?.detail) || "Download failed");
+  }
+  return response.blob();
+}
+
+export function emailAdminEventRegistrants(
+  id: string,
+  payload: { recipient_user_ids: string[]; subject: string; message: string; include_event_link: boolean },
+) {
+  return apiFetch<{ sent: number; failed: number }>(`/api/v1/admin/events/${encodeURIComponent(id)}/registrants/email`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function createAdminEvent(payload: EventWritePayload) {
@@ -1235,6 +1263,10 @@ export type AdminPaymentRow = {
   course_title: string | null;
   confirmed_at: string | null;
   created_at: string;
+  crypto_currency: string | null;
+  crypto_expected_amount: string | null;
+  crypto_actual_amount: string | null;
+  crypto_shortfall: string | null;
 };
 
 export type AdminCohortMemberRow = {
@@ -1350,6 +1382,12 @@ export function getAdminAnalytics() {
 
 export function getAdminUsers(limit = 200) {
   return apiFetch<AdminUserRow[]>(`/api/v1/admin/users?limit=${limit}`);
+}
+
+export function removeAdminStaffAccess(userId: string) {
+  return apiFetch<AdminUserRow>(`/api/v1/admin/users/${encodeURIComponent(userId)}/remove-staff-access`, {
+    method: "POST",
+  });
 }
 
 export function getAdminPayments(limit = 200) {

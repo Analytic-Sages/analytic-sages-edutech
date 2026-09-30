@@ -1,15 +1,20 @@
 from __future__ import annotations
 
+import csv
+import io
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Query, UploadFile, status
+from fastapi.responses import StreamingResponse
 
 from app.api.deps import (
     CurrentUser,
     OptionalUser,
     get_event_service,
+    get_email_service,
     get_storage_service,
     require_event_ops,
+    require_event_registrant_manager,
 )
 from app.models.user import User
 from app.schemas.articles import UploadResponse
@@ -21,12 +26,16 @@ from app.schemas.events import (
     EventCreate,
     EventPublic,
     EventRegistrationPublic,
+    EventRegistrantAdmin,
+    EventRegistrantEmailRequest,
+    EventRegistrantEmailResponse,
     EventUpdate,
     JoinResponse,
     RegisterRequest,
     RegisterResponse,
 )
 from app.services.events import EventService
+from app.services.email import EmailService
 from app.services.storage import StorageService
 
 router = APIRouter(tags=["events"])
@@ -131,6 +140,72 @@ def admin_get_event(
     events: EventService = Depends(get_event_service),
 ) -> EventAdmin:
     return events.get_admin(event_id)
+
+
+@router.get("/admin/events/{event_id}/registrants", response_model=list[EventRegistrantAdmin])
+def admin_event_registrants(
+    event_id: UUID,
+    _: User = Depends(require_event_registrant_manager),
+    events: EventService = Depends(get_event_service),
+) -> list[EventRegistrantAdmin]:
+    return events.list_admin_registrants(event_id)
+
+
+@router.get("/admin/events/{event_id}/registrants.csv")
+def admin_event_registrants_csv(
+    event_id: UUID,
+    _: User = Depends(require_event_registrant_manager),
+    events: EventService = Depends(get_event_service),
+) -> StreamingResponse:
+    rows = events.list_admin_registrants(event_id)
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Name", "Email", "Phone", "Phone country", "Country of residence", "Status", "Registered at"])
+    for row in rows:
+        writer.writerow([
+            row.full_name or "",
+            row.email,
+            row.phone_number or "",
+            row.phone_country_code or "",
+            row.country_of_residence or "",
+            row.status,
+            row.registered_at.isoformat(),
+        ])
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="event-{event_id}-registrants.csv"'},
+    )
+
+
+@router.post("/admin/events/{event_id}/registrants/email", response_model=EventRegistrantEmailResponse)
+def admin_email_event_registrants(
+    event_id: UUID,
+    payload: EventRegistrantEmailRequest,
+    _: User = Depends(require_event_registrant_manager),
+    events: EventService = Depends(get_event_service),
+    email_service: EmailService = Depends(get_email_service),
+) -> EventRegistrantEmailResponse:
+    event = events._get_by_id(event_id)
+    rows = events.list_admin_registrants(event_id)
+    selected = set(payload.recipient_user_ids)
+    recipients = [row for row in rows if row.status == "registered" and (not selected or row.user_id in selected)]
+    event_link = f"{email_service.settings.frontend_url.rstrip('/')}/events/{event.slug}" if payload.include_event_link else None
+    sent = 0
+    failed = 0
+    for row in recipients:
+        if email_service.send_event_registrant_message(
+            email=row.email,
+            full_name=row.full_name,
+            subject=payload.subject.strip(),
+            message=payload.message.strip(),
+            event_title=event.title,
+            event_link=event_link,
+        ):
+            sent += 1
+        else:
+            failed += 1
+    return EventRegistrantEmailResponse(sent=sent, failed=failed)
 
 
 @router.patch("/admin/events/{event_id}", response_model=EventAdmin)

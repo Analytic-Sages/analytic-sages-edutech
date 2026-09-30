@@ -247,6 +247,20 @@ class AuthService:
     def invite_author(self, *, email: str, full_name: str | None) -> StaffInviteResult:
         return self.invite_staff(email=email, full_name=full_name, role=UserRole.AUTHOR)
 
+    def remove_staff_access(self, user_id: UUID) -> User:
+        user = self.db.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        if user.role == UserRole.ADMIN:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Admin access cannot be removed here")
+        if user.role not in STAFF_INVITE_ROLES:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User does not have staff access")
+        user.role = UserRole.STUDENT
+        self._revoke_all_refresh_tokens(user.id)
+        self.db.commit()
+        self.db.refresh(user)
+        return user
+
     def invite_staff(
         self,
         *,

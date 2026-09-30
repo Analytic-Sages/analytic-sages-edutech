@@ -215,6 +215,23 @@ def require_roles(*roles: UserRole):
 require_admin = require_roles(UserRole.ADMIN)
 require_instructor = require_roles(UserRole.ADMIN, UserRole.INSTRUCTOR)
 require_event_ops = require_roles(UserRole.ADMIN, UserRole.OPERATIONS)
+
+
+def require_event_registrant_manager(
+    current_user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+) -> User:
+    allowed = {
+        email.strip().lower()
+        for email in (settings.event_registrant_manager_emails or "").split(",")
+        if email.strip()
+    }
+    if not settings.is_production and not allowed:
+        if current_user.role == UserRole.ADMIN:
+            return current_user
+    if current_user.email.lower() not in allowed:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Registrant access is restricted")
+    return current_user
 require_catalog_ops = require_roles(UserRole.ADMIN, UserRole.OPERATIONS)
 require_opportunity_ops = require_roles(
     UserRole.ADMIN, UserRole.OPERATIONS, UserRole.PARTNERSHIPS

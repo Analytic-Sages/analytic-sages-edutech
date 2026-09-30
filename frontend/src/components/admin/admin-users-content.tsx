@@ -28,6 +28,7 @@ import {
   inviteInstructor,
   inviteOperations,
   invitePartnerships,
+  removeAdminStaffAccess,
   type AdminUserRow,
 } from "@/lib/api";
 import { isStaffRole, roleAccess, STAFF_ROLES } from "@/lib/role-access";
@@ -69,6 +70,7 @@ export function AdminUsersContent() {
   const [inviting, setInviting] = useState(false);
   const [filter, setFilter] = useState<UserFilter>(initialFilter);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
   function loadUsers() {
     return getAdminUsers()
@@ -156,6 +158,22 @@ export function AdminUsersContent() {
       setInviteError(err instanceof ApiError ? err.detail : "Could not send invite");
     } finally {
       setInviting(false);
+    }
+  }
+
+  async function removeGrantManager(user: AdminUserRow) {
+    if (user.role !== "partnerships") return;
+    if (!window.confirm(`Remove grant manager access from ${user.full_name || user.email}? Their account will remain as a student.`)) return;
+    setRemovingId(user.id);
+    setError(null);
+    try {
+      await removeAdminStaffAccess(user.id);
+      await loadUsers();
+      setExpandedId(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.detail : "Could not remove staff access");
+    } finally {
+      setRemovingId(null);
     }
   }
 
@@ -461,6 +479,18 @@ export function AdminUsersContent() {
                                   <li key={item}>{item}</li>
                                 ))}
                               </ul>
+                              {user.role === "partnerships" ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="mt-4"
+                                  disabled={removingId === user.id}
+                                  onClick={() => void removeGrantManager(user)}
+                                >
+                                  {removingId === user.id ? "Removing…" : "Remove grant manager access"}
+                                </Button>
+                              ) : null}
                             </div>
                           </div>
                         </TableCell>

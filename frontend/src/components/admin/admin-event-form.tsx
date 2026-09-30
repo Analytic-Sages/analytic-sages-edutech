@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, Upload } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button-link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,7 +19,6 @@ import {
   updateAdminEvent,
   uploadAdminEventImage,
   type EventAdmin,
-  type EventRegistrantAdmin,
   type EventPlatform,
   type EventType,
   type KeepLearningOffer,
@@ -197,7 +197,6 @@ export function AdminEventForm({ eventId }: { eventId?: string }) {
   const [cancelled, setCancelled] = useState(false);
   const [slugTouched, setSlugTouched] = useState(Boolean(eventId));
   const [keepOptions, setKeepOptions] = useState<KeepLearningOption[]>([]);
-  const [registrants, setRegistrants] = useState<EventRegistrantAdmin[]>([]);
 
   useEffect(() => {
     let ignore = false;
@@ -260,7 +259,6 @@ export function AdminEventForm({ eventId }: { eventId?: string }) {
       .then((event) => {
         if (ignore) return;
         setForm(fromEvent(event));
-        setRegistrants(event.registrants || []);
         setCancelled(event.cancelled);
         setSlugTouched(true);
       })
@@ -697,26 +695,9 @@ export function AdminEventForm({ eventId }: { eventId?: string }) {
               {cancelling ? <Loader2 className="size-4 animate-spin" /> : "Cancel event"}
             </Button>
           )}
+          {eventId ? <ButtonLink href={`/admin/events/${eventId}/registrants`} variant="outline">View registrants</ButtonLink> : null}
         </div>
       </form>
-      {eventId ? (
-        <section className="mt-10 max-w-5xl space-y-3">
-          <div>
-            <h2 className="font-heading text-xl font-bold">Registered users ({registrants.filter((item) => item.status === "registered").length})</h2>
-            <p className="text-sm text-muted-foreground">Use these contacts for event reminders and relevant follow-up emails.</p>
-          </div>
-          {registrants.length === 0 ? (
-            <p className="rounded-xl border p-5 text-sm text-muted-foreground">No registrations yet.</p>
-          ) : (
-            <div className="overflow-x-auto rounded-xl border">
-              <table className="min-w-full text-sm">
-                <thead><tr className="border-b text-left"><th className="px-4 py-3">Name</th><th className="px-4 py-3">Email</th><th className="px-4 py-3">Phone</th><th className="px-4 py-3">Country</th><th className="px-4 py-3">Registered</th><th className="px-4 py-3">Status</th></tr></thead>
-                <tbody>{registrants.map((registrant) => <tr key={registrant.id} className="border-b last:border-0"><td className="px-4 py-3">{registrant.full_name || "-"}</td><td className="px-4 py-3">{registrant.email}</td><td className="px-4 py-3">{registrant.phone_number || "-"}</td><td className="px-4 py-3">{registrant.country_of_residence || "-"}</td><td className="px-4 py-3 text-muted-foreground">{new Date(registrant.registered_at).toLocaleDateString()}</td><td className="px-4 py-3 capitalize">{registrant.status}</td></tr>)}</tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      ) : null}
     </div>
   );
 }

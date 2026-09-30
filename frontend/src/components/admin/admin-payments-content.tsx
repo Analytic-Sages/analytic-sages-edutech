@@ -163,6 +163,15 @@ export function AdminPaymentsContent() {
                         </span>
                       )}
                     </div>
+                    {payment.provider === "nowpayments" && payment.status === "confirming" && payment.crypto_shortfall ? (
+                      <div className="mt-2 max-w-64 rounded-md border border-brand-orange/40 bg-brand-orange/5 p-2 text-xs leading-5 text-foreground">
+                        <p className="font-semibold text-brand-orange">Partially paid</p>
+                        <p>Expected: {payment.crypto_expected_amount} {payment.crypto_currency?.toUpperCase()}</p>
+                        <p>Received: {payment.crypto_actual_amount} {payment.crypto_currency?.toUpperCase()}</p>
+                        <p>Shortfall: {payment.crypto_shortfall} {payment.crypto_currency?.toUpperCase()}</p>
+                        <p className="mt-1 text-muted-foreground">Customer must send the remaining amount. Fees do not count toward the payment amount.</p>
+                      </div>
+                    ) : null}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {formatAdminDate(payment.confirmed_at || payment.created_at)}
