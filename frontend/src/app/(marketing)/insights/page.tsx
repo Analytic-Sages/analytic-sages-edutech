@@ -5,7 +5,7 @@ import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata({
   title: "Insights",
   description:
-    "Research, tutorials, career notes, and industry analysis from Analytic Sages - a global blockchain data and tech education platform.",
+    "Research, tutorials, case studies and practical insights on blockchain data, DeFi, AI, quantitative finance and software engineering.",
   path: "/insights",
 });
 

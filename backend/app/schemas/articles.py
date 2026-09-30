@@ -22,6 +22,8 @@ class ArticleCardPublic(BaseModel):
     title: str
     excerpt: str
     category: str
+    content_type: str = "Blog"
+    tags: list[str] = Field(default_factory=list)
     cover_image_url: str | None = None
     featured: bool = False
     read_time_minutes: int
@@ -31,7 +33,6 @@ class ArticleCardPublic(BaseModel):
 
 class ArticlePublic(ArticleCardPublic):
     body: dict[str, Any]
-    tags: list[str] = Field(default_factory=list)
     seo_title: str | None = None
     seo_description: str | None = None
     og_image_url: str | None = None
@@ -44,6 +45,7 @@ class ArticleWrite(BaseModel):
     slug: str | None = Field(default=None, max_length=180)
     cover_image_url: str | None = Field(default=None, max_length=512)
     category: str = Field(default="Education", max_length=40)
+    content_type: str = Field(default="Blog", max_length=30)
     tags: list[str] = Field(default_factory=list)
     body: dict[str, Any] | None = None
     seo_title: str | None = Field(default=None, max_length=200)
@@ -61,6 +63,7 @@ class ArticleStudio(BaseModel):
     excerpt: str
     cover_image_url: str | None
     category: str
+    content_type: str
     tags: list[str]
     body: dict[str, Any]
     status: ArticleStatusValue
@@ -83,6 +86,7 @@ class ArticleStudioRow(BaseModel):
     title: str
     status: ArticleStatusValue
     category: str
+    content_type: str
     updated_at: datetime
     published_at: datetime | None = None
     author_name: str

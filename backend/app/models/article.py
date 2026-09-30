@@ -59,6 +59,7 @@ class Article(Base):
     excerpt: Mapped[str] = mapped_column(Text, nullable=False, default="")
     cover_image_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     category: Mapped[str] = mapped_column(String(40), nullable=False, default="Education")
+    content_type: Mapped[str] = mapped_column(String(30), nullable=False, default="Blog", server_default="Blog")
     tags: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
     body: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, server_default=text("'{\"version\":1,\"blocks\":[]}'::jsonb")

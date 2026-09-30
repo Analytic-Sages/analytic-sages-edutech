@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import {
   INSIGHT_CATEGORIES,
+  INSIGHT_CONTENT_TYPES,
   archiveStudioArticle,
   emptyArticleBody,
   publishStudioArticle,
@@ -33,6 +34,7 @@ export function InsightComposer({ article, workspace }: Props) {
   const [title, setTitle] = useState(article.title);
   const [excerpt, setExcerpt] = useState(article.excerpt);
   const [category, setCategory] = useState(article.category);
+  const [contentType, setContentType] = useState(article.content_type || "Blog");
   const [cover, setCover] = useState(article.cover_image_url || "");
   const [seoTitle, setSeoTitle] = useState(article.seo_title || "");
   const [seoDescription, setSeoDescription] = useState(article.seo_description || "");
@@ -53,6 +55,7 @@ export function InsightComposer({ article, workspace }: Props) {
         title,
         excerpt,
         category,
+        content_type: contentType,
         cover_image_url: cover || null,
         seo_title: seoTitle || null,
         seo_description: seoDescription || null,
@@ -122,6 +125,19 @@ export function InsightComposer({ article, workspace }: Props) {
                 <option key={item} value={item}>
                   {item}
                 </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <Label htmlFor="content-type">Content type</Label>
+            <select
+              id="content-type"
+              className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm"
+              value={contentType}
+              onChange={(event) => setContentType(event.target.value)}
+            >
+              {INSIGHT_CONTENT_TYPES.map((item) => (
+                <option key={item} value={item}>{item}</option>
               ))}
             </select>
           </div>

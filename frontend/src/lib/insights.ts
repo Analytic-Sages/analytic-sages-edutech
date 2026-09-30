@@ -12,6 +12,8 @@ export type InsightCard = {
   title: string;
   excerpt: string;
   category: string;
+  content_type: string;
+  tags: string[];
   cover_image_url: string | null;
   featured: boolean;
   read_time_minutes: number;
@@ -58,6 +60,7 @@ export type InsightStudio = {
   excerpt: string;
   cover_image_url: string | null;
   category: string;
+  content_type: string;
   tags: string[];
   body: { version: number; blocks: ArticleBlock[] };
   status: ArticleStatus;
@@ -80,6 +83,7 @@ export type InsightStudioRow = {
   title: string;
   status: ArticleStatus;
   category: string;
+  content_type: string;
   updated_at: string;
   published_at: string | null;
   author_name: string;
@@ -92,6 +96,18 @@ export const INSIGHT_CATEGORIES = [
   "Industry",
   "Education",
   "Guides",
+] as const;
+
+export const INSIGHT_CONTENT_TYPES = ["Research", "Blog", "Tutorial", "Case Study"] as const;
+
+export const INSIGHT_TOPICS = [
+  "Blockchain Data",
+  "DeFi",
+  "AI",
+  "Quantitative Finance",
+  "Software Engineering",
+  "Web3",
+  "Career",
 ] as const;
 
 export function emptyArticleBody(): InsightStudio["body"] {

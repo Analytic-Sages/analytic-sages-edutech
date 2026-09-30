@@ -32,6 +32,7 @@ export function AdminInsightsContent() {
       title: "Untitled article",
       excerpt: "",
       category: "Education",
+      content_type: "Blog",
       body: emptyArticleBody(),
     });
     router.push(`/admin/insights/${created.id}`);
@@ -64,7 +65,8 @@ export function AdminInsightsContent() {
               <th className="px-4 py-3">Title</th>
               <th className="px-4 py-3">Author</th>
               <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Category</th>
+              <th className="px-4 py-3">Type</th>
+              <th className="px-4 py-3">Topic</th>
             </tr>
           </thead>
           <tbody>
@@ -77,6 +79,7 @@ export function AdminInsightsContent() {
                 </td>
                 <td className="px-4 py-3">{row.author_name}</td>
                 <td className="px-4 py-3 capitalize">{row.status.replace("_", " ")}</td>
+                <td className="px-4 py-3">{row.content_type}</td>
                 <td className="px-4 py-3">{row.category}</td>
               </tr>
             ))}

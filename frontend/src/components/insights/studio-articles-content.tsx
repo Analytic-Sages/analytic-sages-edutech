@@ -57,6 +57,7 @@ export function StudioArticlesContent() {
       title: "Untitled article",
       excerpt: "",
       category: "Education",
+      content_type: "Blog",
       body: emptyArticleBody(),
     });
     router.push(`/studio/${created.id}`);
@@ -97,7 +98,8 @@ export function StudioArticlesContent() {
             <tr className="border-b text-left">
               <th className="px-4 py-3">Title</th>
               <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Category</th>
+              <th className="px-4 py-3">Type</th>
+              <th className="px-4 py-3">Topic</th>
               <th className="px-4 py-3">Updated</th>
             </tr>
           </thead>
@@ -110,6 +112,7 @@ export function StudioArticlesContent() {
                   </Link>
                 </td>
                 <td className="px-4 py-3 capitalize">{row.status.replace("_", " ")}</td>
+                <td className="px-4 py-3">{row.content_type}</td>
                 <td className="px-4 py-3">{row.category}</td>
                 <td className="px-4 py-3 text-muted-foreground">
                   {new Date(row.updated_at).toLocaleDateString()}

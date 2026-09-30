@@ -83,6 +83,8 @@ class InsightService:
             title=article.title,
             excerpt=article.excerpt,
             category=article.category,
+            content_type=article.content_type or "Blog",
+            tags=list(article.tags or []),
             cover_image_url=article.cover_image_url,
             featured=article.featured,
             read_time_minutes=article.read_time_minutes,
@@ -98,6 +100,7 @@ class InsightService:
             excerpt=article.excerpt,
             cover_image_url=article.cover_image_url,
             category=article.category,
+            content_type=article.content_type or "Blog",
             tags=list(article.tags or []),
             body=article.body,
             status=article.status.value,
@@ -151,19 +154,27 @@ class InsightService:
             .where(
                 Article.status == ArticleStatus.PUBLISHED,
                 Article.id != article.id,
-                Article.category == article.category,
+                (Article.content_type == article.content_type) | (Article.category == article.category),
             )
             .order_by(Article.published_at.desc().nullslast())
-            .limit(3)
+            .limit(20)
         ).all()
+        article_tags = {tag.casefold() for tag in (article.tags or [])}
+        related_rows.sort(
+            key=lambda row: (
+                (4 if row.content_type == article.content_type else 0)
+                + (3 if row.category == article.category else 0)
+                + 2 * len(article_tags & {tag.casefold() for tag in (row.tags or [])})
+            ),
+            reverse=True,
+        )
         return ArticlePublic(
             **self._card(article).model_dump(),
             body=article.body,
-            tags=list(article.tags or []),
             seo_title=article.seo_title,
             seo_description=article.seo_description,
             og_image_url=article.og_image_url,
-            related=[self._card(row) for row in related_rows],
+            related=[self._card(row) for row in related_rows[:3]],
         )
 
     def list_studio(self, user: User) -> list[ArticleStudioRow]:
@@ -181,6 +192,7 @@ class InsightService:
                 title=row.title,
                 status=row.status.value,
                 category=row.category,
+                content_type=row.content_type or "Blog",
                 updated_at=row.updated_at,
                 published_at=row.published_at,
                 author_name=self._author_public(row).name,
@@ -203,6 +215,7 @@ class InsightService:
             excerpt=payload.excerpt.strip(),
             cover_image_url=payload.cover_image_url,
             category=payload.category.strip() or "Education",
+            content_type=payload.content_type.strip() or "Blog",
             tags=[tag.strip() for tag in payload.tags if tag.strip()][:12],
             body=body,
             status=ArticleStatus.DRAFT,
@@ -229,6 +242,7 @@ class InsightService:
             article.slug = self._unique_slug(payload.slug, exclude_id=article.id)
         article.cover_image_url = payload.cover_image_url
         article.category = payload.category.strip() or article.category
+        article.content_type = payload.content_type.strip() or article.content_type or "Blog"
         article.tags = [tag.strip() for tag in payload.tags if tag.strip()][:12]
         article.body = body
         article.seo_title = payload.seo_title

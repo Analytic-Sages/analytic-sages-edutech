@@ -69,7 +69,7 @@ export default async function InsightArticlePage({ params }: Props) {
           { name: post.title, path: `/insights/${post.slug}` },
         ])}
       />
-      <p className="text-xs font-semibold uppercase tracking-wide text-brand-orange">{post.category}</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-brand-orange">{post.content_type}</p>
       <h1 className="mt-3 font-heading text-4xl font-bold tracking-tight">{post.title}</h1>
       {post.excerpt ? <p className="mt-4 text-lg text-muted-foreground">{post.excerpt}</p> : null}
 
@@ -85,7 +85,8 @@ export default async function InsightArticlePage({ params }: Props) {
       ) : null}
 
       <div className="mb-8 flex flex-wrap items-center gap-4 border-b pb-8">
-        <Badge variant="outline">{post.category}</Badge>
+        <Badge variant="outline">{post.content_type}</Badge>
+        <span className="text-sm text-muted-foreground">{post.category}</span>
         <time dateTime={post.published_at || undefined} className="text-sm text-muted-foreground">
           {formatDate(post.published_at)}
         </time>
