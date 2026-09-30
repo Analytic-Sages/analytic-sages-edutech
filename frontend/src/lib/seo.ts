@@ -281,7 +281,7 @@ export function blogPostingJsonLd(post: {
   slug: string;
   publishedAt: string;
   coverImage?: string;
-  author: { name: string };
+  author: { name: string } | { name: string }[];
 }) {
   return {
     "@context": "https://schema.org",
@@ -291,10 +291,9 @@ export function blogPostingJsonLd(post: {
     datePublished: post.publishedAt,
     mainEntityOfPage: absoluteUrl(`/insights/${post.slug}`),
     image: absoluteAssetUrl(post.coverImage || DEFAULT_OG_IMAGE),
-    author: {
-      "@type": "Person",
-      name: post.author.name,
-    },
+    author: Array.isArray(post.author)
+      ? post.author.map((author) => ({ "@type": "Person", name: author.name }))
+      : { "@type": "Person", name: post.author.name },
     publisher: {
       "@id": organizationId(),
     },

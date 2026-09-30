@@ -15,6 +15,22 @@ class AuthorPublic(BaseModel):
     photo_url: str | None = None
 
 
+class ContributorPublic(AuthorPublic):
+    author_profile_id: UUID | None = None
+    contribution_role: str = "Contributor"
+
+
+class ContributorWrite(BaseModel):
+    author_profile_id: UUID
+    contribution_role: str = Field(default="Contributor", max_length=120)
+
+
+class AuthorOption(BaseModel):
+    id: UUID
+    name: str
+    title: str = ""
+
+
 class ArticleCardPublic(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -29,6 +45,7 @@ class ArticleCardPublic(BaseModel):
     read_time_minutes: int
     published_at: datetime | None = None
     author: AuthorPublic
+    contributors: list[ContributorPublic] = Field(default_factory=list)
 
 
 class ArticlePublic(ArticleCardPublic):
@@ -47,6 +64,7 @@ class ArticleWrite(BaseModel):
     category: str = Field(default="Education", max_length=40)
     content_type: str = Field(default="Blog", max_length=30)
     tags: list[str] = Field(default_factory=list)
+    contributors: list[ContributorWrite] = Field(default_factory=list)
     body: dict[str, Any] | None = None
     seo_title: str | None = Field(default=None, max_length=200)
     seo_description: str | None = Field(default=None, max_length=320)
@@ -76,6 +94,7 @@ class ArticleStudio(BaseModel):
     created_at: datetime
     updated_at: datetime
     author: AuthorPublic
+    contributors: list[ContributorPublic] = Field(default_factory=list)
     can_publish: bool = False
     can_submit: bool = False
 

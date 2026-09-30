@@ -1,4 +1,4 @@
-from app.models.article import Article, AuthorProfile
+from app.models.article import Article, ArticleContributor, AuthorProfile
 from app.models.billing import (
     BillingAuditEvent,
     PaymentObligation,
@@ -74,6 +74,7 @@ __all__ = [
     "LiveSession",
     "Article",
     "AuthorProfile",
+    "ArticleContributor",
     "CareerPath",
     "Skill",
     "OpportunitySource",

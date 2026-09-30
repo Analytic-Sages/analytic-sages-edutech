@@ -48,6 +48,23 @@ class AuthorProfile(Base):
 
     user: Mapped[User] = relationship()
     articles: Mapped[list[Article]] = relationship(back_populates="author")
+    article_contributions: Mapped[list[ArticleContributor]] = relationship(back_populates="author_profile")
+
+
+class ArticleContributor(Base):
+    __tablename__ = "article_contributors"
+
+    article_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("articles.id", ondelete="CASCADE"), primary_key=True
+    )
+    author_profile_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("author_profiles.id", ondelete="CASCADE"), primary_key=True
+    )
+    contribution_role: Mapped[str] = mapped_column(String(120), nullable=False, default="Contributor")
+    display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    article: Mapped[Article] = relationship(back_populates="contributors")
+    author_profile: Mapped[AuthorProfile] = relationship(back_populates="article_contributions")
 
 
 class Article(Base):
@@ -92,3 +109,6 @@ class Article(Base):
     )
 
     author: Mapped[AuthorProfile | None] = relationship(back_populates="articles")
+    contributors: Mapped[list[ArticleContributor]] = relationship(
+        back_populates="article", cascade="all, delete-orphan", order_by="ArticleContributor.display_order"
+    )

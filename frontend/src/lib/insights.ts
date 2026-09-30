@@ -7,6 +7,17 @@ export type InsightAuthor = {
   photo_url: string | null;
 };
 
+export type InsightContributor = InsightAuthor & {
+  author_profile_id: string;
+  contribution_role: string;
+};
+
+export type InsightAuthorOption = {
+  id: string;
+  name: string;
+  title: string;
+};
+
 export type InsightCard = {
   slug: string;
   title: string;
@@ -19,6 +30,7 @@ export type InsightCard = {
   read_time_minutes: number;
   published_at: string | null;
   author: InsightAuthor;
+  contributors: InsightContributor[];
 };
 
 export type InsightArticle = InsightCard & {
@@ -73,6 +85,7 @@ export type InsightStudio = {
   created_at: string;
   updated_at: string;
   author: InsightAuthor;
+  contributors: InsightContributor[];
   can_publish: boolean;
   can_submit: boolean;
 };
@@ -120,6 +133,10 @@ export function listInsights() {
 
 export function getInsight(slug: string) {
   return apiFetch<InsightArticle>(`/api/v1/insights/${encodeURIComponent(slug)}`, { auth: false });
+}
+
+export function listInsightAuthors() {
+  return apiFetch<InsightAuthorOption[]>("/api/v1/studio/authors");
 }
 
 export function subscribeInsights(email: string) {

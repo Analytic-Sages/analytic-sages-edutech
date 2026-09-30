@@ -59,7 +59,7 @@ export default async function InsightArticlePage({ params }: Props) {
           slug: post.slug,
           publishedAt: post.published_at || new Date().toISOString(),
           coverImage: post.cover_image_url || undefined,
-          author: { name: post.author.name },
+          author: (post.contributors.length > 0 ? post.contributors : [post.author]).map((author) => ({ name: author.name })),
         })}
       />
       <JsonLd
@@ -94,19 +94,26 @@ export default async function InsightArticlePage({ params }: Props) {
           <Clock className="size-3.5" />
           {post.read_time_minutes} min read
         </span>
-        <div className="sm:ml-auto">
-          <p className="text-sm font-medium">{post.author.name}</p>
-          <p className="text-xs text-muted-foreground">{post.author.title}</p>
+        <div className="sm:ml-auto sm:text-right">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">Contributors</p>
+          <p className="text-sm font-medium">{(post.contributors.length > 0 ? post.contributors : [{ ...post.author, contribution_role: "Author" }]).map((author) => author.name).join(", ")}</p>
         </div>
       </div>
 
       <ArticleBody blocks={post.body.blocks} />
 
-      {post.author.bio ? (
+      {(post.contributors.length > 0 || post.author.bio) ? (
         <section className="mt-12 border-t pt-8">
-          <p className="text-sm font-medium">{post.author.name}</p>
-          <p className="text-sm text-muted-foreground">{post.author.title}</p>
-          <p className="mt-2 text-sm text-muted-foreground">{post.author.bio}</p>
+          <h2 className="font-heading text-xl font-bold">Authors and contributors</h2>
+          <div className="mt-5 grid gap-5 sm:grid-cols-2">
+            {(post.contributors.length > 0 ? post.contributors : [{ ...post.author, contribution_role: "Author" }]).map((author) => (
+              <div key={`${author.name}-${author.contribution_role}`}>
+                <p className="text-sm font-medium">{author.name}</p>
+                <p className="text-xs text-brand-orange">{author.contribution_role} · {author.title}</p>
+                {author.bio ? <p className="mt-2 text-sm text-muted-foreground">{author.bio}</p> : null}
+              </div>
+            ))}
+          </div>
         </section>
       ) : null}
 

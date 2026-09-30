@@ -20,6 +20,7 @@ from app.schemas.articles import (
     ArticleStudio,
     ArticleStudioRow,
     ArticleWrite,
+    AuthorOption,
     SubscribeRequest,
     UploadResponse,
 )
@@ -29,6 +30,14 @@ from app.services.insights import InsightService
 from app.services.storage import StorageService
 
 router = APIRouter(tags=["insights"])
+
+
+@router.get("/studio/authors", response_model=list[AuthorOption])
+def list_insight_authors(
+    current_user: CurrentUser,
+    insights: InsightService = Depends(get_insight_service),
+) -> list[AuthorOption]:
+    return insights.list_author_options(current_user)
 
 
 @router.get("/insights", response_model=list[ArticleCardPublic])

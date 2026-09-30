@@ -142,7 +142,8 @@ function ContentTypeLabel({ type }: { type: string }) {
 }
 
 function ArticleMeta({ post, className = "" }: { post: InsightCard; className?: string }) {
-  return <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground ${className}`}><span>{post.author.name}</span><span aria-hidden="true">·</span><time dateTime={post.published_at || undefined}>{formatDate(post.published_at)}</time><span aria-hidden="true">·</span><span className="inline-flex items-center gap-1"><Clock className="size-3.5" />{post.read_time_minutes} min read</span></div>;
+  const names = post.contributors?.length ? post.contributors.map((author) => author.name).join(", ") : post.author.name;
+  return <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground ${className}`}><span>{names}</span><span aria-hidden="true">·</span><time dateTime={post.published_at || undefined}>{formatDate(post.published_at)}</time><span aria-hidden="true">·</span><span className="inline-flex items-center gap-1"><Clock className="size-3.5" />{post.read_time_minutes} min read</span></div>;
 }
 
 function InsightCardView({ post }: { post: InsightCard }) {

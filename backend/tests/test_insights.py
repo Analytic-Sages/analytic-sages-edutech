@@ -165,6 +165,73 @@ def test_author_cannot_publish_editor_can():
         _cleanup_user(instructor_email)
 
 
+def test_editor_can_publish_multiple_insight_contributors():
+    first_email = f"researcher-one-{uuid.uuid4()}@example.com"
+    second_email = f"researcher-two-{uuid.uuid4()}@example.com"
+    _cleanup_user(first_email)
+    _cleanup_user(second_email)
+    first = _make_user(first_email, UserRole.AUTHOR)
+    second = _make_user(second_email, UserRole.AUTHOR)
+    slug = "multi-contributor-insight-test"
+    try:
+        created = client.post(
+            "/api/v1/studio/articles",
+            headers=_auth(first),
+            json={
+                "title": "Multi Contributor Insight Test",
+                "excerpt": "A collaborative research note.",
+                "body": {"version": 1, "blocks": [{"type": "paragraph", "text": "Shared research."}]},
+            },
+        )
+        assert created.status_code == 201, created.text
+        article_id = created.json()["id"]
+
+        author_options = client.get("/api/v1/studio/authors", headers=_auth(first))
+        assert author_options.status_code == 200
+        profiles = {row["name"]: row["id"] for row in author_options.json()}
+        first_id = profiles[first.full_name]
+        second_id = profiles[second.full_name]
+
+        updated = client.patch(
+            f"/api/v1/studio/articles/{article_id}",
+            headers=_auth(first),
+            json={
+                "title": "Multi Contributor Insight Test",
+                "contributors": [
+                    {"author_profile_id": first_id, "contribution_role": "Research Analyst"},
+                    {"author_profile_id": second_id, "contribution_role": "Data Engineer"},
+                ],
+                "body": {"version": 1, "blocks": [{"type": "paragraph", "text": "Shared research."}]},
+            },
+        )
+        assert updated.status_code == 200, updated.text
+        assert [item["contribution_role"] for item in updated.json()["contributors"]] == [
+            "Research Analyst",
+            "Data Engineer",
+        ]
+
+        db = SessionLocal()
+        try:
+            article = db.query(Article).filter(Article.id == article_id).first()
+            article.status = ArticleStatus.PUBLISHED
+            article.slug = slug
+            db.commit()
+        finally:
+            db.close()
+        public = client.get(f"/api/v1/insights/{slug}")
+        assert public.status_code == 200
+        assert [item["name"] for item in public.json()["contributors"]] == [first.full_name, second.full_name]
+    finally:
+        db = SessionLocal()
+        try:
+            db.query(Article).filter(Article.slug == slug).delete()
+            db.commit()
+        finally:
+            db.close()
+        _cleanup_user(first_email)
+        _cleanup_user(second_email)
+
+
 def test_operations_can_publish_insights():
     author_email = f"author-ops-pub-{uuid.uuid4()}@example.com"
     ops_email = f"ops-pub-{uuid.uuid4()}@example.com"

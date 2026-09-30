@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.roles import UserRole
-from app.models.article import Article, ArticleStatus, AuthorProfile
+from app.models.article import Article, ArticleContributor, ArticleStatus, AuthorProfile
 from app.models.user import User
 from app.schemas.articles import (
     ArticleCardPublic,
@@ -16,7 +16,9 @@ from app.schemas.articles import (
     ArticleStudio,
     ArticleStudioRow,
     ArticleWrite,
+    AuthorOption,
     AuthorPublic,
+    ContributorPublic,
 )
 from app.services.article_content import empty_body, reading_minutes, validate_body
 from app.services.email import EmailService
@@ -77,6 +79,55 @@ class InsightService:
             )
         return AuthorPublic(name=article.byline_name or "Analytic Sages", title=article.byline_title)
 
+    def list_author_options(self, user: User) -> list[AuthorOption]:
+        if not self.is_writer(user):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+        profiles = self.db.scalars(select(AuthorProfile)).all()
+        profile_user_ids = {profile.user_id for profile in profiles}
+        writer_users = self.db.scalars(select(User).where(User.role.in_([role.value for role in WRITERS]))).all()
+        for writer in writer_users:
+            if writer.id not in profile_user_ids:
+                profiles.append(self.ensure_profile(writer))
+        self.db.commit()
+        profiles.sort(key=lambda profile: profile.display_name.casefold())
+        return [AuthorOption(id=profile.id, name=profile.display_name, title=profile.title) for profile in profiles]
+
+    def _contributors_public(self, article: Article) -> list[ContributorPublic]:
+        return [
+            ContributorPublic(
+                author_profile_id=item.author_profile.id,
+                name=item.author_profile.display_name,
+                title=item.author_profile.title,
+                bio=item.author_profile.bio,
+                photo_url=item.author_profile.photo_url,
+                contribution_role=item.contribution_role,
+            )
+            for item in article.contributors
+        ]
+
+    def _set_contributors(self, article: Article, requested, fallback: AuthorProfile) -> None:
+        profiles = {profile.id: profile for profile in self.db.scalars(select(AuthorProfile)).all()}
+        selected = []
+        seen = set()
+        for item in requested:
+            profile = profiles.get(item.author_profile_id)
+            if profile and profile.id not in seen:
+                selected.append((profile, item.contribution_role.strip() or "Contributor"))
+                seen.add(profile.id)
+        if not selected:
+            selected = [(fallback, "Primary author")]
+        article.contributors = [
+            ArticleContributor(
+                author_profile=profile,
+                contribution_role=role,
+                display_order=index,
+            )
+            for index, (profile, role) in enumerate(selected)
+        ]
+        article.author_id = selected[0][0].id
+        article.byline_name = selected[0][0].display_name
+        article.byline_title = selected[0][0].title
+
     def _card(self, article: Article) -> ArticleCardPublic:
         return ArticleCardPublic(
             slug=article.slug,
@@ -90,6 +141,7 @@ class InsightService:
             read_time_minutes=article.read_time_minutes,
             published_at=article.published_at,
             author=self._author_public(article),
+            contributors=self._contributors_public(article),
         )
 
     def _studio(self, article: Article, user: User) -> ArticleStudio:
@@ -113,6 +165,7 @@ class InsightService:
             created_at=article.created_at,
             updated_at=article.updated_at,
             author=self._author_public(article),
+            contributors=self._contributors_public(article),
             can_publish=self.is_publisher(user),
             can_submit=user.role == UserRole.AUTHOR and article.status in {
                 ArticleStatus.DRAFT,
@@ -134,7 +187,7 @@ class InsightService:
     def list_published(self) -> list[ArticleCardPublic]:
         rows = self.db.scalars(
             select(Article)
-            .options(selectinload(Article.author))
+            .options(selectinload(Article.author), selectinload(Article.contributors).selectinload(ArticleContributor.author_profile))
             .where(Article.status == ArticleStatus.PUBLISHED)
             .order_by(Article.published_at.desc().nullslast(), Article.created_at.desc())
         ).all()
@@ -143,7 +196,7 @@ class InsightService:
     def get_published(self, slug: str) -> ArticlePublic:
         article = self.db.scalar(
             select(Article)
-            .options(selectinload(Article.author))
+            .options(selectinload(Article.author), selectinload(Article.contributors).selectinload(ArticleContributor.author_profile))
             .where(Article.slug == slug, Article.status == ArticleStatus.PUBLISHED)
         )
         if not article:
@@ -178,7 +231,10 @@ class InsightService:
         )
 
     def list_studio(self, user: User) -> list[ArticleStudioRow]:
-        query = select(Article).options(selectinload(Article.author)).order_by(Article.updated_at.desc())
+        query = select(Article).options(
+            selectinload(Article.author),
+            selectinload(Article.contributors).selectinload(ArticleContributor.author_profile),
+        ).order_by(Article.updated_at.desc())
         if user.role == UserRole.AUTHOR:
             profile = self.ensure_profile(user)
             query = query.where(Article.author_id == profile.id)
@@ -228,6 +284,7 @@ class InsightService:
             featured=bool(payload.featured) if self.is_publisher(user) else False,
             read_time_minutes=reading_minutes(body),
         )
+        self._set_contributors(article, payload.contributors, profile)
         self.db.add(article)
         self.db.commit()
         self.db.refresh(article)
@@ -251,6 +308,8 @@ class InsightService:
         if payload.featured is not None and self.is_publisher(user):
             article.featured = payload.featured
         article.read_time_minutes = reading_minutes(body)
+        if "contributors" in payload.model_fields_set:
+            self._set_contributors(article, payload.contributors, article.author or self.ensure_profile(user))
         if article.author:
             article.byline_name = article.author.display_name
             article.byline_title = article.author.title
@@ -331,7 +390,9 @@ class InsightService:
 
     def _get_for_user(self, user: User, article_id: UUID, *, for_edit: bool = False) -> Article:
         article = self.db.scalar(
-            select(Article).options(selectinload(Article.author)).where(Article.id == article_id)
+            select(Article)
+            .options(selectinload(Article.author), selectinload(Article.contributors).selectinload(ArticleContributor.author_profile))
+            .where(Article.id == article_id)
         )
         if not article:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Article not found")

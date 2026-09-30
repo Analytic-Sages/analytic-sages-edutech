@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArticleBody } from "@/components/insights/article-body";
 import { ArticleEditor } from "@/components/insights/article-editor";
@@ -20,8 +20,10 @@ import {
   submitStudioArticle,
   unpublishStudioArticle,
   updateStudioArticle,
+  listInsightAuthors,
   type ArticleBlock,
   type InsightStudio,
+  type InsightAuthorOption,
 } from "@/lib/insights";
 
 type Props = {
@@ -35,6 +37,8 @@ export function InsightComposer({ article, workspace }: Props) {
   const [excerpt, setExcerpt] = useState(article.excerpt);
   const [category, setCategory] = useState(article.category);
   const [contentType, setContentType] = useState(article.content_type || "Blog");
+  const [authorOptions, setAuthorOptions] = useState<InsightAuthorOption[]>([]);
+  const [contributors, setContributors] = useState(article.contributors || []);
   const [cover, setCover] = useState(article.cover_image_url || "");
   const [seoTitle, setSeoTitle] = useState(article.seo_title || "");
   const [seoDescription, setSeoDescription] = useState(article.seo_description || "");
@@ -46,6 +50,10 @@ export function InsightComposer({ article, workspace }: Props) {
   const [status, setStatus] = useState(article.status);
 
   const backHref = workspace === "admin" ? "/admin/insights" : "/studio";
+
+  useEffect(() => {
+    listInsightAuthors().then(setAuthorOptions).catch(() => setAuthorOptions([]));
+  }, []);
 
   async function save() {
     setSaving(true);
@@ -61,6 +69,10 @@ export function InsightComposer({ article, workspace }: Props) {
         seo_description: seoDescription || null,
         og_image_url: cover || null,
         tags: article.tags,
+        contributors: contributors.map((item) => ({
+          author_profile_id: item.author_profile_id,
+          contribution_role: item.contribution_role,
+        })),
         body: { version: 1, blocks },
       });
       setStatus(saved.status);
@@ -104,6 +116,51 @@ export function InsightComposer({ article, workspace }: Props) {
       {notice ? <p className="text-sm text-muted-foreground">{notice} Status: {status.replace("_", " ")}</p> : null}
 
       <div className="grid gap-4">
+        <div>
+          <Label>Authors and contributors</Label>
+          <div className="mt-2 space-y-3 rounded-lg border p-3">
+            {authorOptions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No author profiles are available yet.</p>
+            ) : authorOptions.map((option) => {
+              const selected = contributors.find((item) => item.author_profile_id === option.id);
+              return (
+                <div key={option.id} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <label className="flex min-w-0 flex-1 items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(selected)}
+                      onChange={(event) => {
+                        if (event.target.checked) {
+                          setContributors((current) => [...current, {
+                            author_profile_id: option.id,
+                            name: option.name,
+                            title: option.title,
+                            bio: "",
+                            photo_url: null,
+                            contribution_role: "Contributor",
+                          }]);
+                        } else {
+                          setContributors((current) => current.filter((item) => item.author_profile_id !== option.id));
+                        }
+                      }}
+                    />
+                    <span className="truncate">{option.name} <span className="text-muted-foreground">· {option.title}</span></span>
+                  </label>
+                  {selected ? (
+                    <Input
+                      className="sm:w-48"
+                      aria-label={`Contribution role for ${option.name}`}
+                      value={selected.contribution_role}
+                      onChange={(event) => setContributors((current) => current.map((item) => item.author_profile_id === option.id ? { ...item, contribution_role: event.target.value } : item))}
+                      placeholder="Contribution role"
+                    />
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">The first selected person is shown as the primary author. Drag ordering is not needed: select contributors in the desired byline order.</p>
+        </div>
         <div>
           <Label htmlFor="title">Title</Label>
           <Input id="title" value={title} onChange={(event) => setTitle(event.target.value)} />
