@@ -78,6 +78,7 @@ class AdminService:
             recent_payments=self._payment_rows(self._list_payments(limit=8)),
             staff_users=self._user_rows(staff_users, featured_member_ids),
             roles=self._enum_counts(User.role, [role.value for role in UserRole]),
+            countries=self._country_counts(),
         )
 
     def analytics(self) -> AdminAnalytics:
@@ -201,6 +202,15 @@ class AdminService:
         if filters:
             stmt = stmt.where(*filters)  # type: ignore[arg-type]
         return int(self.db.scalar(stmt) or 0)
+
+    def _country_counts(self) -> list[AdminNamedCount]:
+        rows = self.db.execute(
+            select(User.country_of_residence, func.count(User.id))
+            .where(User.country_of_residence.is_not(None), User.country_of_residence != "")
+            .group_by(User.country_of_residence)
+            .order_by(func.count(User.id).desc(), User.country_of_residence.asc())
+        ).all()
+        return [AdminNamedCount(name=str(country), value=int(count)) for country, count in rows]
 
     def _member_user_ids(self, cohort_id: UUID) -> set[UUID]:
         return set(

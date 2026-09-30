@@ -494,3 +494,13 @@ def admin_archive_opportunity(
     payload: OpportunityDecision = OpportunityDecision(),
 ) -> OpportunityAdmin:
     return opportunities.archive(opportunity_id, current_user, notes=payload.notes)
+
+
+@router.post("/admin/opportunities/{opportunity_id}/unarchive", response_model=OpportunityAdmin)
+def admin_unarchive_opportunity(
+    opportunity_id: UUID,
+    current_user: User = Depends(require_opportunity_ops),
+    opportunities: OpportunityService = Depends(get_opportunity_service),
+    payload: OpportunityDecision = OpportunityDecision(),
+) -> OpportunityAdmin:
+    return opportunities.unarchive(opportunity_id, current_user, notes=payload.notes)

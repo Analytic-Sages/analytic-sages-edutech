@@ -129,6 +129,7 @@ class AdminAnalytics(BaseModel):
     signups_by_day: list[AdminCountPoint]
     enrollments_by_day: list[AdminCountPoint]
     roles: list[AdminNamedCount]
+    countries: list[AdminNamedCount] = Field(default_factory=list)
     courses: list[AdminNamedCount]
     opportunity_statuses: list[AdminNamedCount]
     recent_learners: list[AdminRecentLearner]

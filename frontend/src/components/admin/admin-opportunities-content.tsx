@@ -24,6 +24,7 @@ import {
   getAdminOpportunityOverview,
   publishAdminOpportunity,
   rejectAdminOpportunity,
+  unarchiveAdminOpportunity,
   sendAdminOpportunityDigest,
   syncAdminOpportunitySources,
   TYPE_LABELS,
@@ -172,12 +173,13 @@ export function AdminOpportunitiesContent() {
     }
   }
 
-  async function act(id: string, action: "publish" | "reject") {
+  async function act(id: string, action: "publish" | "reject" | "unarchive") {
     setActingId(id);
     setBulkSummary(null);
     try {
       if (action === "publish") await publishAdminOpportunity(id);
-      else await rejectAdminOpportunity(id, "Rejected from review queue");
+      else if (action === "reject") await rejectAdminOpportunity(id, "Rejected from review queue");
+      else await unarchiveAdminOpportunity(id, "Restored from archive");
       await load(tab);
     } catch (err) {
       setError(err instanceof ApiError ? err.detail : "Could not update opportunity.");
@@ -458,6 +460,16 @@ export function AdminOpportunitiesContent() {
                               Reject
                             </Button>
                           </>
+                        ) : null}
+                        {row.status === "archived" ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={actingId === row.id}
+                            onClick={() => act(row.id, "unarchive")}
+                          >
+                            {actingId === row.id ? "…" : "Restore"}
+                          </Button>
                         ) : null}
                         <ButtonLink href={`/admin/opportunities/${row.id}`} variant="ghost" size="sm">
                           Edit

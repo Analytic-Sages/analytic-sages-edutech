@@ -220,6 +220,28 @@ def test_admin_crud_requires_admin(monkeypatch):
     assert cancelled.json()["lifecycle"] == "cancelled"
 
 
+def test_admin_event_detail_includes_registered_user_contacts(monkeypatch):
+    monkeypatch.setattr(EmailService, "send_event_registration_email", lambda *args, **kwargs: None)
+    _seed_event(slug="admin-registrants")
+    user = _make_user(f"registrant-{uuid.uuid4()}@example.com")
+    db = SessionLocal()
+    try:
+        stored = db.get(User, user.id)
+        stored.phone_number = "+2348012345678"
+        stored.phone_country_code = "NG"
+        stored.country_of_residence = "NG"
+        db.commit()
+    finally:
+        db.close()
+    client.post("/api/v1/events/admin-registrants/register", headers=_auth(user), json={})
+    admin = _make_user(f"event-admin-{uuid.uuid4()}@example.com", role=UserRole.ADMIN)
+    event = client.get("/api/v1/admin/events", headers=_auth(admin))
+    row = next(item for item in event.json() if item["slug"] == "admin-registrants")
+    assert row["registrants"][0]["email"] == user.email
+    assert row["registrants"][0]["phone_number"] == "+2348012345678"
+    assert row["registrants"][0]["country_of_residence"] == "NG"
+
+
 def test_coming_soon_event_is_visible_but_not_registerable():
     _cleanup_slug(SLUG)
     db = SessionLocal()

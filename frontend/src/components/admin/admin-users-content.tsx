@@ -342,6 +342,8 @@ export function AdminUsersContent() {
             <TableHeader>
               <TableRow>
                 <TableHead>User</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Country</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Access</TableHead>
                 <TableHead>Verified</TableHead>
@@ -370,6 +372,8 @@ export function AdminUsersContent() {
                           </div>
                         </div>
                       </TableCell>
+                      <TableCell className="whitespace-nowrap text-sm">{user.phone_number || "-"}</TableCell>
+                      <TableCell>{user.country_of_residence || "-"}</TableCell>
                       <TableCell>
                         <Badge
                           variant={isStaffRole(user.role) ? "default" : "outline"}
@@ -415,7 +419,7 @@ export function AdminUsersContent() {
                     </TableRow>
                     {open ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="bg-brand-surface/40">
+                        <TableCell colSpan={9} className="bg-brand-surface/40">
                           <div className="grid gap-3 py-2 text-sm sm:grid-cols-3">
                             <div>
                               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">

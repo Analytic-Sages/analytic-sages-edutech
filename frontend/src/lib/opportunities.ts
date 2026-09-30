@@ -715,6 +715,13 @@ export function archiveAdminOpportunity(id: string, notes?: string) {
   });
 }
 
+export function unarchiveAdminOpportunity(id: string, notes?: string) {
+  return apiFetch<OpportunityAdmin>(`/api/v1/admin/opportunities/${encodeURIComponent(id)}/unarchive`, {
+    method: "POST",
+    body: JSON.stringify({ notes: notes || null }),
+  });
+}
+
 export function listAdminOpportunitySources() {
   return apiFetch<{ items: OpportunitySourceAdmin[]; total: number }>("/api/v1/admin/opportunity-sources");
 }

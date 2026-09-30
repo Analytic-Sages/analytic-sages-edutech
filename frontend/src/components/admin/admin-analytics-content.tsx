@@ -202,6 +202,18 @@ export function AdminAnalyticsContent() {
       <div className="mb-8 grid gap-6 lg:grid-cols-2">
         <Card className="shadow-card">
           <CardHeader>
+            <CardTitle>Users by country</CardTitle>
+            <p className="text-sm text-muted-foreground">Country of residence captured at signup</p>
+          </CardHeader>
+          <CardContent>
+            {data.countries.length === 0 ? <p className="text-sm text-muted-foreground">No country data yet.</p> : <ul className="space-y-2 text-sm">{data.countries.map((row) => <li key={row.name} className="flex items-center justify-between"><span>{row.name}</span><span className="font-medium tabular-nums">{row.value}</span></li>)}</ul>}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="mb-8 grid gap-6 lg:grid-cols-2">
+        <Card className="shadow-card">
+          <CardHeader>
             <CardTitle>Roles</CardTitle>
             <p className="text-sm text-muted-foreground">Every account, including staff</p>
           </CardHeader>

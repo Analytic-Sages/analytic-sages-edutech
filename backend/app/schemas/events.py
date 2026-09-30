@@ -282,5 +282,18 @@ class EventAdmin(BaseModel):
     cancelled: bool
     lifecycle: str
     registered_count: int = 0
+    registrants: list["EventRegistrantAdmin"] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
+
+
+class EventRegistrantAdmin(BaseModel):
+    id: UUID
+    user_id: UUID
+    email: str
+    full_name: str | None = None
+    phone_number: str | None = None
+    phone_country_code: str | None = None
+    country_of_residence: str | None = None
+    status: str
+    registered_at: datetime

@@ -1393,3 +1393,18 @@ class OpportunityService:
         )
         self.db.commit()
         return self.get_admin(opportunity.id)
+
+    def unarchive(self, opportunity_id: UUID, actor: User, notes: str | None = None) -> OpportunityAdmin:
+        opportunity = self._get(opportunity_id)
+        if opportunity.status != OpportunityStatus.ARCHIVED:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Opportunity is not archived")
+        opportunity.status = OpportunityStatus.DRAFT
+        self._log(
+            opportunity,
+            VerificationEventType.UPDATED,
+            VerificationEventResult.RECORDED,
+            actor,
+            notes=notes or "Restored from archive",
+        )
+        self.db.commit()
+        return self.get_admin(opportunity.id)

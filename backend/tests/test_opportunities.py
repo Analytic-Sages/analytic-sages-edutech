@@ -148,6 +148,31 @@ def test_admin_publish_then_public_can_read():
         _cleanup_user(admin_email)
 
 
+def test_archived_opportunity_can_be_restored_and_published():
+    slug = f"restore-opp-{uuid.uuid4().hex[:8]}"
+    _cleanup_slug(slug)
+    admin_email = f"admin-restore-{uuid.uuid4()}@example.com"
+    admin = _make_user(admin_email, UserRole.ADMIN)
+    try:
+        created = client.post("/api/v1/admin/opportunities", headers=_auth(admin), json=_payload(slug=slug))
+        assert created.status_code == 201, created.text
+        opportunity_id = created.json()["id"]
+        archived = client.post(f"/api/v1/admin/opportunities/{opportunity_id}/archive", headers=_auth(admin), json={})
+        assert archived.status_code == 200
+        assert archived.json()["status"] == "archived"
+        blocked = client.post(f"/api/v1/admin/opportunities/{opportunity_id}/publish", headers=_auth(admin), json={})
+        assert blocked.status_code == 400
+        restored = client.post(f"/api/v1/admin/opportunities/{opportunity_id}/unarchive", headers=_auth(admin), json={})
+        assert restored.status_code == 200
+        assert restored.json()["status"] == "draft"
+        published = client.post(f"/api/v1/admin/opportunities/{opportunity_id}/publish", headers=_auth(admin), json={})
+        assert published.status_code == 200
+        assert published.json()["status"] == "published"
+    finally:
+        _cleanup_slug(slug)
+        _cleanup_user(admin_email)
+
+
 def test_expired_deadline_is_hidden_and_cannot_publish_past_deadline():
     slug = f"expired-opp-{uuid.uuid4().hex[:8]}"
     _cleanup_slug(slug)

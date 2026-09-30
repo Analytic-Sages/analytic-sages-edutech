@@ -973,8 +973,21 @@ export type EventAdmin = {
   cancelled: boolean;
   lifecycle: EventLifecycle | string;
   registered_count: number;
+  registrants: EventRegistrantAdmin[];
   created_at: string;
   updated_at: string;
+};
+
+export type EventRegistrantAdmin = {
+  id: string;
+  user_id: string;
+  email: string;
+  full_name: string | null;
+  phone_number: string | null;
+  phone_country_code: string | null;
+  country_of_residence: string | null;
+  status: string;
+  registered_at: string;
 };
 
 export type EventWritePayload = {
@@ -1324,6 +1337,7 @@ export type AdminAnalytics = {
   signups_by_day: AdminCountPoint[];
   enrollments_by_day: AdminCountPoint[];
   roles: AdminNamedCount[];
+  countries: AdminNamedCount[];
   courses: AdminNamedCount[];
   opportunity_statuses: AdminNamedCount[];
   recent_learners: AdminRecentLearner[];
