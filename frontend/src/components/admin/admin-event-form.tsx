@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Loader2, Upload } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { ButtonLink } from "@/components/ui/button-link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -695,7 +694,6 @@ export function AdminEventForm({ eventId }: { eventId?: string }) {
               {cancelling ? <Loader2 className="size-4 animate-spin" /> : "Cancel event"}
             </Button>
           )}
-          {eventId ? <ButtonLink href={`/admin/events/${eventId}/registrants`} variant="outline">View registrants</ButtonLink> : null}
         </div>
       </form>
     </div>

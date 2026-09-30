@@ -87,6 +87,7 @@ export function AdminEventsContent() {
                 <TableHead>When</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Registrations</TableHead>
+                <TableHead>Registrant list</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
@@ -105,6 +106,11 @@ export function AdminEventsContent() {
                     </Badge>
                   </TableCell>
                   <TableCell>{row.registered_count}</TableCell>
+                  <TableCell>
+                    <ButtonLink href={`/admin/events/${row.id}/registrants`} variant="outline" size="sm">
+                      View registrants
+                    </ButtonLink>
+                  </TableCell>
                   <TableCell className="text-right">
                     <ButtonLink href={`/admin/events/${row.id}`} variant="ghost" size="sm">
                       Edit
