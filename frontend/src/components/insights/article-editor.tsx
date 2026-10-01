@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { ArticleBlock } from "@/lib/insights";
 import { uploadInsightImage } from "@/lib/insights";
+import { RichTextField, RichTextInput } from "@/components/insights/rich-text-field";
 
 type Props = {
   blocks: ArticleBlock[];
@@ -21,7 +22,7 @@ const INSERTS: { label: string; block: ArticleBlock }[] = [
   { label: "Quote", block: { type: "quote", text: "" } },
   { label: "Divider", block: { type: "divider" } },
   { label: "Code", block: { type: "code", language: "sql", code: "" } },
-  { label: "Image", block: { type: "image", src: "", alt: "", caption: "", credit: "" } },
+  { label: "Image", block: { type: "image", src: "", alt: "", caption: "", credit: "", width: "full" } },
   { label: "YouTube", block: { type: "youtube", videoId: "" } },
   { label: "Table", block: { type: "table", headers: ["Metric", "Value"], rows: [["", ""]] } },
   {
@@ -43,12 +44,29 @@ function replaceAt<T>(list: T[], index: number, item: T) {
   return list.map((current, i) => (i === index ? item : current));
 }
 
+function removeAt<T>(list: T[], index: number) {
+  return list.filter((_, i) => i !== index);
+}
+
+/** Splits pasted text on blank lines so large research drafts don't land in a single paragraph block. */
+function splitIntoParagraphs(text: string): string[] {
+  return text
+    .split(/\n\s*\n+/)
+    .map((chunk) => chunk.trim())
+    .filter(Boolean);
+}
+
 export function ArticleEditor({ blocks, onChange }: Props) {
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   function insert(index: number, block: ArticleBlock) {
     const next = [...blocks];
     next.splice(index, 0, block);
+    // Keep the writer able to keep typing right after a non-text block (e.g. an image).
+    const followUp = next[index + 1];
+    if (block.type !== "paragraph" && (!followUp || followUp.type !== "paragraph")) {
+      next.splice(index + 1, 0, { type: "paragraph", text: "" });
+    }
     onChange(next);
   }
 
@@ -58,6 +76,27 @@ export function ArticleEditor({ blocks, onChange }: Props) {
       return;
     }
     onChange(blocks.filter((_, i) => i !== index));
+  }
+
+  function onParagraphPaste(
+    event: React.ClipboardEvent<HTMLTextAreaElement>,
+    index: number,
+    block: Extract<ArticleBlock, { type: "paragraph" }>
+  ) {
+    const pasted = event.clipboardData.getData("text");
+    const parts = splitIntoParagraphs(pasted);
+    if (parts.length <= 1) return;
+    event.preventDefault();
+    const textarea = event.currentTarget;
+    const before = block.text.slice(0, textarea.selectionStart);
+    const after = block.text.slice(textarea.selectionEnd);
+    const trailing: ArticleBlock[] = parts.slice(1).map((text) => ({ type: "paragraph", text }));
+    const last = trailing[trailing.length - 1] as Extract<ArticleBlock, { type: "paragraph" }> | undefined;
+    if (last) last.text = `${last.text}${after}`;
+    const next = [...blocks];
+    next[index] = { ...block, text: `${before}${parts[0]}${trailing.length ? "" : after}` };
+    next.splice(index + 1, 0, ...trailing);
+    onChange(next);
   }
 
   async function onImageFile(index: number, file: File | undefined, block: Extract<ArticleBlock, { type: "image" }>) {
@@ -85,10 +124,15 @@ export function ArticleEditor({ blocks, onChange }: Props) {
             </Button>
           </div>
           {block.type === "paragraph" || block.type === "quote" ? (
-            <Textarea
+            <RichTextField
               value={block.text}
-              onChange={(event) => onChange(replaceAt(blocks, index, { ...block, text: event.target.value }))}
+              onChange={(text) => onChange(replaceAt(blocks, index, { ...block, text }))}
               rows={4}
+              onPaste={
+                block.type === "paragraph"
+                  ? (event) => onParagraphPaste(event, index, block)
+                  : undefined
+              }
             />
           ) : null}
           {block.type === "heading" ? (
@@ -122,15 +166,29 @@ export function ArticleEditor({ blocks, onChange }: Props) {
                 Numbered list
               </label>
               {block.items.map((item, itemIndex) => (
-                <Input
-                  key={itemIndex}
-                  value={item}
-                  onChange={(event) => {
-                    const items = [...block.items];
-                    items[itemIndex] = event.target.value;
-                    onChange(replaceAt(blocks, index, { ...block, items }));
-                  }}
-                />
+                <div key={itemIndex} className="flex items-start gap-2">
+                  <div className="flex-1">
+                    <RichTextInput
+                      value={item}
+                      onChange={(value) => {
+                        const items = replaceAt(block.items, itemIndex, value);
+                        onChange(replaceAt(blocks, index, { ...block, items }));
+                      }}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="mt-7"
+                    disabled={block.items.length === 1}
+                    onClick={() =>
+                      onChange(replaceAt(blocks, index, { ...block, items: removeAt(block.items, itemIndex) }))
+                    }
+                  >
+                    <X className="size-4" />
+                  </Button>
+                </div>
               ))}
               <Button
                 type="button"
@@ -193,6 +251,26 @@ export function ArticleEditor({ blocks, onChange }: Props) {
                 value={block.credit || ""}
                 onChange={(event) => onChange(replaceAt(blocks, index, { ...block, credit: event.target.value }))}
               />
+              <div className="space-y-1">
+                <Label>Size</Label>
+                <select
+                  className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
+                  value={block.width || "full"}
+                  onChange={(event) =>
+                    onChange(
+                      replaceAt(blocks, index, {
+                        ...block,
+                        width: event.target.value as "small" | "medium" | "large" | "full",
+                      })
+                    )
+                  }
+                >
+                  <option value="small">Small (25%)</option>
+                  <option value="medium">Medium (50%)</option>
+                  <option value="large">Large (75%)</option>
+                  <option value="full">Full width</option>
+                </select>
+              </div>
             </div>
           ) : null}
           {block.type === "youtube" ? (
@@ -318,15 +396,29 @@ export function ArticleEditor({ blocks, onChange }: Props) {
           {block.type === "takeaways" ? (
             <div className="space-y-2">
               {block.items.map((item, itemIndex) => (
-                <Input
-                  key={itemIndex}
-                  value={item}
-                  onChange={(event) => {
-                    const items = [...block.items];
-                    items[itemIndex] = event.target.value;
-                    onChange(replaceAt(blocks, index, { ...block, items }));
-                  }}
-                />
+                <div key={itemIndex} className="flex items-start gap-2">
+                  <div className="flex-1">
+                    <RichTextInput
+                      value={item}
+                      onChange={(value) => {
+                        const items = replaceAt(block.items, itemIndex, value);
+                        onChange(replaceAt(blocks, index, { ...block, items }));
+                      }}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="mt-7"
+                    disabled={block.items.length === 1}
+                    onClick={() =>
+                      onChange(replaceAt(blocks, index, { ...block, items: removeAt(block.items, itemIndex) }))
+                    }
+                  >
+                    <X className="size-4" />
+                  </Button>
+                </div>
               ))}
               <Button
                 type="button"

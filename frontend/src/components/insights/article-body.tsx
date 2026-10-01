@@ -20,6 +20,27 @@ function HeadingTag({
   return <h4 className={cn(className, "mt-6 text-lg")}>{children}</h4>;
 }
 
+const IMAGE_WIDTH_CLASS: Record<string, string> = {
+  small: "max-w-[25%]",
+  medium: "max-w-[50%]",
+  large: "max-w-[75%]",
+  full: "max-w-full",
+};
+
+/** Renders **bold** and *italic* markdown markers written from the article editor toolbar. */
+function renderInline(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).filter((part) => part !== "");
+  return parts.map((part, index) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={index}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith("*") && part.endsWith("*")) {
+      return <em key={index}>{part.slice(1, -1)}</em>;
+    }
+    return <span key={index}>{part}</span>;
+  });
+}
+
 function CodeBlock({ language, code }: { language: string; code: string }) {
   const [copied, setCopied] = useState(false);
 
@@ -53,7 +74,7 @@ export function ArticleBody({ blocks }: { blocks: ArticleBlock[] }) {
         if (block.type === "paragraph") {
           return (
             <p key={key} className="text-lg leading-relaxed text-muted-foreground">
-              {block.text}
+              {renderInline(block.text)}
             </p>
           );
         }
@@ -71,7 +92,7 @@ export function ArticleBody({ blocks }: { blocks: ArticleBlock[] }) {
               )}
             >
               {block.items.map((item) => (
-                <li key={item}>{item}</li>
+                <li key={item}>{renderInline(item)}</li>
               ))}
             </ListTag>
           );
@@ -79,7 +100,7 @@ export function ArticleBody({ blocks }: { blocks: ArticleBlock[] }) {
         if (block.type === "quote") {
           return (
             <blockquote key={key} className="border-l-4 border-brand-orange pl-4 text-lg italic text-foreground">
-              {block.text}
+              {renderInline(block.text)}
             </blockquote>
           );
         }
@@ -96,7 +117,7 @@ export function ArticleBody({ blocks }: { blocks: ArticleBlock[] }) {
               <img
                 src={block.src}
                 alt={block.alt}
-                className="mx-auto h-auto max-w-full"
+                className={cn("mx-auto h-auto w-full", IMAGE_WIDTH_CLASS[block.width || "full"])}
                 loading="lazy"
               />
               {block.caption || block.credit ? (
@@ -169,7 +190,7 @@ export function ArticleBody({ blocks }: { blocks: ArticleBlock[] }) {
             <p className="text-xs font-semibold uppercase tracking-wide text-brand-orange">Key takeaways</p>
             <ul className="mt-3 list-disc space-y-2 pl-5 text-foreground">
               {block.items.map((item) => (
-                <li key={item}>{item}</li>
+                <li key={item}>{renderInline(item)}</li>
               ))}
             </ul>
           </aside>

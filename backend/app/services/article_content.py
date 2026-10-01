@@ -34,6 +34,7 @@ ALLOWED_CODE_LANGUAGES = {
 }
 
 ALLOWED_CHART_TYPES = {"line", "bar", "pie", "scatter"}
+ALLOWED_IMAGE_WIDTHS = {"small", "medium", "large", "full"}
 YOUTUBE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
 YOUTUBE_URL_RE = re.compile(
     r"(?:youtube\.com/(?:watch\?v=|embed/|shorts/)|youtu\.be/)([A-Za-z0-9_-]{11})"
@@ -158,12 +159,16 @@ def _clean_block(raw: Any) -> dict[str, Any]:
         alt = _clean_text(raw.get("alt"), limit=300)
         if not alt:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Image alt text is required")
+        width = raw.get("width") or "full"
+        if width not in ALLOWED_IMAGE_WIDTHS:
+            width = "full"
         return {
             "type": "image",
             "src": _clean_image_src(raw.get("src")),
             "alt": alt,
             "caption": _clean_text(raw.get("caption"), limit=500),
             "credit": _clean_text(raw.get("credit"), limit=300),
+            "width": width,
         }
     if block_type == "youtube":
         video_id = extract_youtube_id(str(raw.get("videoId") or raw.get("url") or ""))

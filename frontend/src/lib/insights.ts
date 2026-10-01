@@ -51,7 +51,14 @@ export type ArticleBlock =
   | { type: "quote"; text: string }
   | { type: "divider" }
   | { type: "code"; language: string; code: string }
-  | { type: "image"; src: string; alt: string; caption?: string; credit?: string }
+  | {
+      type: "image";
+      src: string;
+      alt: string;
+      caption?: string;
+      credit?: string;
+      width?: "small" | "medium" | "large" | "full";
+    }
   | { type: "youtube"; videoId: string }
   | { type: "table"; headers: string[]; rows: string[][] }
   | {
