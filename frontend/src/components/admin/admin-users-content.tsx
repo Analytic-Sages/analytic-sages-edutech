@@ -161,9 +161,9 @@ export function AdminUsersContent() {
     }
   }
 
-  async function removeGrantManager(user: AdminUserRow) {
-    if (user.role !== "partnerships") return;
-    if (!window.confirm(`Remove grant manager access from ${user.full_name || user.email}? Their account will remain as a student.`)) return;
+  async function removeStaffAccess(user: AdminUserRow) {
+    if (user.role === "admin" || !isStaffRole(user.role)) return;
+    if (!window.confirm(`Remove staff access from ${user.full_name || user.email}? Their account will remain as a student.`)) return;
     setRemovingId(user.id);
     setError(null);
     try {
@@ -479,16 +479,16 @@ export function AdminUsersContent() {
                                   <li key={item}>{item}</li>
                                 ))}
                               </ul>
-                              {user.role === "partnerships" ? (
+                              {user.role !== "admin" && isStaffRole(user.role) ? (
                                 <Button
                                   type="button"
                                   size="sm"
                                   variant="outline"
                                   className="mt-4"
                                   disabled={removingId === user.id}
-                                  onClick={() => void removeGrantManager(user)}
+                                  onClick={() => void removeStaffAccess(user)}
                                 >
-                                  {removingId === user.id ? "Removing…" : "Remove grant manager access"}
+                                  {removingId === user.id ? "Removing…" : "Remove staff access"}
                                 </Button>
                               ) : null}
                             </div>

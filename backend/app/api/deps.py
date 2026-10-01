@@ -230,7 +230,10 @@ def require_event_registrant_manager(
         if current_user.role == UserRole.ADMIN:
             return current_user
     if current_user.email.lower() not in allowed:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Registrant access is restricted")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Registrant access is restricted. Add your login email to EVENT_REGISTRANT_MANAGER_EMAILS and restart the backend.",
+        )
     return current_user
 require_catalog_ops = require_roles(UserRole.ADMIN, UserRole.OPERATIONS)
 require_opportunity_ops = require_roles(
