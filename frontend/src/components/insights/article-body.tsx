@@ -36,10 +36,35 @@ const IMAGE_ASPECT_CLASS: Record<string, string> = {
   wide: "aspect-[21/9] object-cover",
 };
 
-/** Renders **bold** and *italic* markdown markers written from the article editor toolbar. */
+const LINK_RE = /^\[([^\]]+)\]\(([^)]+)\)$/;
+
+/** Only allow https:// or same-site paths — never javascript:/data: etc. */
+function isSafeHref(url: string) {
+  return /^https:\/\//i.test(url) || url.startsWith("/");
+}
+
+/** Renders **bold**, *italic*, and [text](url) markers written from the article editor toolbar. */
 function renderInline(text: string) {
-  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).filter((part) => part !== "");
+  const parts = text
+    .split(/(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|\*[^*]+\*)/g)
+    .filter((part) => part !== "");
   return parts.map((part, index) => {
+    const link = part.match(LINK_RE);
+    if (link) {
+      const [, label, href] = link;
+      if (!isSafeHref(href)) return <span key={index}>{label}</span>;
+      return (
+        <a
+          key={index}
+          href={href}
+          target={href.startsWith("/") ? undefined : "_blank"}
+          rel="noopener noreferrer"
+          className="text-brand-orange underline underline-offset-2 hover:text-brand-orange/80"
+        >
+          {label}
+        </a>
+      );
+    }
     if (part.startsWith("**") && part.endsWith("**")) {
       return <strong key={index}>{part.slice(2, -2)}</strong>;
     }

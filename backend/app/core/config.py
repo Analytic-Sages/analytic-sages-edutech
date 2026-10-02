@@ -77,7 +77,14 @@ class Settings(BaseSettings):
     realtimekit_participant_preset: str = "group_call_participant"
 
     # Local article image uploads (dev / API disk). Not Postgres.
+    # Falls back to this when Supabase Storage is not configured — not durable across deploys.
     storage_dir: str = "var/uploads"
+
+    # Supabase Storage — durable object storage for Insights/Events image uploads.
+    # Leave empty to use local disk (dev only).
+    supabase_url: str | None = None
+    supabase_service_role_key: str | None = None
+    supabase_storage_bucket: str = "uploads"
 
     # Optional header token for POST /api/v1/internal/opportunities/sync and weekly digest.
     # Leave empty to keep the endpoints disabled.

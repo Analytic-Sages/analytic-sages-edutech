@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Bold, Italic } from "lucide-react";
+import { Bold, Italic, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,6 +18,16 @@ function applyMarker(el: HTMLTextAreaElement | HTMLInputElement, value: string, 
   return { next, cursorStart, cursorEnd };
 }
 
+/** Wraps the selection (or a placeholder) in a markdown link: [text](url). */
+function applyLink(el: HTMLTextAreaElement | HTMLInputElement, value: string, url: string) {
+  const start = el.selectionStart ?? value.length;
+  const end = el.selectionEnd ?? value.length;
+  const selected = value.slice(start, end) || "link text";
+  const inserted = `[${selected}](${url})`;
+  const next = `${value.slice(0, start)}${inserted}${value.slice(end)}`;
+  return { next, cursorStart: start, cursorEnd: start + inserted.length };
+}
+
 function useFormatting(value: string, onChange: (next: string) => void) {
   const ref = useRef<HTMLTextAreaElement & HTMLInputElement>(null);
 
@@ -25,6 +35,19 @@ function useFormatting(value: string, onChange: (next: string) => void) {
     const el = ref.current;
     if (!el) return;
     const { next, cursorStart, cursorEnd } = applyMarker(el, value, marker);
+    onChange(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(cursorStart, cursorEnd);
+    });
+  }
+
+  function insertLink() {
+    const el = ref.current;
+    if (!el) return;
+    const url = window.prompt("Link URL (https:// or /insights/...)");
+    if (!url) return;
+    const { next, cursorStart, cursorEnd } = applyLink(el, value, url.trim());
     onChange(next);
     requestAnimationFrame(() => {
       el.focus();
@@ -41,13 +64,24 @@ function useFormatting(value: string, onChange: (next: string) => void) {
     } else if (event.key.toLowerCase() === "i") {
       event.preventDefault();
       format("*");
+    } else if (event.key.toLowerCase() === "k") {
+      event.preventDefault();
+      insertLink();
     }
   }
 
-  return { ref, format, onKeyDown };
+  return { ref, format, insertLink, onKeyDown };
 }
 
-function Toolbar({ onBold, onItalic }: { onBold: () => void; onItalic: () => void }) {
+function Toolbar({
+  onBold,
+  onItalic,
+  onLink,
+}: {
+  onBold: () => void;
+  onItalic: () => void;
+  onLink: () => void;
+}) {
   return (
     <div className="mb-1.5 flex gap-1">
       <Button type="button" size="sm" variant="ghost" className="h-7 px-2" onClick={onBold} title="Bold (Ctrl/Cmd+B)">
@@ -62,6 +96,9 @@ function Toolbar({ onBold, onItalic }: { onBold: () => void; onItalic: () => voi
         title="Italic (Ctrl/Cmd+I)"
       >
         <Italic className="size-3.5" />
+      </Button>
+      <Button type="button" size="sm" variant="ghost" className="h-7 px-2" onClick={onLink} title="Link (Ctrl/Cmd+K)">
+        <Link2 className="size-3.5" />
       </Button>
     </div>
   );
@@ -78,10 +115,10 @@ type FieldProps = {
 };
 
 export function RichTextField({ value, onChange, rows = 4, className, placeholder, onPaste, onBlur }: FieldProps) {
-  const { ref, format, onKeyDown } = useFormatting(value, onChange);
+  const { ref, format, insertLink, onKeyDown } = useFormatting(value, onChange);
   return (
     <div>
-      <Toolbar onBold={() => format("**")} onItalic={() => format("*")} />
+      <Toolbar onBold={() => format("**")} onItalic={() => format("*")} onLink={insertLink} />
       <Textarea
         ref={ref}
         value={value}
@@ -105,10 +142,10 @@ type InputFieldProps = {
 };
 
 export function RichTextInput({ value, onChange, placeholder, className }: InputFieldProps) {
-  const { ref, format, onKeyDown } = useFormatting(value, onChange);
+  const { ref, format, insertLink, onKeyDown } = useFormatting(value, onChange);
   return (
     <div>
-      <Toolbar onBold={() => format("**")} onItalic={() => format("*")} />
+      <Toolbar onBold={() => format("**")} onItalic={() => format("*")} onLink={insertLink} />
       <Input
         ref={ref}
         value={value}

@@ -133,6 +133,34 @@ python scripts/seed_courses.py
    `{PUBLIC_API_URL}/api/v1/webhooks/payments/nowpayments`
 4. Checkout creates a hosted **invoice**; enrollment unlocks only when IPN `payment_status` is `finished` (signature verified, amount checked).
 5. Localhost cannot receive IPNs — use a tunnel for end-to-end tests.
+
+### Image uploads (Insights articles, event banners)
+
+Uploads go through `StorageService`. With `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` unset, it falls back to local disk (`STORAGE_DIR`, default `var/uploads`) — **only durable if that path is a persistent volume**; plain ephemeral disk is wiped on every deploy on most hosts, silently breaking already-published images.
+
+Two ways to make uploads durable in production — pick one:
+
+**Option A — Render Persistent Disk (simplest if you're already on Render)**
+
+1. In the Render dashboard, open the backend service → **Disks** tab → **Add Disk**.
+2. Set a mount path, e.g. `/var/data/uploads`, and a size (a few GB is plenty).
+3. Set the env var `STORAGE_DIR=/var/data/uploads` on that service.
+4. Leave `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` unset.
+5. Deploy. New uploads land on the disk and survive future deploys.
+
+Requires a paid Render instance plan (not available on the free tier), and a disk only attaches to **one** service instance — this won't work if you ever scale to multiple replicas.
+
+**Option B — Supabase Storage (works at any scale, needs a Supabase project)**
+
+| Env var | Purpose |
+|---------|---------|
+| `SUPABASE_URL` | Your Supabase project URL, e.g. `https://xxxx.supabase.co` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service role key (server-side only — never expose to the frontend) |
+| `SUPABASE_STORAGE_BUCKET` | Storage bucket name (default `uploads`); create it in the Supabase dashboard and mark it **public** |
+
+Once set, uploads go straight to Supabase Storage and return a permanent `https://.../storage/v1/object/public/...` URL instead of the local `/api/v1/media/...` path.
+
+Once set, uploads go straight to Supabase Storage and return a permanent `https://.../storage/v1/object/public/...` URL instead of the local `/api/v1/media/...` path.
 6. Prefer custody → **manual** withdrawals to treasury (ops policy, not code).
 
 #### Paystack (cards / local + USD)
