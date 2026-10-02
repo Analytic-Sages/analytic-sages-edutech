@@ -50,27 +50,43 @@ function draftKey(articleId: string) {
   return `insights-draft-${articleId}`;
 }
 
+function readDraft(articleId: string): DraftSnapshot | null {
+  if (typeof window === "undefined") return null;
+  const raw = window.localStorage.getItem(draftKey(articleId));
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as DraftSnapshot;
+  } catch {
+    window.localStorage.removeItem(draftKey(articleId));
+    return null;
+  }
+}
+
 export function InsightComposer({ article, workspace }: Props) {
   const router = useRouter();
-  const [title, setTitle] = useState(article.title);
-  const [slug, setSlug] = useState(article.slug);
-  const [excerpt, setExcerpt] = useState(article.excerpt);
-  const [category, setCategory] = useState(article.category);
-  const [contentType, setContentType] = useState(article.content_type || "Blog");
+  const [draft] = useState(() => readDraft(article.id));
+  const [title, setTitle] = useState(draft?.title ?? article.title);
+  const [slug, setSlug] = useState(draft?.slug ?? article.slug);
+  const [excerpt, setExcerpt] = useState(draft?.excerpt ?? article.excerpt);
+  const [category, setCategory] = useState(draft?.category ?? article.category);
+  const [contentType, setContentType] = useState(draft?.contentType ?? article.content_type ?? "Blog");
   const [authorOptions, setAuthorOptions] = useState<InsightAuthorOption[]>([]);
-  const [contributors, setContributors] = useState(article.contributors || []);
-  const [cover, setCover] = useState(article.cover_image_url || "");
+  const [contributors, setContributors] = useState(draft?.contributors ?? article.contributors ?? []);
+  const [cover, setCover] = useState(draft?.cover ?? article.cover_image_url ?? "");
   const [coverUploading, setCoverUploading] = useState(false);
   const [coverError, setCoverError] = useState<string | null>(null);
-  const [seoTitle, setSeoTitle] = useState(article.seo_title || "");
-  const [seoDescription, setSeoDescription] = useState(article.seo_description || "");
-  const [blocks, setBlocks] = useState<ArticleBlock[]>(article.body.blocks.length ? article.body.blocks : emptyArticleBody().blocks);
+  const [seoTitle, setSeoTitle] = useState(draft?.seoTitle ?? article.seo_title ?? "");
+  const [seoDescription, setSeoDescription] = useState(draft?.seoDescription ?? article.seo_description ?? "");
+  const [blocks, setBlocks] = useState<ArticleBlock[]>(
+    draft?.blocks ?? (article.body.blocks.length ? article.body.blocks : emptyArticleBody().blocks)
+  );
   const [preview, setPreview] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(
+    draft ? "Restored your unsaved changes from this browser." : null
+  );
   const [status, setStatus] = useState(article.status);
-  const hydratedFromDraft = useRef(false);
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipNextSnapshot = useRef(true);
 
@@ -79,31 +95,6 @@ export function InsightComposer({ article, workspace }: Props) {
   useEffect(() => {
     listInsightAuthors().then(setAuthorOptions).catch(() => setAuthorOptions([]));
   }, []);
-
-  // Recover any unsaved work left behind by a refresh/crash before the autosave fired.
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const raw = window.localStorage.getItem(draftKey(article.id));
-    if (!raw) return;
-    try {
-      const draft = JSON.parse(raw) as DraftSnapshot;
-      setTitle(draft.title);
-      setSlug(draft.slug);
-      setExcerpt(draft.excerpt);
-      setCategory(draft.category);
-      setContentType(draft.contentType);
-      setCover(draft.cover);
-      setSeoTitle(draft.seoTitle);
-      setSeoDescription(draft.seoDescription);
-      setContributors(draft.contributors);
-      setBlocks(draft.blocks);
-      hydratedFromDraft.current = true;
-      setNotice("Restored your unsaved changes from this browser.");
-    } catch {
-      window.localStorage.removeItem(draftKey(article.id));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [article.id]);
 
   async function onCoverFile(file: File | undefined) {
     if (!file) return;
@@ -153,6 +144,12 @@ export function InsightComposer({ article, workspace }: Props) {
     }
   }
 
+  // Keep a stable ref to the latest save() so the debounce effect doesn't need it in deps.
+  const saveRef = useRef(save);
+  useEffect(() => {
+    saveRef.current = save;
+  });
+
   // Instantly back up every change to localStorage, then debounce a real autosave to the server.
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -177,14 +174,13 @@ export function InsightComposer({ article, workspace }: Props) {
 
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     autosaveTimer.current = setTimeout(() => {
-      void save();
+      void saveRef.current();
     }, 3000);
 
     return () => {
       if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, slug, excerpt, category, contentType, cover, seoTitle, seoDescription, contributors, blocks]);
+  }, [title, slug, excerpt, category, contentType, cover, seoTitle, seoDescription, contributors, blocks, article.id]);
 
   async function run(action: () => Promise<InsightStudio>, ok: string) {
     const saved = await save();
