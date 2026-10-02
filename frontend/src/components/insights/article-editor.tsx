@@ -99,6 +99,15 @@ export function ArticleEditor({ blocks, onChange }: Props) {
     onChange(next);
   }
 
+  /** Recognizes a blank line as a paragraph break once the writer leaves the field. */
+  function onParagraphBlur(index: number, block: Extract<ArticleBlock, { type: "paragraph" }>) {
+    const parts = splitIntoParagraphs(block.text);
+    if (parts.length <= 1) return;
+    const next = [...blocks];
+    next.splice(index, 1, ...parts.map((text) => ({ type: "paragraph", text }) as ArticleBlock));
+    onChange(next);
+  }
+
   async function onImageFile(index: number, file: File | undefined, block: Extract<ArticleBlock, { type: "image" }>) {
     if (!file) return;
     setUploadError(null);
@@ -131,6 +140,11 @@ export function ArticleEditor({ blocks, onChange }: Props) {
               onPaste={
                 block.type === "paragraph"
                   ? (event) => onParagraphPaste(event, index, block)
+                  : undefined
+              }
+              onBlur={
+                block.type === "paragraph"
+                  ? () => onParagraphBlur(index, block)
                   : undefined
               }
             />

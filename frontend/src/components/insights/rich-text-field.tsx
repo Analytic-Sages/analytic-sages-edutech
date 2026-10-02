@@ -74,9 +74,10 @@ type FieldProps = {
   className?: string;
   placeholder?: string;
   onPaste?: (event: React.ClipboardEvent<HTMLTextAreaElement>) => void;
+  onBlur?: (event: React.FocusEvent<HTMLTextAreaElement>) => void;
 };
 
-export function RichTextField({ value, onChange, rows = 4, className, placeholder, onPaste }: FieldProps) {
+export function RichTextField({ value, onChange, rows = 4, className, placeholder, onPaste, onBlur }: FieldProps) {
   const { ref, format, onKeyDown } = useFormatting(value, onChange);
   return (
     <div>
@@ -90,6 +91,7 @@ export function RichTextField({ value, onChange, rows = 4, className, placeholde
         onChange={(event) => onChange(event.target.value)}
         onKeyDown={onKeyDown}
         onPaste={onPaste}
+        onBlur={onBlur}
       />
     </div>
   );

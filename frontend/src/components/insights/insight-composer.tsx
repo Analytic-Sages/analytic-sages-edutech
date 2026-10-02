@@ -20,6 +20,7 @@ import {
   submitStudioArticle,
   unpublishStudioArticle,
   updateStudioArticle,
+  uploadInsightImage,
   listInsightAuthors,
   type ArticleBlock,
   type InsightStudio,
@@ -34,12 +35,15 @@ type Props = {
 export function InsightComposer({ article, workspace }: Props) {
   const router = useRouter();
   const [title, setTitle] = useState(article.title);
+  const [slug, setSlug] = useState(article.slug);
   const [excerpt, setExcerpt] = useState(article.excerpt);
   const [category, setCategory] = useState(article.category);
   const [contentType, setContentType] = useState(article.content_type || "Blog");
   const [authorOptions, setAuthorOptions] = useState<InsightAuthorOption[]>([]);
   const [contributors, setContributors] = useState(article.contributors || []);
   const [cover, setCover] = useState(article.cover_image_url || "");
+  const [coverUploading, setCoverUploading] = useState(false);
+  const [coverError, setCoverError] = useState<string | null>(null);
   const [seoTitle, setSeoTitle] = useState(article.seo_title || "");
   const [seoDescription, setSeoDescription] = useState(article.seo_description || "");
   const [blocks, setBlocks] = useState<ArticleBlock[]>(article.body.blocks.length ? article.body.blocks : emptyArticleBody().blocks);
@@ -55,12 +59,27 @@ export function InsightComposer({ article, workspace }: Props) {
     listInsightAuthors().then(setAuthorOptions).catch(() => setAuthorOptions([]));
   }, []);
 
+  async function onCoverFile(file: File | undefined) {
+    if (!file) return;
+    setCoverError(null);
+    setCoverUploading(true);
+    try {
+      const uploaded = await uploadInsightImage(file);
+      setCover(uploaded.url);
+    } catch (err) {
+      setCoverError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setCoverUploading(false);
+    }
+  }
+
   async function save() {
     setSaving(true);
     setError(null);
     try {
       const saved = await updateStudioArticle(article.id, {
         title,
+        slug,
         excerpt,
         category,
         content_type: contentType,
@@ -76,6 +95,7 @@ export function InsightComposer({ article, workspace }: Props) {
         body: { version: 1, blocks },
       });
       setStatus(saved.status);
+      setSlug(saved.slug);
       setNotice("Draft saved.");
       return saved;
     } catch (err) {
@@ -166,6 +186,18 @@ export function InsightComposer({ article, workspace }: Props) {
           <Input id="title" value={title} onChange={(event) => setTitle(event.target.value)} />
         </div>
         <div>
+          <Label htmlFor="slug">URL slug</Label>
+          <Input
+            id="slug"
+            value={slug}
+            onChange={(event) => setSlug(event.target.value)}
+            placeholder="my-article-title"
+          />
+          <p className="mt-1 text-xs text-muted-foreground">
+            Published at /insights/{slug || "…"}. Changing this after publishing breaks old links.
+          </p>
+        </div>
+        <div>
           <Label htmlFor="excerpt">Subtitle / excerpt</Label>
           <Textarea id="excerpt" value={excerpt} onChange={(event) => setExcerpt(event.target.value)} />
         </div>
@@ -199,8 +231,23 @@ export function InsightComposer({ article, workspace }: Props) {
             </select>
           </div>
           <div>
-            <Label htmlFor="cover">Cover image URL</Label>
-            <Input id="cover" value={cover} onChange={(event) => setCover(event.target.value)} />
+            <Label htmlFor="cover">Cover image</Label>
+            <div className="mt-1 space-y-2">
+              {cover ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={cover} alt="Cover preview" className="h-32 w-full rounded-lg object-cover" />
+              ) : null}
+              <Input
+                id="cover-upload"
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                disabled={coverUploading}
+                onChange={(event) => void onCoverFile(event.target.files?.[0])}
+              />
+              <Input id="cover" placeholder="Or paste an image URL" value={cover} onChange={(event) => setCover(event.target.value)} />
+              {coverUploading ? <p className="text-xs text-muted-foreground">Uploading…</p> : null}
+              {coverError ? <p className="text-xs text-destructive">{coverError}</p> : null}
+            </div>
           </div>
         </div>
         <div>
