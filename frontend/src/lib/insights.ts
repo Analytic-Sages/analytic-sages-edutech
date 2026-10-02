@@ -58,6 +58,7 @@ export type ArticleBlock =
       caption?: string;
       credit?: string;
       width?: "small" | "medium" | "large" | "full";
+      aspect?: "original" | "square" | "landscape" | "portrait" | "wide";
     }
   | { type: "youtube"; videoId: string }
   | { type: "table"; headers: string[]; rows: string[][] }

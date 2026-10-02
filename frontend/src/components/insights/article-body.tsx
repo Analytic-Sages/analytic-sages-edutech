@@ -27,6 +27,15 @@ const IMAGE_WIDTH_CLASS: Record<string, string> = {
   full: "max-w-full",
 };
 
+/** Crops (not stretches) the image to the chosen shape via aspect-ratio + object-fit: cover. */
+const IMAGE_ASPECT_CLASS: Record<string, string> = {
+  original: "",
+  square: "aspect-square object-cover",
+  landscape: "aspect-video object-cover",
+  portrait: "aspect-[4/5] object-cover",
+  wide: "aspect-[21/9] object-cover",
+};
+
 /** Renders **bold** and *italic* markdown markers written from the article editor toolbar. */
 function renderInline(text: string) {
   const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).filter((part) => part !== "");
@@ -117,7 +126,11 @@ export function ArticleBody({ blocks }: { blocks: ArticleBlock[] }) {
               <img
                 src={block.src}
                 alt={block.alt}
-                className={cn("mx-auto h-auto w-full", IMAGE_WIDTH_CLASS[block.width || "full"])}
+                className={cn(
+                  "mx-auto h-auto w-full",
+                  IMAGE_WIDTH_CLASS[block.width || "full"],
+                  IMAGE_ASPECT_CLASS[block.aspect || "original"]
+                )}
                 loading="lazy"
               />
               {block.caption || block.credit ? (

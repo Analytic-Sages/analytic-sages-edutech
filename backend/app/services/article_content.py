@@ -35,6 +35,7 @@ ALLOWED_CODE_LANGUAGES = {
 
 ALLOWED_CHART_TYPES = {"line", "bar", "pie", "scatter"}
 ALLOWED_IMAGE_WIDTHS = {"small", "medium", "large", "full"}
+ALLOWED_IMAGE_ASPECTS = {"original", "square", "landscape", "portrait", "wide"}
 YOUTUBE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
 YOUTUBE_URL_RE = re.compile(
     r"(?:youtube\.com/(?:watch\?v=|embed/|shorts/)|youtu\.be/)([A-Za-z0-9_-]{11})"
@@ -162,6 +163,9 @@ def _clean_block(raw: Any) -> dict[str, Any]:
         width = raw.get("width") or "full"
         if width not in ALLOWED_IMAGE_WIDTHS:
             width = "full"
+        aspect = raw.get("aspect") or "original"
+        if aspect not in ALLOWED_IMAGE_ASPECTS:
+            aspect = "original"
         return {
             "type": "image",
             "src": _clean_image_src(raw.get("src")),
@@ -169,6 +173,7 @@ def _clean_block(raw: Any) -> dict[str, Any]:
             "caption": _clean_text(raw.get("caption"), limit=500),
             "credit": _clean_text(raw.get("credit"), limit=300),
             "width": width,
+            "aspect": aspect,
         }
     if block_type == "youtube":
         video_id = extract_youtube_id(str(raw.get("videoId") or raw.get("url") or ""))

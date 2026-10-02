@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArticleBody } from "@/components/insights/article-body";
 import { ArticleEditor } from "@/components/insights/article-editor";
@@ -32,6 +32,24 @@ type Props = {
   workspace: "studio" | "admin";
 };
 
+type DraftSnapshot = {
+  title: string;
+  slug: string;
+  excerpt: string;
+  category: string;
+  contentType: string;
+  cover: string;
+  seoTitle: string;
+  seoDescription: string;
+  contributors: InsightStudio["contributors"];
+  blocks: ArticleBlock[];
+  savedAt: number;
+};
+
+function draftKey(articleId: string) {
+  return `insights-draft-${articleId}`;
+}
+
 export function InsightComposer({ article, workspace }: Props) {
   const router = useRouter();
   const [title, setTitle] = useState(article.title);
@@ -52,12 +70,40 @@ export function InsightComposer({ article, workspace }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [status, setStatus] = useState(article.status);
+  const hydratedFromDraft = useRef(false);
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipNextSnapshot = useRef(true);
 
   const backHref = workspace === "admin" ? "/admin/insights" : "/studio";
 
   useEffect(() => {
     listInsightAuthors().then(setAuthorOptions).catch(() => setAuthorOptions([]));
   }, []);
+
+  // Recover any unsaved work left behind by a refresh/crash before the autosave fired.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = window.localStorage.getItem(draftKey(article.id));
+    if (!raw) return;
+    try {
+      const draft = JSON.parse(raw) as DraftSnapshot;
+      setTitle(draft.title);
+      setSlug(draft.slug);
+      setExcerpt(draft.excerpt);
+      setCategory(draft.category);
+      setContentType(draft.contentType);
+      setCover(draft.cover);
+      setSeoTitle(draft.seoTitle);
+      setSeoDescription(draft.seoDescription);
+      setContributors(draft.contributors);
+      setBlocks(draft.blocks);
+      hydratedFromDraft.current = true;
+      setNotice("Restored your unsaved changes from this browser.");
+    } catch {
+      window.localStorage.removeItem(draftKey(article.id));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [article.id]);
 
   async function onCoverFile(file: File | undefined) {
     if (!file) return;
@@ -97,6 +143,7 @@ export function InsightComposer({ article, workspace }: Props) {
       setStatus(saved.status);
       setSlug(saved.slug);
       setNotice("Draft saved.");
+      if (typeof window !== "undefined") window.localStorage.removeItem(draftKey(article.id));
       return saved;
     } catch (err) {
       setError(err instanceof ApiError ? err.detail : "Could not save");
@@ -105,6 +152,39 @@ export function InsightComposer({ article, workspace }: Props) {
       setSaving(false);
     }
   }
+
+  // Instantly back up every change to localStorage, then debounce a real autosave to the server.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (skipNextSnapshot.current) {
+      skipNextSnapshot.current = false;
+      return;
+    }
+    const snapshot: DraftSnapshot = {
+      title,
+      slug,
+      excerpt,
+      category,
+      contentType,
+      cover,
+      seoTitle,
+      seoDescription,
+      contributors,
+      blocks,
+      savedAt: Date.now(),
+    };
+    window.localStorage.setItem(draftKey(article.id), JSON.stringify(snapshot));
+
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(() => {
+      void save();
+    }, 3000);
+
+    return () => {
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, slug, excerpt, category, contentType, cover, seoTitle, seoDescription, contributors, blocks]);
 
   async function run(action: () => Promise<InsightStudio>, ok: string) {
     const saved = await save();

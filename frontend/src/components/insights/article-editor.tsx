@@ -22,7 +22,7 @@ const INSERTS: { label: string; block: ArticleBlock }[] = [
   { label: "Quote", block: { type: "quote", text: "" } },
   { label: "Divider", block: { type: "divider" } },
   { label: "Code", block: { type: "code", language: "sql", code: "" } },
-  { label: "Image", block: { type: "image", src: "", alt: "", caption: "", credit: "", width: "full" } },
+  { label: "Image", block: { type: "image", src: "", alt: "", caption: "", credit: "", width: "full", aspect: "original" } },
   { label: "YouTube", block: { type: "youtube", videoId: "" } },
   { label: "Table", block: { type: "table", headers: ["Metric", "Value"], rows: [["", ""]] } },
   {
@@ -265,25 +265,48 @@ export function ArticleEditor({ blocks, onChange }: Props) {
                 value={block.credit || ""}
                 onChange={(event) => onChange(replaceAt(blocks, index, { ...block, credit: event.target.value }))}
               />
-              <div className="space-y-1">
-                <Label>Size</Label>
-                <select
-                  className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
-                  value={block.width || "full"}
-                  onChange={(event) =>
-                    onChange(
-                      replaceAt(blocks, index, {
-                        ...block,
-                        width: event.target.value as "small" | "medium" | "large" | "full",
-                      })
-                    )
-                  }
-                >
-                  <option value="small">Small (25%)</option>
-                  <option value="medium">Medium (50%)</option>
-                  <option value="large">Large (75%)</option>
-                  <option value="full">Full width</option>
-                </select>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label>Size</Label>
+                  <select
+                    className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
+                    value={block.width || "full"}
+                    onChange={(event) =>
+                      onChange(
+                        replaceAt(blocks, index, {
+                          ...block,
+                          width: event.target.value as "small" | "medium" | "large" | "full",
+                        })
+                      )
+                    }
+                  >
+                    <option value="small">Small (25%)</option>
+                    <option value="medium">Medium (50%)</option>
+                    <option value="large">Large (75%)</option>
+                    <option value="full">Full width</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <Label>Shape</Label>
+                  <select
+                    className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
+                    value={block.aspect || "original"}
+                    onChange={(event) =>
+                      onChange(
+                        replaceAt(blocks, index, {
+                          ...block,
+                          aspect: event.target.value as "original" | "square" | "landscape" | "portrait" | "wide",
+                        })
+                      )
+                    }
+                  >
+                    <option value="original">Original</option>
+                    <option value="square">Square (1:1)</option>
+                    <option value="landscape">Landscape (16:9)</option>
+                    <option value="portrait">Portrait (4:5)</option>
+                    <option value="wide">Wide banner (21:9)</option>
+                  </select>
+                </div>
               </div>
             </div>
           ) : null}
