@@ -103,6 +103,7 @@ export type InsightStudioRow = {
   slug: string;
   title: string;
   status: ArticleStatus;
+  featured: boolean;
   category: string;
   content_type: string;
   updated_at: string;
@@ -174,6 +175,12 @@ export function updateStudioArticle(id: string, payload: unknown) {
   return apiFetch<InsightStudio>(`/api/v1/studio/articles/${id}`, {
     method: "PATCH",
     body: JSON.stringify(payload),
+  });
+}
+
+export function setStudioArticleFeatured(id: string, featured: boolean) {
+  return apiFetch<InsightStudio>(`/api/v1/studio/articles/${id}/feature`, {
+    method: featured ? "POST" : "DELETE",
   });
 }
 

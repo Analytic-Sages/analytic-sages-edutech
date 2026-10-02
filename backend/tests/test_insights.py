@@ -71,6 +71,44 @@ def test_public_insights_include_seeded_slug():
     assert detail.json()["body"]["blocks"][0]["type"] == "paragraph"
 
 
+def test_editor_can_select_one_featured_insight():
+    editor_email = f"feature-editor-{uuid.uuid4()}@example.com"
+    _cleanup_user(editor_email)
+    editor = _make_user(editor_email, UserRole.EDITOR)
+    db = SessionLocal()
+    previous_featured: dict[uuid.UUID, bool] = {}
+    try:
+        seed_insights_articles(db)
+        db.commit()
+        previous_featured = {article.id: article.featured for article in db.query(Article).all()}
+        articles = db.query(Article).filter(Article.status == ArticleStatus.PUBLISHED).order_by(Article.slug).limit(2).all()
+        assert len(articles) == 2
+        first_id, second_id = articles[0].id, articles[1].id
+        first_slug, second_slug = articles[0].slug, articles[1].slug
+
+        first = client.post(f"/api/v1/studio/articles/{first_id}/feature", headers=_auth(editor))
+        assert first.status_code == 200, first.text
+        second = client.post(f"/api/v1/studio/articles/{second_id}/feature", headers=_auth(editor))
+        assert second.status_code == 200, second.text
+        assert second.json()["featured"] is True
+
+        public = client.get("/api/v1/insights")
+        assert public.status_code == 200
+        assert public.json()[0]["slug"] == second_slug
+        assert [item["slug"] for item in public.json() if item["featured"]] == [second_slug]
+
+        unfeatured = client.delete(f"/api/v1/studio/articles/{second_id}/feature", headers=_auth(editor))
+        assert unfeatured.status_code == 200, unfeatured.text
+        assert unfeatured.json()["featured"] is False
+        assert first_slug != second_slug
+    finally:
+        for article in db.query(Article).all():
+            article.featured = previous_featured.get(article.id, False)
+        db.commit()
+        db.close()
+        _cleanup_user(editor_email)
+
+
 def test_author_cannot_publish_editor_can():
     author_email = f"author-{uuid.uuid4()}@example.com"
     editor_email = f"editor-{uuid.uuid4()}@example.com"

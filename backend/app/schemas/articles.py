@@ -104,6 +104,7 @@ class ArticleStudioRow(BaseModel):
     slug: str
     title: str
     status: ArticleStatusValue
+    featured: bool = False
     category: str
     content_type: str
     updated_at: datetime

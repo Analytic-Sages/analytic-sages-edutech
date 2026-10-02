@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.roles import UserRole
@@ -189,7 +189,7 @@ class InsightService:
             select(Article)
             .options(selectinload(Article.author), selectinload(Article.contributors).selectinload(ArticleContributor.author_profile))
             .where(Article.status == ArticleStatus.PUBLISHED)
-            .order_by(Article.published_at.desc().nullslast(), Article.created_at.desc())
+            .order_by(Article.featured.desc(), Article.published_at.desc().nullslast(), Article.created_at.desc())
         ).all()
         return [self._card(row) for row in rows]
 
@@ -247,6 +247,7 @@ class InsightService:
                 slug=row.slug,
                 title=row.title,
                 status=row.status.value,
+                featured=row.featured,
                 category=row.category,
                 content_type=row.content_type or "Blog",
                 updated_at=row.updated_at,
@@ -255,6 +256,22 @@ class InsightService:
             )
             for row in rows
         ]
+
+    def set_featured(self, user: User, article_id: UUID, featured: bool) -> ArticleStudio:
+        if not self.is_publisher(user):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+        article = self._get_for_user(user, article_id)
+        if featured and article.status != ArticleStatus.PUBLISHED:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only published articles can be featured",
+            )
+        if featured:
+            self.db.execute(update(Article).where(Article.id != article.id).values(featured=False))
+        article.featured = featured
+        self.db.commit()
+        self.db.refresh(article)
+        return self._studio(article, user)
 
     def get_studio(self, user: User, article_id: UUID) -> ArticleStudio:
         article = self._get_for_user(user, article_id)

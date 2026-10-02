@@ -121,6 +121,24 @@ def update_article(
     return insights.update(current_user, article_id, payload)
 
 
+@router.post("/studio/articles/{article_id}/feature", response_model=ArticleStudio)
+def feature_article(
+    article_id: UUID,
+    current_user: User = Depends(require_publisher),
+    insights: InsightService = Depends(get_insight_service),
+) -> ArticleStudio:
+    return insights.set_featured(current_user, article_id, True)
+
+
+@router.delete("/studio/articles/{article_id}/feature", response_model=ArticleStudio)
+def unfeature_article(
+    article_id: UUID,
+    current_user: User = Depends(require_publisher),
+    insights: InsightService = Depends(get_insight_service),
+) -> ArticleStudio:
+    return insights.set_featured(current_user, article_id, False)
+
+
 @router.post("/studio/articles/{article_id}/submit", response_model=ArticleStudio)
 def submit_article(
     article_id: UUID,

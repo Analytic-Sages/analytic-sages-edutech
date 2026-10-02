@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, Star } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api";
@@ -11,6 +11,7 @@ import {
   createStudioArticle,
   emptyArticleBody,
   listStudioArticles,
+  setStudioArticleFeatured,
   type InsightStudioRow,
 } from "@/lib/insights";
 
@@ -19,6 +20,7 @@ export function AdminInsightsContent() {
   const [rows, setRows] = useState<InsightStudioRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [featureBusyId, setFeatureBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     listStudioArticles()
@@ -36,6 +38,22 @@ export function AdminInsightsContent() {
       body: emptyArticleBody(),
     });
     router.push(`/admin/insights/${created.id}`);
+  }
+
+  async function toggleFeatured(row: InsightStudioRow) {
+    setError(null);
+    setFeatureBusyId(row.id);
+    try {
+      const updated = await setStudioArticleFeatured(row.id, !row.featured);
+      setRows((current) => current.map((item) => ({
+        ...item,
+        featured: updated.featured ? item.id === row.id : item.id === row.id ? false : item.featured,
+      })));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.detail : "Could not update featured article");
+    } finally {
+      setFeatureBusyId(null);
+    }
   }
 
   if (loading) {
@@ -67,6 +85,7 @@ export function AdminInsightsContent() {
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Type</th>
               <th className="px-4 py-3">Topic</th>
+              <th className="px-4 py-3">Featured</th>
             </tr>
           </thead>
           <tbody>
@@ -81,6 +100,19 @@ export function AdminInsightsContent() {
                 <td className="px-4 py-3 capitalize">{row.status.replace("_", " ")}</td>
                 <td className="px-4 py-3">{row.content_type}</td>
                 <td className="px-4 py-3">{row.category}</td>
+                <td className="px-4 py-3">
+                  <Button
+                    type="button"
+                    variant={row.featured ? "secondary" : "outline"}
+                    size="sm"
+                    disabled={row.status !== "published" || featureBusyId !== null}
+                    onClick={() => void toggleFeatured(row)}
+                    aria-label={row.featured ? `Unfeature ${row.title}` : `Feature ${row.title}`}
+                  >
+                    {featureBusyId === row.id ? <Loader2 className="size-4 animate-spin" /> : <Star className="size-4" />}
+                    {row.featured ? "Featured" : "Feature"}
+                  </Button>
+                </td>
               </tr>
             ))}
           </tbody>
