@@ -64,13 +64,14 @@ function SuccessInner() {
   const router = useRouter();
   const orderId = searchParams.get("order_id");
   const [payment, setPayment] = useState<PaymentPublic | null>(null);
-  const [loading, setLoading] = useState(
-    () => Boolean(orderId && typeof window !== "undefined" && getAccessToken())
-  );
+  // True once polling has finished (terminal status reached, timed out, or
+  // no pollable order — e.g. missing order_id or signed-out visitor).
+  const [settled, setSettled] = useState(false);
+  const canPoll = Boolean(orderId && typeof window !== "undefined" && getAccessToken());
+  const loading = canPoll && !settled;
 
   useEffect(() => {
     if (!orderId || !getAccessToken()) {
-      setLoading(false);
       return;
     }
     let stopped = false;
@@ -83,7 +84,7 @@ function SuccessInner() {
         if (stopped) return;
         setPayment(current);
         if (TERMINAL_STATUSES.has(current.status)) {
-          setLoading(false);
+          setSettled(true);
           if (current.status === "confirmed") {
             timer = setTimeout(() => {
               if (!stopped) {
@@ -99,7 +100,7 @@ function SuccessInner() {
       if (!stopped && ++attempts < MAX_POLL_ATTEMPTS) {
         timer = setTimeout(tick, POLL_INTERVAL_MS);
       } else {
-        setLoading(false);
+        setSettled(true);
       }
     }
 
