@@ -53,6 +53,30 @@ Webhook / IPN URLs in provider dashboards:
 - Paystack: `{PUBLIC_API_URL}/api/v1/webhooks/payments/paystack`
 - NOWPayments: `{PUBLIC_API_URL}/api/v1/webhooks/payments/nowpayments`
 
+`PUBLIC_API_URL` must be the public **HTTPS** API origin — NOWPayments cannot deliver IPN callbacks to localhost or unreachable hosts. The invoice stores the IPN URL at creation time, so deploy the env change **before** students pay.
+
+### NOWPayments IPN delivery verification
+
+The IPN is the only thing that flips a payment from `pending` to `confirmed` automatically. After any live crypto payment:
+
+1. **Check the API logs** — every IPN attempt logs either `Webhook processed` (200) or an error (401 bad signature, 404 unknown order, 503 missing IPN secret).
+2. **Check the DB** — a processed IPN inserts a row into `payment_webhook_events`:
+   ```sql
+   SELECT provider, event_key, payment_id, created_at
+   FROM payment_webhook_events
+   WHERE provider = 'nowpayments'
+   ORDER BY created_at DESC LIMIT 10;
+   ```
+3. If the payment is `finished` in the NOWPayments dashboard but there is **no** IPN log/row, the callback never arrived — in order of likelihood:
+   - `PUBLIC_API_URL` is unset/localhost/wrong host (see startup warnings — the app logs a warning at boot when NOWPayments is live but `PUBLIC_API_URL` is not public HTTPS).
+   - `NOWPAYMENTS_IPN_SECRET` does not match the dashboard secret (every IPN gets a 401).
+   - A firewall/Cloudflare rule is blocking NOWPayments' IPs (allowlist required — request their IP list from NOWPayments support).
+4. The NOWPayments dashboard can **resend** the IPN for a payment (and retry settings live under Settings → Payments → Instant Payment Notifications — raise the recurrent-notification count/timeout so transient API errors recover on their own).
+
+**Self-healing built into the app:** reading a stuck NOWPayments payment (`GET /api/v1/payments/{order_id}` — the success page polls this every 4 s, and admin payments reads also trigger it) auto-pulls the real status from NOWPayments once the payment is older than ~90 s, throttled to one lookup per minute. So even a missed IPN reconciles itself within one poll cycle.
+
+**Admin fallback:** `/admin/payments` → Reconcile. It now auto-discovers the payment by our `order_id`; the manual "payment ID" input only appears if discovery finds nothing (e.g. customer paid with an unmapped address).
+
 Save and **deploy** so the running process reloads settings.
 
 Local / staging rehearsal: keep `PAYMENT_MODE=mock` until the plan picker and unlock path look correct.
@@ -117,7 +141,9 @@ Product behaviour in this release: seat unlocks after the **first** confirmed pa
 - [ ] `seed_blockchain_data_engineering.py` run on production DB  
 - [ ] `seed_tuition_plans.py` run on production DB  
 - [ ] `BILLING_PLANS_ENABLED=true` deployed on API  
-- [ ] `PAYMENT_MODE=live` deployed on API (with live Paystack / NOWPayments secrets + webhooks)  
+- [ ] `PAYMENT_MODE=live` deployed on API (with live Paystack / NOWPayments secrets + webhooks)
+- [ ] `PUBLIC_API_URL` is the public HTTPS API origin (NOWPayments IPN base)
+- [ ] Test crypto payment IPN visible in `payment_webhook_events` and logs  
 - [ ] `verify_bde_checkout.py` exits 0 and prints `PAYMENT_MODE: live`  
 - [ ] Public cohorts API includes BDE as `open`  
 - [ ] Billing plans API returns both plans  

@@ -14,6 +14,7 @@ from app.payments.factory import get_payment_provider
 from app.payments.nowpayments_provider import (
     amounts_match,
     canonical_ipn_json,
+    canonical_ipn_json_js,
     map_nowpayments_status,
     verify_nowpayments_signature,
 )
@@ -95,6 +96,47 @@ def test_ipn_signature_roundtrip():
         hashlib.sha512,
     ).hexdigest()
     assert verify_nowpayments_signature(payload=payload, signature=digest, ipn_secret=secret)
+    assert not verify_nowpayments_signature(
+        payload=payload, signature="deadbeef", ipn_secret=secret
+    )
+
+
+def test_js_canonical_formats_floats_like_json_stringify():
+    payload = {"a": 35.0, "b": 0.001, "c": 1e-7, "d": "usd", "e": None}
+    assert canonical_ipn_json_js(payload) == '{"a":35,"b":0.001,"c":1e-7,"d":"usd","e":null}'
+    # Python canonical keeps the float form — this is the mismatch we guard against.
+    assert '"a":35.0' in canonical_ipn_json(payload)
+
+
+def test_ipn_signature_accepts_js_signed_payload_with_integral_floats():
+    """NOWPayments signs with JSON.stringify semantics: 35.0 serializes as 35.
+    A payload parsed from JSON with integral floats must still verify."""
+    secret = "test-ipn-secret"
+    payload = {
+        "payment_id": 123456789,
+        "payment_status": "finished",
+        "order_id": "ord_test123",
+        "price_amount": 35.0,
+        "actually_paid": 35.1,
+        "outcome_amount": 34.8,
+        "fee": {"depositFee": 0.09853637216235617, "withdrawalFee": 0.0, "serviceFee": 0.5},
+    }
+    import hashlib
+    import hmac
+
+    js_digest = hmac.new(
+        secret.encode(),
+        canonical_ipn_json_js(payload).encode(),
+        hashlib.sha512,
+    ).hexdigest()
+    assert verify_nowpayments_signature(payload=payload, signature=js_digest, ipn_secret=secret)
+
+    py_digest = hmac.new(
+        secret.encode(),
+        canonical_ipn_json(payload).encode(),
+        hashlib.sha512,
+    ).hexdigest()
+    assert verify_nowpayments_signature(payload=payload, signature=py_digest, ipn_secret=secret)
     assert not verify_nowpayments_signature(
         payload=payload, signature="deadbeef", ipn_secret=secret
     )
@@ -218,6 +260,81 @@ def test_fetch_payment_by_id_returns_record():
     args, kwargs = mock_client.get.call_args
     assert args[0] == "https://api.nowpayments.io/v1/payment/987"
     assert kwargs["headers"]["x-api-key"] == "live-key"
+
+
+def test_find_payment_for_order_matches_order_id():
+    settings = _settings(
+        nowpayments_api_key="live-key",
+        nowpayments_ipn_secret="ipn-secret",
+        nowpayments_api_url="https://api.nowpayments.io/v1",
+    )
+    provider = get_payment_provider(PaymentProviderName.NOWPAYMENTS, settings)
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "data": [
+            {"payment_id": 111, "order_id": "ord_other", "payment_status": "finished"},
+            {"payment_id": 987, "order_id": "ord_test123", "payment_status": "finished"},
+        ]
+    }
+
+    mock_client = MagicMock()
+    mock_client.__enter__.return_value = mock_client
+    mock_client.get.return_value = mock_response
+
+    with patch("app.payments.nowpayments_provider.httpx.Client", return_value=mock_client):
+        record = provider.find_payment_for_order("ord_test123")
+
+    assert record is not None
+    assert record["payment_id"] == 987
+    args, kwargs = mock_client.get.call_args
+    assert args[0] == "https://api.nowpayments.io/v1/payment/"
+    assert kwargs["headers"]["x-api-key"] == "live-key"
+
+
+def test_find_payment_for_order_returns_none_when_absent():
+    settings = _settings(
+        nowpayments_api_key="live-key",
+        nowpayments_ipn_secret="ipn-secret",
+    )
+    provider = get_payment_provider(PaymentProviderName.NOWPAYMENTS, settings)
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "data": [{"payment_id": 111, "order_id": "ord_other", "payment_status": "finished"}]
+    }
+
+    mock_client = MagicMock()
+    mock_client.__enter__.return_value = mock_client
+    mock_client.get.return_value = mock_response
+
+    with patch("app.payments.nowpayments_provider.httpx.Client", return_value=mock_client):
+        record = provider.find_payment_for_order("ord_test123")
+
+    assert record is None
+
+
+def test_find_payment_for_order_returns_none_on_api_error():
+    settings = _settings(
+        nowpayments_api_key="live-key",
+        nowpayments_ipn_secret="ipn-secret",
+    )
+    provider = get_payment_provider(PaymentProviderName.NOWPAYMENTS, settings)
+
+    mock_response = MagicMock()
+    mock_response.status_code = 401
+    mock_response.text = "Unauthorized"
+
+    mock_client = MagicMock()
+    mock_client.__enter__.return_value = mock_client
+    mock_client.get.return_value = mock_response
+
+    with patch("app.payments.nowpayments_provider.httpx.Client", return_value=mock_client):
+        record = provider.find_payment_for_order("ord_test123")
+
+    assert record is None
 
 
 def test_fetch_payment_by_id_returns_none_on_404():

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import secrets
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -186,6 +186,24 @@ class PaymentService:
             else []
         )
 
+        if not member:
+            # A returning payer with an unfinished payment resumes the same
+            # checkout instead of minting a duplicate order/invoice.
+            in_flight = self._find_in_flight_payment(
+                user_id=user.id,
+                provider_name=provider_name,
+                cohort_id=cohort.id,
+                course_id=None,
+            )
+            if in_flight is not None:
+                logger.info(
+                    "Reusing in-flight payment order=%s for cohort=%s user=%s",
+                    in_flight.order_id,
+                    cohort.id,
+                    user.id,
+                )
+                return self._checkout_response_for_payment(in_flight)
+
         if plans_enabled and available_plans:
             if member:
                 # Returning installment payers already have a seat.
@@ -365,11 +383,97 @@ class PaymentService:
             course_id=payment.course_id,
         )
 
+    def _find_in_flight_payment(
+        self,
+        *,
+        user_id: UUID,
+        provider_name: PaymentProviderName,
+        course_id: UUID | None,
+        cohort_id: UUID | None,
+    ) -> Payment | None:
+        """Most recent unfinished checkout for this item, so a returning payer
+        resumes the original payment instead of creating a duplicate order."""
+        cutoff = datetime.now(UTC) - timedelta(hours=24)
+        stmt = (
+            select(Payment)
+            .where(
+                Payment.user_id == user_id,
+                Payment.provider == provider_name,
+                Payment.status.in_([PaymentStatus.PENDING, PaymentStatus.CONFIRMING]),
+                Payment.created_at >= cutoff,
+                Payment.payment_obligation_id.is_(None),
+                Payment.checkout_url.isnot(None),
+            )
+            .order_by(Payment.created_at.desc())
+        )
+        if cohort_id is not None:
+            stmt = stmt.where(Payment.cohort_id == cohort_id)
+        elif course_id is not None:
+            stmt = stmt.where(Payment.course_id == course_id)
+        else:
+            return None
+        return self.db.scalar(stmt)
+
+    def _checkout_response_for_payment(self, payment: Payment) -> CheckoutResponse:
+        mode = "live" if self.settings.payment_mode == "live" else "mock"
+        if payment.provider == PaymentProviderName.PAYSTACK:
+            mode = "live" if self.settings.paystack_secret_key else "mock"
+        if payment.provider == PaymentProviderName.NOWPAYMENTS:
+            mode = "live" if self.settings.nowpayments_api_key else "mock"
+        return CheckoutResponse(
+            order_id=payment.order_id,
+            provider=payment.provider,
+            checkout_url=payment.checkout_url or "",
+            amount=payment.amount,
+            currency=payment.currency,
+            status=payment.status,
+            crypto_currency=payment.crypto_currency,
+            crypto_amount=payment.crypto_amount,
+            mode=mode,
+            cohort_id=payment.cohort_id,
+            course_id=payment.course_id,
+        )
+
     def get_payment_for_user(self, *, user: User, order_id: str) -> Payment:
         payment = self.db.scalar(select(Payment).where(Payment.order_id == order_id))
         if not payment or payment.user_id != user.id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
+        self._maybe_auto_reconcile(payment)
+        self.db.refresh(payment)
         return payment
+
+    def _maybe_auto_reconcile(self, payment: Payment) -> None:
+        """Pull the real status from NOWPayments when a live payment is stuck
+        pending/confirming, so a missed IPN self-heals the next time anyone
+        (success page poll, admin) reads the payment. Throttled to one lookup
+        per minute per order."""
+        if payment.provider != PaymentProviderName.NOWPAYMENTS:
+            return
+        if payment.status not in {PaymentStatus.PENDING, PaymentStatus.CONFIRMING}:
+            return
+        if not self.settings.nowpayments_api_key:
+            return
+        created = payment.created_at
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=UTC)
+        if (datetime.now(UTC) - created).total_seconds() < 90:
+            return  # give the IPN a chance to arrive first
+        meta = dict(payment.metadata_json or {})
+        last = meta.get("last_auto_reconcile_at")
+        now = datetime.now(UTC)
+        if last:
+            try:
+                if (now - datetime.fromisoformat(last)).total_seconds() < 60:
+                    return
+            except (ValueError, TypeError):
+                pass
+        meta["last_auto_reconcile_at"] = now.isoformat()
+        payment.metadata_json = meta
+        self.db.commit()
+        try:
+            self._reconcile_nowpayments_payment(payment, payment_id=None)
+        except HTTPException as exc:
+            logger.info("Auto-reconcile for order=%s: %s", payment.order_id, exc.detail)
 
     def reconcile_payment(self, *, order_id: str, payment_id: str | None = None) -> Payment:
         """Admin fallback for missed/failed webhooks: pull the live status straight from the provider."""
@@ -387,15 +491,9 @@ class PaymentService:
         )
 
     def _reconcile_nowpayments_payment(self, payment: Payment, *, payment_id: str | None) -> Payment:
-        """Requires the admin to supply the exact payment_id from the NOWPayments dashboard so a
-        pending order can never be confirmed without a real, matching payment record to back it.
-        """
-        if not payment_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Enter the NOWPayments payment ID to reconcile this order",
-            )
-
+        """Pull the live record from NOWPayments and feed it through the normal
+        webhook pipeline. With no payment_id supplied, the record is discovered
+        automatically by our order_id via the payments list endpoint."""
         from app.payments.nowpayments_provider import NOWPaymentsProvider, map_nowpayments_status
 
         provider = get_payment_provider(PaymentProviderName.NOWPAYMENTS, self.settings)
@@ -405,12 +503,20 @@ class PaymentService:
                 detail="NOWPayments live mode is not configured",
             )
 
-        record = provider.fetch_payment_by_id(payment_id)
-        if not record:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="No NOWPayments payment found with that payment ID",
-            )
+        if payment_id:
+            record = provider.fetch_payment_by_id(payment_id)
+            if not record:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="No NOWPayments payment found with that payment ID",
+                )
+        else:
+            record = provider.find_payment_for_order(payment.order_id)
+            if not record:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="No NOWPayments payment found for this order yet — the customer may not have sent funds",
+                )
         if str(record.get("order_id") or "") != payment.order_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

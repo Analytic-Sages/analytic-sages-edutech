@@ -53,18 +53,18 @@ export function AdminPaymentsContent() {
   }
 
   async function handleReconcile(payment: AdminPaymentRow, paymentId?: string) {
-    if (payment.provider === "nowpayments" && !paymentId?.trim()) {
-      setReconcileError("Enter the NOWPayments payment ID shown in their dashboard.");
-      return;
-    }
     setReconcileError(null);
     setReconcilingId(payment.id);
     try {
-      const updated = await reconcileAdminPayment(payment.order_id, paymentId?.trim());
+      const updated = await reconcileAdminPayment(payment.order_id, paymentId?.trim() || undefined);
       setPayments((rows) => rows.map((row) => (row.id === updated.id ? updated : row)));
       setOpenRowId(null);
       setPaymentIdDraft("");
     } catch (err) {
+      if (payment.provider === "nowpayments" && !paymentId?.trim()) {
+        // Auto-discovery found nothing — offer the manual payment-ID fallback.
+        setOpenRowId(payment.id);
+      }
       setReconcileError(
         err instanceof ApiError ? err.detail : "Failed to reconcile this payment"
       );
@@ -192,7 +192,7 @@ export function AdminPaymentsContent() {
                               />
                               <Button
                                 size="sm"
-                                disabled={reconcilingId === payment.id}
+                                disabled={reconcilingId === payment.id || !paymentIdDraft.trim()}
                                 onClick={() => handleReconcile(payment, paymentIdDraft)}
                               >
                                 {reconcilingId === payment.id ? (
@@ -213,9 +213,14 @@ export function AdminPaymentsContent() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => toggleReconcileForm(payment.id)}
+                              disabled={reconcilingId === payment.id}
+                              onClick={() => handleReconcile(payment)}
                             >
-                              Reconcile
+                              {reconcilingId === payment.id ? (
+                                <Loader2 className="size-4 animate-spin" />
+                              ) : (
+                                "Reconcile"
+                              )}
                             </Button>
                           )}
                           {openRowId === payment.id && reconcileError && (

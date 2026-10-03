@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 from uuid import UUID
 
@@ -25,6 +26,8 @@ from app.schemas.payments import (
     PaymentPublic,
 )
 from app.services.payments import PaymentService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["payments"])
 
@@ -101,8 +104,23 @@ async def payment_webhook(
 
     headers = {k.lower(): v for k, v in request.headers.items()}
     adapter = get_payment_provider(provider, settings)
-    event = adapter.verify_webhook(headers=headers, body=body, payload=payload)
+    try:
+        event = adapter.verify_webhook(headers=headers, body=body, payload=payload)
+    except HTTPException as exc:
+        logger.warning(
+            "Payment webhook rejected provider=%s status=%s detail=%s",
+            provider.value,
+            exc.status_code,
+            exc.detail,
+        )
+        raise
     payment_service.process_webhook_event(event)
+    logger.info(
+        "Payment webhook processed provider=%s order=%s status=%s",
+        provider.value,
+        event.order_id,
+        event.status.value,
+    )
     return MessageResponse(message="Webhook processed")
 
 

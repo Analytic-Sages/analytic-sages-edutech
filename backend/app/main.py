@@ -69,6 +69,22 @@ def create_app() -> FastAPI:
             frontend_host,
         )
 
+    if settings.nowpayments_api_key:
+        ipn_base = urlparse(settings.public_api_url)
+        if ipn_base.hostname in {"localhost", "127.0.0.1"} or (
+            settings.is_production and ipn_base.scheme != "https"
+        ):
+            logger.warning(
+                "NOWPayments is live but PUBLIC_API_URL=%s is not a public HTTPS URL. "
+                "IPN callbacks cannot arrive — payments will stay pending until reconciled.",
+                settings.public_api_url,
+            )
+        if not settings.nowpayments_ipn_secret:
+            logger.warning(
+                "NOWPAYMENTS_API_KEY is set but NOWPAYMENTS_IPN_SECRET is empty — "
+                "every IPN callback will be rejected and payments will not confirm automatically."
+            )
+
     return app
 
 
