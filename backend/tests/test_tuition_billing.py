@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -427,3 +428,159 @@ def test_legacy_checkout_when_flag_off(billing_env, monkeypatch):
     )
     assert response.status_code == 200
     assert response.json()["amount"] == 200
+
+
+def _two_plans(db, cohort_id) -> tuple[TuitionPlan, TuitionPlan]:
+    """A Pay-in-Full plan and a 2-installment plan, mirroring BDE seeding."""
+    plans = TuitionPlanService(db)
+    full = plans.create_plan(
+        TuitionPlanCreate(
+            cohort_id=cohort_id,
+            name="Pay in Full",
+            plan_type=TuitionPlanType.ONE_TIME,
+            base_amount=Decimal("200.00"),
+            schedules=[
+                TuitionPlanScheduleCreate(sequence_number=1, amount=Decimal("200.00"))
+            ],
+        )
+    )
+    installments = plans.create_plan(
+        TuitionPlanCreate(
+            cohort_id=cohort_id,
+            name="Pay in 2 Installments",
+            plan_type=TuitionPlanType.INSTALLMENT,
+            base_amount=Decimal("220.00"),
+            schedules=[
+                TuitionPlanScheduleCreate(
+                    sequence_number=1,
+                    amount=Decimal("110.00"),
+                    due_rule=DueRule.IMMEDIATE,
+                ),
+                TuitionPlanScheduleCreate(
+                    sequence_number=2,
+                    amount=Decimal("110.00"),
+                    due_rule=DueRule.SPECIFIC_DATE,
+                    due_date=datetime.now(UTC) + timedelta(days=14),
+                ),
+            ],
+        )
+    )
+    return full, installments
+
+
+def test_student_can_switch_plan_before_payment(billing_env):
+    db = SessionLocal()
+    try:
+        student = _make_user(f"billing-test-{uuid.uuid4().hex[:8]}@example.com")
+        full, installments = _two_plans(db, billing_env.id)
+        accounts = BillingAccountService(db)
+
+        account = accounts.create_account(
+            student=student, tuition_plan_id=full.id, cohort_id=billing_env.id
+        )
+        assert account.tuition_plan_id == full.id
+        assert len(account.obligations) == 1
+
+        # Student changes their mind before paying a cent.
+        switched = accounts.create_account(
+            student=student, tuition_plan_id=installments.id, cohort_id=billing_env.id
+        )
+        assert switched.id == account.id  # same enrollment, no duplicate account
+        assert switched.tuition_plan_id == installments.id
+        assert [o.sequence_number for o in switched.obligations] == [1, 2]
+        assert switched.obligations[0].status == ObligationStatus.OPEN
+        assert switched.obligations[1].status == ObligationStatus.UPCOMING
+        assert money(switched.total_amount) == Decimal("220.00")
+        assert money(switched.final_amount_due) == Decimal("220.00")
+        assert money(switched.amount_outstanding) == Decimal("220.00")
+        assert switched.billing_status == BillingStatus.PENDING
+    finally:
+        db.close()
+
+
+def test_abandoned_full_checkout_can_switch_to_installments(billing_env):
+    """The reported bug: full-payment checkout abandoned, then installments chosen."""
+    db = SessionLocal()
+    try:
+        student = _make_user(f"billing-test-{uuid.uuid4().hex[:8]}@example.com")
+        full, installments = _two_plans(db, billing_env.id)
+
+        first = client.post(
+            "/api/v1/checkout",
+            headers=_auth(student),
+            json={
+                "cohort_id": str(billing_env.id),
+                "provider": "paystack",
+                "tuition_plan_id": str(full.id),
+            },
+        )
+        assert first.status_code == 200, first.text
+        assert first.json()["amount"] == 200
+
+        second = client.post(
+            "/api/v1/checkout",
+            headers=_auth(student),
+            json={
+                "cohort_id": str(billing_env.id),
+                "provider": "paystack",
+                "tuition_plan_id": str(installments.id),
+            },
+        )
+        assert second.status_code == 200, second.text
+        assert second.json()["amount"] == 110
+
+        account = db.scalar(
+            select(StudentBillingAccount)
+            .options(selectinload(StudentBillingAccount.obligations))
+            .where(StudentBillingAccount.student_id == student.id)
+        )
+        assert account is not None
+        assert account.tuition_plan_id == installments.id
+        assert len(account.obligations) == 2
+        assert money(account.final_amount_due) == Decimal("220.00")
+
+        # The abandoned full-payment checkout is expired so it can't be confirmed.
+        abandoned = db.scalar(
+            select(Payment).where(Payment.order_id == first.json()["order_id"])
+        )
+        assert abandoned is not None
+        assert abandoned.status == PaymentStatus.EXPIRED
+    finally:
+        db.close()
+
+
+def test_plan_switch_blocked_after_payment(billing_env):
+    db = SessionLocal()
+    try:
+        student = _make_user(f"billing-test-{uuid.uuid4().hex[:8]}@example.com")
+        full, installments = _two_plans(db, billing_env.id)
+        accounts = BillingAccountService(db)
+
+        account = accounts.create_account(
+            student=student, tuition_plan_id=full.id, cohort_id=billing_env.id
+        )
+        db.add(
+            Payment(
+                order_id=f"switch-{uuid.uuid4().hex[:12]}",
+                user_id=student.id,
+                cohort_id=billing_env.id,
+                billing_account_id=account.id,
+                payment_obligation_id=account.obligations[0].id,
+                provider=PaymentProviderName.MOCK,
+                provider_payment_id=f"mock_{uuid.uuid4().hex[:8]}",
+                amount=200,
+                currency="USD",
+                status=PaymentStatus.CONFIRMED,
+                confirmed_at=datetime.now(UTC),
+            )
+        )
+        db.commit()
+
+        with pytest.raises(HTTPException) as excinfo:
+            accounts.create_account(
+                student=student, tuition_plan_id=installments.id, cohort_id=billing_env.id
+            )
+        assert excinfo.value.status_code == 409
+    finally:
+        db.close()
+

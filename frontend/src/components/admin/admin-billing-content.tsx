@@ -27,12 +27,31 @@ import {
 } from "@/lib/api";
 import { formatPrice } from "@/lib/mock-data";
 
+type PlanFilter = "all" | "installments" | "paid" | "due";
+
+function matchesPlanFilter(row: BillingAccountPublic, filter: PlanFilter): boolean {
+  if (filter === "installments") return !row.is_paid_in_full;
+  if (filter === "paid") return Boolean(row.is_paid_in_full);
+  if (filter === "due") {
+    return row.next_due_status === "past_due" || row.billing_status === "past_due";
+  }
+  return true;
+}
+
+function planLabel(row: BillingAccountPublic): string {
+  if (row.plan_name) return row.plan_name;
+  if (row.plan_type === "installment") return "Installments";
+  if (row.plan_type === "one_time") return "One-time";
+  return "-";
+}
+
 export function AdminBillingContent() {
   const [accounts, setAccounts] = useState<BillingAccountPublic[]>([]);
   const [selected, setSelected] = useState<BillingAccountPublic | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [planFilter, setPlanFilter] = useState<PlanFilter>("all");
 
   async function reload() {
     const rows = await getAdminBillingAccounts();
@@ -75,6 +94,11 @@ export function AdminBillingContent() {
       setBusy(false);
     }
   }
+
+  const paidCount = accounts.filter((row) => row.is_paid_in_full).length;
+  const installmentCount = accounts.filter((row) => !row.is_paid_in_full).length;
+  const dueCount = accounts.filter((row) => matchesPlanFilter(row, "due")).length;
+  const visibleAccounts = accounts.filter((row) => matchesPlanFilter(row, planFilter));
 
   if (loading) {
     return (
@@ -132,6 +156,36 @@ export function AdminBillingContent() {
           Export CSV
         </button>
       </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant={planFilter === "all" ? "default" : "outline"}
+          onClick={() => setPlanFilter("all")}
+        >
+          All ({accounts.length})
+        </Button>
+        <Button
+          size="sm"
+          variant={planFilter === "installments" ? "default" : "outline"}
+          onClick={() => setPlanFilter("installments")}
+        >
+          Installments ({installmentCount})
+        </Button>
+        <Button
+          size="sm"
+          variant={planFilter === "paid" ? "default" : "outline"}
+          onClick={() => setPlanFilter("paid")}
+        >
+          Paid in full ({paidCount})
+        </Button>
+        <Button
+          size="sm"
+          variant={planFilter === "due" ? "default" : "outline"}
+          onClick={() => setPlanFilter("due")}
+        >
+          Past due ({dueCount})
+        </Button>
+      </div>
       {error ? (
         <p className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
@@ -144,6 +198,12 @@ export function AdminBillingContent() {
           title="No billing accounts"
           description="Accounts appear when students select a tuition plan at checkout."
         />
+      ) : visibleAccounts.length === 0 ? (
+        <EmptyState
+          icon={<Loader2 className="size-6" />}
+          title="No accounts match this filter"
+          description="Try a different billing status filter."
+        />
       ) : (
         <div className="mt-6 grid gap-6 lg:grid-cols-[1.2fr_1fr]">
           <div className="rounded-xl border shadow-card">
@@ -151,13 +211,14 @@ export function AdminBillingContent() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Status</TableHead>
+                  <TableHead>Plan</TableHead>
                   <TableHead>Outstanding</TableHead>
                   <TableHead>Paid</TableHead>
                   <TableHead>Created</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {accounts.map((row) => (
+                {visibleAccounts.map((row) => (
                   <TableRow
                     key={row.id}
                     className="cursor-pointer"
@@ -166,6 +227,7 @@ export function AdminBillingContent() {
                     <TableCell>
                       <Badge variant="outline">{row.billing_status}</Badge>
                     </TableCell>
+                    <TableCell>{planLabel(row)}</TableCell>
                     <TableCell>
                       {formatPrice(Number(row.amount_outstanding), row.currency)}
                     </TableCell>

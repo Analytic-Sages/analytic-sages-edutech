@@ -69,6 +69,15 @@ class Settings(BaseSettings):
     nowpayments_api_url: str = "https://api.nowpayments.io/v1"
     nowpayments_price_currency: str = "USD"
 
+    # Safety net for missed/late NOWPayments IPNs. A background sweep pulls the
+    # real status for stale pending payments so a student unlocks their seat even
+    # if they closed the checkout tab before the crypto settled. Also exposed via
+    # POST /api/v1/internal/payments/reconcile (token header) for cron/ops.
+    payments_reconcile_enabled: bool = True
+    payments_reconcile_interval_seconds: int = 300
+    payments_reconcile_batch_limit: int = 25
+    payments_reconcile_token: str | None = None
+
     # Cloudflare RealtimeKit (live classroom) — leave empty for mock join mode
     cloudflare_account_id: str | None = None
     cloudflare_api_token: str | None = None

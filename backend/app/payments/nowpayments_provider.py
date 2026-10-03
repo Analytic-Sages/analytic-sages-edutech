@@ -222,6 +222,21 @@ class NOWPaymentsProvider:
         Lets us reconcile automatically when the IPN was missed, without anyone
         having to copy a payment ID out of the NOWPayments dashboard.
         """
+        return self._scan_payments(field="order_id", value=order_id)
+
+    def find_payment_by_invoice(self, invoice_id: str) -> dict[str, Any] | None:
+        """Same as find_payment_for_order but keyed on the invoice id.
+
+        Invoice payments do not always echo our ``order_id`` back on the payment
+        list, so the invoice id is a second discovery key for missed IPNs.
+        """
+        return self._scan_payments(field="invoice_id", value=invoice_id)
+
+    _SCAN_PAGE_LIMIT = 100
+    _SCAN_MAX_PAGES = 6  # up to 600 most-recent payments
+
+    def _scan_payments(self, *, field: str, value: str) -> dict[str, Any] | None:
+        """Find the payment record whose ``field`` (order_id / invoice_id) matches."""
         api_key = self.settings.nowpayments_api_key
         if not api_key:
             raise HTTPException(
@@ -232,12 +247,12 @@ class NOWPaymentsProvider:
         base = self.settings.nowpayments_api_url.rstrip("/")
         try:
             with httpx.Client(timeout=15.0) as client:
-                for page in range(3):  # scan the 300 most-recent payments
+                for page in range(self._SCAN_MAX_PAGES):
                     response = client.get(
                         f"{base}/payment/",
                         headers={"x-api-key": api_key},
                         params={
-                            "limit": 100,
+                            "limit": self._SCAN_PAGE_LIMIT,
                             "page": page,
                             "sortBy": "created_at",
                             "orderBy": "desc",
@@ -245,20 +260,21 @@ class NOWPaymentsProvider:
                     )
                     if response.status_code >= 400:
                         logger.error(
-                            "NOWPayments list payments error order_id=%s status=%s body=%s",
-                            order_id,
+                            "NOWPayments list payments error %s=%s status=%s body=%s",
+                            field,
+                            value,
                             response.status_code,
                             response.text[:500],
                         )
                         return None
                     items = response.json().get("data") or []
                     for record in items:
-                        if str(record.get("order_id") or "") == order_id:
+                        if str(record.get(field) or "") == value:
                             return record
-                    if len(items) < 100:
+                    if len(items) < self._SCAN_PAGE_LIMIT:
                         return None
         except httpx.HTTPError:
-            logger.exception("NOWPayments list payments failed order_id=%s", order_id)
+            logger.exception("NOWPayments list payments failed %s=%s", field, value)
         return None
 
     def _create_invoice(self, request: CheckoutRequest) -> CheckoutSession:

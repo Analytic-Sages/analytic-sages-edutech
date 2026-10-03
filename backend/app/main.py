@@ -1,4 +1,5 @@
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
+import asyncio
 import logging
 from urllib.parse import urlparse
 
@@ -9,12 +10,56 @@ from app.api.v1.router import api_router
 from app.core.config import configure_logging, get_settings
 from app.db.session import SessionLocal
 from app.middleware.security_headers import SecurityHeadersMiddleware
+from app.services.email import EmailService
+from app.services.payments import PaymentService
 from app.services.seed_events import seed_featured_event
 from app.services.seed_insights import seed_insights_articles
 from app.services.seed_opportunities import seed_opportunity_taxonomy
 from app.services.seed_self_paced import seed_dune_course
 
 logger = logging.getLogger(__name__)
+
+
+def _run_payments_reconcile_sweep() -> None:
+    """Sync worker: pull real status for stale pending NOWPayments orders."""
+    settings = get_settings()
+    if not settings.nowpayments_api_key:
+        return
+    db = SessionLocal()
+    try:
+        service = PaymentService(db, settings, EmailService(settings))
+        service.reconcile_stale_nowpayments(
+            older_than_seconds=120,
+            limit=settings.payments_reconcile_batch_limit,
+        )
+    except Exception:
+        logger.exception("Payments reconcile sweep failed")
+    finally:
+        db.close()
+
+
+async def _payments_reconcile_loop(stop: asyncio.Event) -> None:
+    """Background self-heal for missed/late NOWPayments IPNs.
+
+    Runs independently of the checkout tab, so a payment that settles after the
+    student closed the page still unlocks their seat within one interval.
+    """
+    settings = get_settings()
+    if not settings.payments_reconcile_enabled:
+        return
+    interval = max(60, settings.payments_reconcile_interval_seconds)
+
+    # Let boot traffic and migrations settle before the first sweep.
+    with suppress(asyncio.TimeoutError):
+        await asyncio.wait_for(stop.wait(), timeout=30)
+
+    while not stop.is_set():
+        try:
+            await asyncio.to_thread(_run_payments_reconcile_sweep)
+        except Exception:
+            logger.exception("Payments reconcile loop iteration failed")
+        with suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(stop.wait(), timeout=interval)
 
 
 @asynccontextmanager
@@ -32,7 +77,16 @@ async def lifespan(_app: FastAPI):
         logger.exception("Could not seed featured catalog content")
     finally:
         db.close()
-    yield
+
+    stop = asyncio.Event()
+    reconcile_task = asyncio.create_task(_payments_reconcile_loop(stop))
+    try:
+        yield
+    finally:
+        stop.set()
+        reconcile_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await reconcile_task
 
 
 def create_app() -> FastAPI:

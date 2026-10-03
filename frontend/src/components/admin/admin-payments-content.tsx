@@ -20,6 +20,7 @@ import {
   ApiError,
   getAdminPayments,
   reconcileAdminPayment,
+  reconcileStaleAdminPayments,
   type AdminPaymentRow,
 } from "@/lib/api";
 import { formatPrice } from "@/lib/mock-data";
@@ -45,6 +46,28 @@ export function AdminPaymentsContent() {
   const [reconcileError, setReconcileError] = useState<string | null>(null);
   const [openRowId, setOpenRowId] = useState<string | null>(null);
   const [paymentIdDraft, setPaymentIdDraft] = useState("");
+  const [reconcilingAll, setReconcilingAll] = useState(false);
+  const [sweepMessage, setSweepMessage] = useState<string | null>(null);
+
+  async function handleReconcileAll() {
+    setReconcileError(null);
+    setSweepMessage(null);
+    setReconcilingAll(true);
+    try {
+      const summary = await reconcileStaleAdminPayments();
+      const rows = await getAdminPayments();
+      setPayments(rows);
+      setSweepMessage(
+        `Checked ${summary.scanned} pending · confirmed ${summary.confirmed} · updated ${summary.updated} · failed ${summary.failed}`,
+      );
+    } catch (err) {
+      setReconcileError(
+        err instanceof ApiError ? err.detail : "Failed to reconcile pending payments",
+      );
+    } finally {
+      setReconcilingAll(false);
+    }
+  }
 
   function toggleReconcileForm(paymentRowId: string) {
     setReconcileError(null);
@@ -118,6 +141,21 @@ export function AdminPaymentsContent() {
         title="Payments"
         description="Live Paystack and NOWPayments checkouts. A seat unlocks only after status is confirmed."
       />
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={reconcilingAll}
+          onClick={handleReconcileAll}
+        >
+          {reconcilingAll ? <Loader2 className="size-4 animate-spin" /> : "Reconcile all pending"}
+        </Button>
+        <span className="text-xs text-muted-foreground">
+          Pulls live status for stale pending crypto orders — use when a student paid but the seat
+          is still locked.
+        </span>
+        {sweepMessage && <span className="text-xs text-muted-foreground">{sweepMessage}</span>}
+      </div>
       {payments.length === 0 ? (
         <EmptyState
           icon={<Loader2 className="size-6" />}

@@ -310,10 +310,17 @@ def admin_billing_export(
             "final_amount_due",
             "amount_paid",
             "amount_outstanding",
+            "plan_name",
+            "plan_type",
+            "installments_paid",
+            "installments_total",
+            "next_due_date",
+            "next_due_amount",
             "created_at",
         ]
     )
     for row in rows:
+        public = BillingAccountPublic.model_validate(row)
         writer.writerow(
             [
                 str(row.id),
@@ -324,6 +331,12 @@ def admin_billing_export(
                 str(row.final_amount_due),
                 str(row.amount_paid),
                 str(row.amount_outstanding),
+                public.plan_name or "",
+                public.plan_type.value if public.plan_type else "",
+                public.installments_paid,
+                public.installments_total,
+                public.next_due_date.isoformat() if public.next_due_date else "",
+                str(public.next_due_amount) if public.next_due_amount is not None else "",
                 row.created_at.isoformat(),
             ]
         )

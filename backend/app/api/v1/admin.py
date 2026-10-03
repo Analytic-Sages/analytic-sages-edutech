@@ -123,6 +123,20 @@ def admin_reconcile_payment(
     return admin.payment_row(payment)
 
 
+@router.post("/payments/reconcile-stale")
+def admin_reconcile_stale_payments(
+    _: User = Depends(require_admin),
+    payment_service: PaymentService = Depends(get_payment_service),
+    older_than_seconds: int = Query(default=120, ge=0),
+    limit: int = Query(default=50, ge=1, le=200),
+) -> dict[str, int]:
+    """Clear the backlog in one click: pull the real status for every stale
+    pending NOWPayments order (missed/late IPNs) and unlock any that finished."""
+    return payment_service.reconcile_stale_nowpayments(
+        older_than_seconds=older_than_seconds, limit=limit
+    )
+
+
 @router.get("/courses", response_model=list[AdminCourseRow])
 def admin_courses(
     _: User = Depends(require_catalog_ops),

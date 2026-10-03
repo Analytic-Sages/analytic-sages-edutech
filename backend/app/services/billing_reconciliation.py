@@ -79,6 +79,10 @@ class BillingReconciliationService:
             return None
 
         account = obligation.billing_account
+        if account.billing_status in {BillingStatus.CANCELLED, BillingStatus.REFUNDED}:
+            # The account was closed out (e.g. plan abandoned or refunded).
+            # Don't resurrect it — a late provider callback should not re-open it.
+            return account
         if obligation.status == ObligationStatus.PAID:
             return account
 

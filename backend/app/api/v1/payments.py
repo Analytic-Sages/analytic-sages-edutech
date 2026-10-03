@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import hmac
 import json
 import logging
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -156,3 +157,31 @@ def mock_confirm_payment(
     )
     payment_service.process_webhook_event(event)
     return MessageResponse(message=f"Payment {payload.status.value}")
+
+
+@router.post("/internal/payments/reconcile")
+def internal_reconcile_payments(
+    payment_service: PaymentService = Depends(get_payment_service),
+    settings: Settings = Depends(get_settings),
+    x_payments_reconcile_token: str | None = Header(default=None),
+    older_than_seconds: int = 120,
+    limit: int = 50,
+) -> dict[str, int]:
+    """Cron/ops hook: pull the real status for stale pending NOWPayments orders.
+
+    Token-protected (PAYMENTS_RECONCILE_TOKEN, falling back to
+    OPPORTUNITY_SYNC_TOKEN). Complements the in-process background sweep for
+    deployments that would rather drive reconciliation from a scheduler.
+    """
+    expected = (settings.payments_reconcile_token or settings.opportunity_sync_token or "").strip()
+    if not expected:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    provided = (x_payments_reconcile_token or "").strip()
+    if len(provided) != len(expected) or not hmac.compare_digest(provided, expected):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid reconcile token"
+        )
+    return payment_service.reconcile_stale_nowpayments(
+        older_than_seconds=max(older_than_seconds, 0),
+        limit=max(1, min(limit, 200)),
+    )

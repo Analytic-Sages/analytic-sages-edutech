@@ -490,6 +490,71 @@ class PaymentService:
             detail="Reconciliation is not supported for this provider",
         )
 
+    def reconcile_stale_nowpayments(
+        self,
+        *,
+        older_than_seconds: int = 120,
+        limit: int = 25,
+    ) -> dict[str, int]:
+        """Sweep stale NOWPayments payments and pull their real status.
+
+        Safety net for missed or late IPNs. The success page can only poll while
+        it is open, so a payment that settles after the payer closed the tab (or
+        after the ~10 minute poll window) would otherwise sit at ``pending`` until
+        an admin reconciles it by hand. This runs the same idempotent pipeline as
+        the webhook (dedupe table prevents a double confirmation) and unlocks the
+        seat once the provider reports the payment as ``finished``.
+        """
+        summary = {"scanned": 0, "confirmed": 0, "updated": 0, "failed": 0}
+        if not self.settings.nowpayments_api_key:
+            return summary
+
+        cutoff = datetime.now(UTC) - timedelta(seconds=max(older_than_seconds, 0))
+        stale = list(
+            self.db.scalars(
+                select(Payment)
+                .where(
+                    Payment.provider == PaymentProviderName.NOWPAYMENTS,
+                    Payment.status.in_([PaymentStatus.PENDING, PaymentStatus.CONFIRMING]),
+                    Payment.created_at < cutoff,
+                )
+                .order_by(Payment.created_at.asc())
+                .limit(max(limit, 1))
+            ).all()
+        )
+
+        for payment in stale:
+            summary["scanned"] += 1
+            before = payment.status
+            try:
+                updated = self._reconcile_nowpayments_payment(payment, payment_id=None)
+            except HTTPException as exc:
+                # A 404 simply means the customer never sent funds yet — not an
+                # error worth escalating every sweep.
+                if exc.status_code != status.HTTP_404_NOT_FOUND:
+                    summary["failed"] += 1
+                    logger.warning(
+                        "Payments sweep failed order=%s status=%s detail=%s",
+                        payment.order_id,
+                        exc.status_code,
+                        exc.detail,
+                    )
+                continue
+            except Exception:
+                summary["failed"] += 1
+                logger.exception("Payments sweep crashed order=%s", payment.order_id)
+                self.db.rollback()
+                continue
+
+            if updated.status == PaymentStatus.CONFIRMED and before != PaymentStatus.CONFIRMED:
+                summary["confirmed"] += 1
+            elif updated.status != before:
+                summary["updated"] += 1
+
+        if summary["confirmed"] or summary["updated"] or summary["failed"]:
+            logger.info("Payments reconcile sweep %s", summary)
+        return summary
+
     def _reconcile_nowpayments_payment(self, payment: Payment, *, payment_id: str | None) -> Payment:
         """Pull the live record from NOWPayments and feed it through the normal
         webhook pipeline. With no payment_id supplied, the record is discovered
@@ -511,17 +576,45 @@ class PaymentService:
                     detail="No NOWPayments payment found with that payment ID",
                 )
         else:
-            record = provider.find_payment_for_order(payment.order_id)
+            record = None
+            meta = dict(payment.metadata_json or {})
+            # Fast path: an earlier lookup already resolved the real payment id.
+            known_payment_id = str(meta.get("nowpayments_payment_id") or "").strip()
+            if known_payment_id:
+                try:
+                    record = provider.fetch_payment_by_id(known_payment_id)
+                except HTTPException:
+                    record = None
+            if not record:
+                record = provider.find_payment_for_order(payment.order_id)
+            if not record:
+                invoice_id = str(meta.get("invoice_id") or "").strip()
+                if invoice_id:
+                    record = provider.find_payment_by_invoice(invoice_id)
             if not record:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail="No NOWPayments payment found for this order yet — the customer may not have sent funds",
+                    detail=(
+                        "No NOWPayments payment found for this order yet — the customer "
+                        "may not have sent funds"
+                    ),
                 )
-        if str(record.get("order_id") or "") != payment.order_id:
+        # Invoice payments do not always echo our order_id. Only reject a record
+        # when it clearly belongs to a *different* order we set.
+        record_order = str(record.get("order_id") or "").strip()
+        if record_order and record_order != payment.order_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="That payment ID belongs to a different order",
             )
+
+        resolved_payment_id = str(record.get("payment_id") or "").strip()
+        if resolved_payment_id:
+            # Remember it so later reconciles skip the list scan.
+            payment.metadata_json = {
+                **(payment.metadata_json or {}),
+                "nowpayments_payment_id": resolved_payment_id,
+            }
 
         event = WebhookEvent(
             provider=PaymentProviderName.NOWPAYMENTS,

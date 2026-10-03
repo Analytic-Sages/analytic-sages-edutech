@@ -1,0 +1,34 @@
+# Safety net for missed/late NOWPayments IPNs (plus manual run via workflow_dispatch).
+# The API also runs an in-process sweep every 5 minutes; this is a belt-and-braces
+# backup that also works across process restarts. Requires PUBLIC_API_URL plus
+# PAYMENTS_RECONCILE_TOKEN (or OPPORTUNITY_SYNC_TOKEN) repository secrets.
+# Without those secrets the job exits 0 and skips the API call.
+
+name: Payments reconcile
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Every 15 minutes — pull real status for stale pending crypto payments.
+    - cron: "*/15 * * * *"
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reconcile stale NOWPayments payments
+        env:
+          PUBLIC_API_URL: ${{ secrets.PUBLIC_API_URL }}
+          PAYMENTS_RECONCILE_TOKEN: ${{ secrets.PAYMENTS_RECONCILE_TOKEN }}
+          OPPORTUNITY_SYNC_TOKEN: ${{ secrets.OPPORTUNITY_SYNC_TOKEN }}
+        run: |
+          set -euo pipefail
+          token="${PAYMENTS_RECONCILE_TOKEN:-${OPPORTUNITY_SYNC_TOKEN:-}}"
+          if [ -z "${PUBLIC_API_URL:-}" ] || [ -z "$token" ]; then
+            echo "Secrets PUBLIC_API_URL / PAYMENTS_RECONCILE_TOKEN not set; skipping."
+            exit 0
+          fi
+          curl -fsS -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-Payments-Reconcile-Token: ${token}" \
+            "${PUBLIC_API_URL%/}/api/v1/internal/payments/reconcile"

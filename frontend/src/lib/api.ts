@@ -648,6 +648,16 @@ export type BillingAccountPublic = {
   created_at: string;
   obligations: ObligationPublic[];
   tuition_plan?: TuitionPlanPublic | null;
+  // Derived server-side so admin views can distinguish paid-in-full vs installments.
+  plan_name?: string | null;
+  plan_type?: string | null;
+  installments_total?: number;
+  installments_paid?: number;
+  installments_remaining?: number;
+  is_paid_in_full?: boolean;
+  next_due_date?: string | null;
+  next_due_amount?: string | null;
+  next_due_status?: string | null;
 };
 
 export function listBillingPlans(cohortId: string) {
@@ -1399,6 +1409,19 @@ export function reconcileAdminPayment(orderId: string, paymentId?: string) {
     `/api/v1/admin/payments/${encodeURIComponent(orderId)}/reconcile`,
     { method: "POST", body: JSON.stringify({ payment_id: paymentId || null }) }
   );
+}
+
+export type ReconcileStaleResult = {
+  scanned: number;
+  confirmed: number;
+  updated: number;
+  failed: number;
+};
+
+export function reconcileStaleAdminPayments() {
+  return apiFetch<ReconcileStaleResult>("/api/v1/admin/payments/reconcile-stale", {
+    method: "POST",
+  });
 }
 
 export function getAdminCohort(slug: string) {

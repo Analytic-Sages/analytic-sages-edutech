@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.billing import BillingStatus, DueRule, ObligationStatus
+from app.core.payments import PaymentStatus
 from app.models.billing import (
     BillingAuditEvent,
     PaymentObligation,
@@ -16,6 +17,7 @@ from app.models.billing import (
     TuitionPlan,
 )
 from app.models.classroom import Cohort, CohortMember
+from app.models.payment import Payment
 from app.models.user import User
 from app.services.tuition_plans import TuitionPlanService, money
 
@@ -76,12 +78,27 @@ class BillingAccountService:
             course_id=resolved_course_id,
         )
         if existing:
-            if existing.tuition_plan_id != plan.id:
+            if existing.tuition_plan_id == plan.id:
+                return self.get_account(existing.id, student_id=student.id)
+            if self._has_started_paying(existing):
+                # Money already moved on the old plan — changing it is a refund/
+                # adjustment decision, so hand it to support instead of guessing.
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail="A billing account already exists for this enrollment with a different plan",
+                    detail=(
+                        "You already started paying on a different tuition plan for this "
+                        "enrollment. Contact support to change your plan."
+                    ),
                 )
-            return self.get_account(existing.id, student_id=student.id)
+            # Nothing has been paid yet, so honor the change of mind and switch
+            # the existing account to the plan they picked now.
+            return self._switch_plan(
+                account=existing,
+                plan=plan,
+                cohort=cohort,
+                student=student,
+                actor=actor,
+            )
 
         total = money(plan.base_amount)
         account = StudentBillingAccount(
@@ -101,20 +118,7 @@ class BillingAccountService:
         self.db.add(account)
         self.db.flush()
 
-        for schedule in sorted(plan.schedules, key=lambda s: s.sequence_number):
-            due_date = self._resolve_due_date(schedule.due_rule, schedule, cohort)
-            is_first = schedule.sequence_number == 1
-            obligation = PaymentObligation(
-                billing_account_id=account.id,
-                sequence_number=schedule.sequence_number,
-                description=schedule.label
-                or f"Installment {schedule.sequence_number}",
-                amount_due=money(schedule.amount),
-                currency=plan.base_currency,
-                due_date=due_date,
-                status=ObligationStatus.OPEN if is_first else ObligationStatus.UPCOMING,
-            )
-            self.db.add(obligation)
+        self._add_obligations(account, plan, cohort)
 
         self._audit(
             actor_id=(actor or student).id,
@@ -232,6 +236,110 @@ class BillingAccountService:
         else:
             return None
         return self.db.scalar(stmt)
+
+    def _has_started_paying(self, account: StudentBillingAccount) -> bool:
+        """True once any money is confirmed against the account.
+
+        Until then a student is free to change which plan they want, because
+        nothing has actually been charged against the current schedule.
+        """
+        if money(account.amount_paid) > Decimal("0.00"):
+            return True
+        return (
+            self.db.scalar(
+                select(Payment.id)
+                .where(
+                    Payment.billing_account_id == account.id,
+                    Payment.status == PaymentStatus.CONFIRMED,
+                )
+                .limit(1)
+            )
+            is not None
+        )
+
+    def _add_obligations(
+        self,
+        account: StudentBillingAccount,
+        plan: TuitionPlan,
+        cohort: Cohort | None,
+    ) -> None:
+        for schedule in sorted(plan.schedules, key=lambda s: s.sequence_number):
+            is_first = schedule.sequence_number == 1
+            self.db.add(
+                PaymentObligation(
+                    billing_account_id=account.id,
+                    sequence_number=schedule.sequence_number,
+                    description=schedule.label or f"Installment {schedule.sequence_number}",
+                    amount_due=money(schedule.amount),
+                    currency=plan.base_currency,
+                    due_date=self._resolve_due_date(schedule.due_rule, schedule, cohort),
+                    status=ObligationStatus.OPEN if is_first else ObligationStatus.UPCOMING,
+                )
+            )
+
+    def _switch_plan(
+        self,
+        *,
+        account: StudentBillingAccount,
+        plan: TuitionPlan,
+        cohort: Cohort | None,
+        student: User,
+        actor: User | None = None,
+    ) -> StudentBillingAccount:
+        """Move an unpaid account onto a different plan for the same enrollment.
+
+        Only reached before the first confirmed payment. We keep the same
+        account row (so nothing downstream loses its reference), expire any
+        unfinished checkout tied to the plan we're leaving, and rebuild the
+        schedule so the student can pay the option they actually chose.
+        """
+        before = {
+            "tuition_plan_id": str(account.tuition_plan_id),
+            "final_amount_due": str(account.final_amount_due),
+            "amount_outstanding": str(account.amount_outstanding),
+        }
+
+        # Expire in-flight checkouts for the abandoned plan so a late provider
+        # callback can't confirm against a schedule the student walked away from.
+        inflight = list(
+            self.db.scalars(
+                select(Payment).where(
+                    Payment.billing_account_id == account.id,
+                    Payment.status.in_([PaymentStatus.PENDING, PaymentStatus.CONFIRMING]),
+                )
+            ).all()
+        )
+        for payment in inflight:
+            payment.status = PaymentStatus.EXPIRED
+            payment.payment_obligation_id = None
+
+        # Rebuild obligations for the new plan (the old schedule no longer applies).
+        for obligation in list(account.obligations):
+            self.db.delete(obligation)
+        self.db.flush()
+
+        total = money(plan.base_amount)
+        account.tuition_plan_id = plan.id
+        account.currency = plan.base_currency
+        account.total_amount = total
+        account.discount_amount = Decimal("0.00")
+        account.scholarship_amount = Decimal("0.00")
+        account.final_amount_due = total
+        account.amount_outstanding = money(total - account.amount_paid)
+        account.billing_status = BillingStatus.PENDING
+        self.db.flush()
+
+        self._add_obligations(account, plan, cohort)
+        self._audit(
+            actor_id=(actor or student).id,
+            action="billing_account.plan_switched",
+            entity_type="student_billing_account",
+            entity_id=account.id,
+            after={"tuition_plan_id": str(plan.id), "final_amount_due": str(total)},
+            before=before,
+        )
+        self.db.commit()
+        return self.get_account(account.id, student_id=student.id)
 
     def _resolve_due_date(
         self,

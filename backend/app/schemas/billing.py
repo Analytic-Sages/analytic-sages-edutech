@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 from app.core.billing import BillingStatus, DueRule, ObligationStatus, TuitionPlanType
 from app.core.payments import PaymentProviderName, PaymentStatus
@@ -122,6 +122,79 @@ class BillingAccountPublic(BaseModel):
     created_at: datetime
     obligations: list[ObligationPublic] = []
     tuition_plan: TuitionPlanPublic | None = None
+
+    def _next_open_obligation(self) -> ObligationPublic | None:
+        pending = [
+            o
+            for o in self.obligations
+            if o.status
+            not in {
+                ObligationStatus.PAID,
+                ObligationStatus.WAIVED,
+                ObligationStatus.CANCELLED,
+            }
+        ]
+        pending.sort(key=lambda o: o.sequence_number)
+        return pending[0] if pending else None
+
+    @computed_field
+    @property
+    def plan_name(self) -> str | None:
+        """Tuition plan the student is on (e.g. 'Pay in Full', 'Pay in 2')."""
+        return self.tuition_plan.name if self.tuition_plan else None
+
+    @computed_field
+    @property
+    def plan_type(self) -> TuitionPlanType | None:
+        return self.tuition_plan.plan_type if self.tuition_plan else None
+
+    @computed_field
+    @property
+    def installments_total(self) -> int:
+        if self.obligations:
+            return len(self.obligations)
+        return self.tuition_plan.number_of_installments if self.tuition_plan else 0
+
+    @computed_field
+    @property
+    def installments_paid(self) -> int:
+        return sum(
+            1
+            for o in self.obligations
+            if o.status in {ObligationStatus.PAID, ObligationStatus.WAIVED}
+        )
+
+    @computed_field
+    @property
+    def installments_remaining(self) -> int:
+        return max(0, self.installments_total - self.installments_paid)
+
+    @computed_field
+    @property
+    def is_paid_in_full(self) -> bool:
+        """True once nothing is owed — includes a fully-paid installment plan."""
+        if self.billing_status == BillingStatus.PAID_IN_FULL:
+            return True
+        return self.amount_outstanding <= Decimal("0.00")
+
+    @computed_field
+    @property
+    def next_due_date(self) -> datetime | None:
+        """Due date of the next unpaid installment (None when paid in full)."""
+        nxt = self._next_open_obligation()
+        return nxt.due_date if nxt else None
+
+    @computed_field
+    @property
+    def next_due_amount(self) -> Decimal | None:
+        nxt = self._next_open_obligation()
+        return nxt.amount_due if nxt else None
+
+    @computed_field
+    @property
+    def next_due_status(self) -> ObligationStatus | None:
+        nxt = self._next_open_obligation()
+        return nxt.status if nxt else None
 
 
 class PayObligationRequest(BaseModel):
