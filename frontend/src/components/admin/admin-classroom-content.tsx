@@ -1,0 +1,492 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { CalendarPlus, Loader2, Pencil, Trash2, XCircle } from "lucide-react";
+import { PageHeader } from "@/components/layout/page-header";
+import { EmptyState } from "@/components/shared/empty-state";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { formatAdminDate } from "@/components/admin/admin-format";
+import {
+  ApiError,
+  cancelAdminClassroomSession,
+  createAdminClassroomSession,
+  deleteAdminClassroomSession,
+  getAdminClassroomCohorts,
+  getAdminClassroomSessions,
+  updateAdminClassroomSession,
+  type AdminCohortOption,
+  type AdminLiveSessionInput,
+  type AdminLiveSessionRow,
+} from "@/lib/api";
+import { cn } from "@/lib/utils";
+
+type FormState = {
+  cohort_id: string;
+  title: string;
+  week_label: string;
+  session_number: number;
+  session_type: "teaching" | "office_hour";
+  objectives: string;
+  assignment_summary: string;
+  starts_at: string;
+  ends_at: string;
+};
+
+/** ISO timestamp → value for an <input type="datetime-local">. */
+function toLocalInput(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
+    date.getHours()
+  )}:${pad(date.getMinutes())}`;
+}
+
+/** datetime-local value → ISO string (with timezone). */
+function fromLocalInput(value: string): string {
+  return new Date(value).toISOString();
+}
+
+function defaultForm(cohortId: string): FormState {
+  const start = new Date();
+  start.setDate(start.getDate() + 14);
+  start.setHours(18, 0, 0, 0);
+  const end = new Date(start);
+  end.setHours(20, 0, 0, 0);
+  return {
+    cohort_id: cohortId,
+    title: "",
+    week_label: "",
+    session_number: 1,
+    session_type: "teaching",
+    objectives: "",
+    assignment_summary: "",
+    starts_at: toLocalInput(start.toISOString()),
+    ends_at: toLocalInput(end.toISOString()),
+  };
+}
+
+function phaseClass(phase: string) {
+  if (phase === "live") return "bg-red-500/15 text-red-700 dark:text-red-300";
+  if (phase === "upcoming") return "bg-brand-orange/15 text-brand-orange";
+  if (phase === "cancelled") return "bg-destructive/10 text-destructive";
+  return "bg-muted text-muted-foreground";
+}
+
+export function AdminClassroomContent() {
+  const [cohorts, setCohorts] = useState<AdminCohortOption[]>([]);
+  const [sessions, setSessions] = useState<AdminLiveSessionRow[]>([]);
+  const [cohortFilter, setCohortFilter] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<AdminLiveSessionRow | null>(null);
+  const [form, setForm] = useState<FormState>(defaultForm(""));
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const loadSessions = useCallback(async (cohortId?: string) => {
+    const rows = await getAdminClassroomSessions(cohortId || undefined);
+    setSessions(rows);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [cohortOptions, rows] = await Promise.all([
+          getAdminClassroomCohorts(),
+          getAdminClassroomSessions(),
+        ]);
+        if (!cancelled) {
+          setCohorts(cohortOptions);
+          setSessions(rows);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof ApiError ? err.detail : "Failed to load classroom");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const filtered = useMemo(
+    () => (cohortFilter ? sessions.filter((s) => s.cohort_id === cohortFilter) : sessions),
+    [sessions, cohortFilter]
+  );
+
+  function openCreate() {
+    setEditing(null);
+    setForm(defaultForm(cohortFilter || cohorts[0]?.id || ""));
+    setFormError(null);
+    setDialogOpen(true);
+  }
+
+  function openEdit(row: AdminLiveSessionRow) {
+    setEditing(row);
+    setForm({
+      cohort_id: row.cohort_id,
+      title: row.title,
+      week_label: row.week_label,
+      session_number: row.session_number,
+      session_type: row.session_type,
+      objectives: row.objectives.join("\n"),
+      assignment_summary: row.assignment_summary ?? "",
+      starts_at: toLocalInput(row.starts_at),
+      ends_at: toLocalInput(row.ends_at),
+    });
+    setFormError(null);
+    setDialogOpen(true);
+  }
+
+  async function submit() {
+    setFormError(null);
+    if (!form.cohort_id) {
+      setFormError("Select a cohort");
+      return;
+    }
+    if (!form.title.trim()) {
+      setFormError("Session title is required");
+      return;
+    }
+    if (!form.starts_at || !form.ends_at) {
+      setFormError("Start and end times are required");
+      return;
+    }
+    const payload: AdminLiveSessionInput = {
+      cohort_id: form.cohort_id,
+      title: form.title.trim(),
+      week_label: form.week_label.trim(),
+      session_number: Number(form.session_number) || 1,
+      session_type: form.session_type,
+      objectives: form.objectives
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean),
+      assignment_summary: form.assignment_summary.trim() || null,
+      starts_at: fromLocalInput(form.starts_at),
+      ends_at: fromLocalInput(form.ends_at),
+    };
+    setSaving(true);
+    try {
+      if (editing) {
+        await updateAdminClassroomSession(editing.id, payload);
+      } else {
+        await createAdminClassroomSession(payload);
+      }
+      setDialogOpen(false);
+      await loadSessions(cohortFilter || undefined);
+      getAdminClassroomCohorts().then(setCohorts).catch(() => {});
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.detail : "Could not save the session");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleCancel(row: AdminLiveSessionRow) {
+    setBusyId(row.id);
+    setError(null);
+    try {
+      await cancelAdminClassroomSession(row.id);
+      await loadSessions(cohortFilter || undefined);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.detail : "Could not cancel the session");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleDelete(row: AdminLiveSessionRow) {
+    if (!window.confirm(`Delete "${row.title}"? This cannot be undone.`)) return;
+    setBusyId(row.id);
+    setError(null);
+    try {
+      await deleteAdminClassroomSession(row.id);
+      await loadSessions(cohortFilter || undefined);
+      getAdminClassroomCohorts().then(setCohorts).catch(() => {});
+    } catch (err) {
+      setError(err instanceof ApiError ? err.detail : "Could not delete the session");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  const field = "h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm";
+
+  return (
+    <div>
+      <PageHeader
+        title="Live sessions"
+        description="Create and manage classroom sessions. Students see them immediately after saving."
+      />
+
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <label className="text-sm text-muted-foreground" htmlFor="cohort-filter">
+          Cohort
+        </label>
+        <select
+          id="cohort-filter"
+          className={cn(field, "w-64")}
+          value={cohortFilter}
+          onChange={(e) => {
+            setCohortFilter(e.target.value);
+            loadSessions(e.target.value || undefined).catch(() => {});
+          }}
+        >
+          <option value="">All cohorts ({sessions.length} sessions)</option>
+          {cohorts.map((cohort) => (
+            <option key={cohort.id} value={cohort.id}>
+              {cohort.name} ({cohort.sessions_count})
+            </option>
+          ))}
+        </select>
+        <Button
+          className="bg-brand-orange text-white hover:bg-brand-orange/90"
+          onClick={openCreate}
+          disabled={cohorts.length === 0}
+        >
+          <CalendarPlus className="size-4" />
+          Create session
+        </Button>
+      </div>
+
+      {error && (
+        <p className="mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      )}
+
+      {loading ? (
+        <div className="flex min-h-[30vh] items-center justify-center gap-2 text-muted-foreground">
+          <Loader2 className="size-5 animate-spin" />
+          Loading sessions…
+        </div>
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          icon={<CalendarPlus className="size-6" />}
+          title="No sessions yet"
+          description="Create the first live session for this cohort."
+        />
+      ) : (
+        <div className="rounded-xl border shadow-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Session</TableHead>
+                <TableHead>Cohort</TableHead>
+                <TableHead>When</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Seats</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell>
+                    <p className="font-medium">{row.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {row.week_label ? `${row.week_label} · ` : ""}
+                      {row.session_type === "office_hour"
+                        ? "Office hour"
+                        : `Session ${row.session_number}`}
+                    </p>
+                  </TableCell>
+                  <TableCell className="text-sm">{row.cohort_name}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {formatAdminDate(row.starts_at)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={phaseClass(row.phase)}>{row.phase}</Badge>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{row.member_count}</TableCell>
+                  <TableCell>
+                    <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(row)}>
+                        <Pencil className="size-4" />
+                      </Button>
+                      {row.status !== "cancelled" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={busyId === row.id}
+                          onClick={() => handleCancel(row)}
+                          title="Cancel session"
+                        >
+                          {busyId === row.id ? (
+                            <Loader2 className="size-4 animate-spin" />
+                          ) : (
+                            <XCircle className="size-4" />
+                          )}
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={busyId === row.id}
+                        onClick={() => handleDelete(row)}
+                        title="Delete session"
+                      >
+                        <Trash2 className="size-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editing ? "Edit session" : "Create live session"}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <div className="grid gap-1.5">
+              <Label htmlFor="s-cohort">Cohort</Label>
+              <select
+                id="s-cohort"
+                className={field}
+                value={form.cohort_id}
+                onChange={(e) => setForm({ ...form, cohort_id: e.target.value })}
+                disabled={Boolean(editing)}
+              >
+                <option value="">Select a cohort…</option>
+                {cohorts.map((cohort) => (
+                  <option key={cohort.id} value={cohort.id}>
+                    {cohort.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="s-title">Title</Label>
+              <Input
+                id="s-title"
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                placeholder="e.g. Containerized Ingestion Pipelines"
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="s-week">Week label</Label>
+                <Input
+                  id="s-week"
+                  value={form.week_label}
+                  onChange={(e) => setForm({ ...form, week_label: e.target.value })}
+                  placeholder="Week 1"
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="s-num">Number</Label>
+                <Input
+                  id="s-num"
+                  type="number"
+                  min={1}
+                  value={form.session_number}
+                  onChange={(e) => setForm({ ...form, session_number: Number(e.target.value) })}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="s-type">Type</Label>
+                <select
+                  id="s-type"
+                  className={field}
+                  value={form.session_type}
+                  onChange={(e) =>
+                    setForm({ ...form, session_type: e.target.value as FormState["session_type"] })
+                  }
+                >
+                  <option value="teaching">Teaching</option>
+                  <option value="office_hour">Office hour</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="s-start">Starts</Label>
+                <Input
+                  id="s-start"
+                  type="datetime-local"
+                  value={form.starts_at}
+                  onChange={(e) => setForm({ ...form, starts_at: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="s-end">Ends</Label>
+                <Input
+                  id="s-end"
+                  type="datetime-local"
+                  value={form.ends_at}
+                  onChange={(e) => setForm({ ...form, ends_at: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="s-objectives">Objectives (one per line)</Label>
+              <Textarea
+                id="s-objectives"
+                rows={3}
+                value={form.objectives}
+                onChange={(e) => setForm({ ...form, objectives: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="s-assignment">Assignment summary</Label>
+              <Textarea
+                id="s-assignment"
+                rows={2}
+                value={form.assignment_summary}
+                onChange={(e) => setForm({ ...form, assignment_summary: e.target.value })}
+              />
+            </div>
+            {formError && <p className="text-sm text-destructive">{formError}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-brand-orange text-white hover:bg-brand-orange/90"
+              onClick={submit}
+              disabled={saving}
+            >
+              {saving ? <Loader2 className="size-4 animate-spin" /> : null}
+              {editing ? "Save changes" : "Create session"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

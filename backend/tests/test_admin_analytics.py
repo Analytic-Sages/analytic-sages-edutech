@@ -67,6 +67,9 @@ def test_admin_analytics_returns_live_shape():
         assert "Watch time is not recorded." in body["untracked"]
         assert "enrollments_active" in body
         assert "published_opportunities" in body
+        assert "quizzes_published" in body
+        assert "quiz_attempts" in body
+        assert body["quiz_pass_rate"] >= 0
     finally:
         _cleanup_user(email)
 

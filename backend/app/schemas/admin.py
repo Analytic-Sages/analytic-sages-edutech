@@ -122,6 +122,9 @@ class AdminAnalytics(BaseModel):
     enrollments_completed: int
     lessons_completed: int
     learners_active_7d: int
+    quizzes_published: int
+    quiz_attempts: int
+    quiz_pass_rate: float
     payments_confirmed: int
     payments_pending: int
     event_registrations: int

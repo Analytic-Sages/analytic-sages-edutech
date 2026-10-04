@@ -27,6 +27,12 @@ class LessonOutlinePublic(BaseModel):
     completed: bool = False
 
 
+class ModuleQuizPublic(BaseModel):
+    id: UUID
+    title: str
+    questions_total: int = 0
+
+
 class ModuleOutlinePublic(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -35,6 +41,7 @@ class ModuleOutlinePublic(BaseModel):
     description: str
     order_index: int
     lessons: list[LessonOutlinePublic]
+    quiz: ModuleQuizPublic | None = None
 
 
 class SelfPacedCourseCard(BaseModel):

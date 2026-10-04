@@ -31,6 +31,7 @@ from app.models.opportunity import (
     VerificationEvent,
 )
 from app.models.payment import Payment
+from app.models.quiz import Quiz, QuizAnswer, QuizAttempt, QuizOption, QuizQuestion
 from app.models.referral import (
     PartnerLedgerEntry,
     PartnerPayoutRequest,
@@ -57,6 +58,11 @@ __all__ = [
     "Lesson",
     "LessonProgress",
     "Payment",
+    "Quiz",
+    "QuizQuestion",
+    "QuizOption",
+    "QuizAttempt",
+    "QuizAnswer",
     "TuitionPlan",
     "TuitionPlanSchedule",
     "StudentBillingAccount",

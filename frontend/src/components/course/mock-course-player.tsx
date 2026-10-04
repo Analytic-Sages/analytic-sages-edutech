@@ -149,7 +149,7 @@ export function MockCoursePlayer({ params }: Props) {
 
       {/* Main Content Area */}
       <div className="flex flex-1 flex-col">
-        {/* Custom Bunny Video Player UI */}
+        {/* Custom Stream/YouTube video player UI */}
         <div className="relative aspect-video w-full overflow-hidden bg-slate-950 shadow-elevated">
           <div className="flex h-full flex-col items-center justify-center bg-gradient-to-br from-slate-950 via-brand-navy/30 to-slate-950 p-6 text-center">
             <div className="group relative cursor-pointer">
@@ -161,7 +161,7 @@ export function MockCoursePlayer({ params }: Props) {
               {currentLesson.title}
             </h3>
             <p className="mt-1 text-xs text-slate-400 font-mono">
-              Bunny Stream HD Player • {currentLesson.duration}
+              HD Player • {currentLesson.duration}
             </p>
           </div>
 

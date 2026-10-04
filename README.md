@@ -63,17 +63,21 @@ See [backend/README.md](backend/README.md) for auth endpoints, admin seeding, an
 
 **Epic D (Payments):** **live Paystack (NGN/USD)** + **live NOWPayments invoice/IPN** (when keys set) → webhook → enrollment unlock. Seed courses with `python scripts/seed_courses.py`. See [backend/README.md](backend/README.md).
 
-**Classroom V1:** cohorts + live sessions + authorized RealtimeKit join. Seed with `python scripts/seed_classroom.py --email you@example.com`. Bunny Stream remains for recorded premium courses.
+**Classroom V1:** cohorts + live sessions + authorized RealtimeKit join. Seed with `python scripts/seed_classroom.py --email you@example.com`. Cloudflare Stream powers recorded lesson video.
 
 **Classroom schedule + calendar:** `python scripts/seed_blockchain_data_engineering.py` seeds the Blockchain Data Engineering cohort with its full 40-session schedule (30 teaching sessions Mon/Tue/Wed + 10 Friday office hours, from 5 Oct 2026). Students and instructors can add individual sessions or the whole schedule to Google/Outlook/Apple Calendar, and subscribe to a live-updating `.ics` feed with reminders (`GET /api/v1/classroom/calendar.ics`).
 
-**Next phases:** recording → Bunny, attendance webhooks, assignments, live payment keys, admin cohort ops.
+**Admin ops:** create/edit live sessions, make it possible to publish a whole course from the dashboard (`/admin/courses/new` — modules, lessons, Cloudflare Stream video, PDFs/slides/datasets, publish), filter paid vs unpaid students (`/admin/students`), and manage tuition installment deadlines with email reminders (`/admin/collections`) — all without a developer.
+
+**Quizzes:** multiple-choice quizzes per module (or course/lesson), authored in the course editor under **Quizzes** — create a quiz, add questions and mark the correct option. Grading is server-side so the answer key never reaches the browser; learners see per-question feedback with explanations, their best score and attempt history. Module quizzes appear in the lesson sidebar and analytics report publish/attempt/pass-rate counts.
+
+**Next phases:** certificates (Certifier.io), AI lecture assets, assignments + instructor dashboard, notifications, search, AI tutor, analytics, portfolio.
 
 ## MVP Scope (Phase 1 Launch)
 
 - Public marketing website
 - Authentication (email + Google)
-- Student dashboard & course player (Bunny Stream)
+- Student dashboard & course player (Cloudflare Stream / YouTube)
 - Progress tracking, quizzes, downloadable resources
 - Payments (Paystack + NOWPayments)
 - Certificates & admin portal

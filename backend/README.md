@@ -269,6 +269,38 @@ browser player. Leave the keys empty for mock mode: the upload endpoint returns 
 mock UID and the lesson still saves, so authoring works without credentials.
 YouTube remains supported (`video_provider="youtube"`).
 
+## Quizzes
+
+Multiple-choice quizzes attach to a course and optionally a module (`module_id`)
+or lesson (`lesson_id`). Authoring lives in the course editor under **Quizzes**
+(next to Curriculum): create a quiz, then add questions with 2–8 options and tap
+the circle to mark the correct answer. Pass score is a 0–100 threshold.
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/v1/admin/quizzes?course_slug=` | List quizzes (with attempt + pass-rate stats) |
+| `GET /api/v1/admin/quizzes/{id}` | Quiz detail **including answer keys** |
+| `POST /api/v1/admin/courses/{slug}/quizzes` | Create a quiz |
+| `PATCH/DELETE /api/v1/admin/quizzes/{id}` | Edit / delete a quiz |
+| `POST /api/v1/admin/quizzes/{id}/questions` | Add a question (+ options) |
+| `PATCH/DELETE /api/v1/admin/quiz-questions/{id}` | Edit / delete a question |
+
+Learner endpoints **never leak the answer key** — the correct option is stripped
+and grading happens server-side:
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/v1/quizzes/{id}` | Questions + options (no `is_correct`), my best score |
+| `POST /api/v1/quizzes/{id}/submit` | Grade answers → score, pass/fail, per-question explanation |
+| `GET /api/v1/quizzes/{id}/attempts` | My attempt history |
+| `GET /api/v1/quizzes/course/{slug}` | All published quizzes for a course |
+
+Taking a quiz requires an active (or completed) enrollment; staff can preview
+without one. Published module quizzes surface as `quiz` on each module in the
+self-paced learn outline, so they appear in the lesson sidebar. Analytics on
+**Admin → Analytics** now report `quizzes_published`, `quiz_attempts` and
+`quiz_pass_rate`.
+
 ## Admin: students, collections & reminders
 
 | Endpoint | Purpose |
@@ -290,6 +322,6 @@ obligation is reminded once, then re-nagged every 3 days while it stays overdue.
 
 ## Not implemented yet (later phases)
 
-- Attendance webhooks, assignments gradebook, recording → Bunny pipeline
-- Full LMS (recorded lessons via Cloudflare Stream, quizzes, certificates)
+- Attendance webhooks, assignments gradebook, recording → Cloudflare Stream pipeline
+- Certificates (Certifier.io), AI lecture assets, assignments, notifications, search, AI tutor, analytics, portfolio
 - Production email provider integration

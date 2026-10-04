@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 
 from app.api.deps import (
     get_admin_service,
@@ -11,6 +11,7 @@ from app.api.deps import (
     get_cloudflare_stream_service,
     get_course_admin_service,
     get_payment_service,
+    get_quiz_admin_service,
     get_self_paced_service,
     get_storage_service,
     require_admin,
@@ -55,6 +56,14 @@ from app.schemas.lms_admin import (
     AdminVideoUploadResponse,
 )
 from app.schemas.self_paced import AdminCourseAnalytics, AdminCourseRow
+from app.schemas.quizzes import (
+    AdminQuizDetail,
+    AdminQuizRow,
+    QuizCreate,
+    QuizQuestionCreate,
+    QuizQuestionUpdate,
+    QuizUpdate,
+)
 from app.services.admin import AdminService
 from app.services.admin_students import AdminStudentsService
 from app.services.auth import AuthService
@@ -63,6 +72,7 @@ from app.services.classroom_admin import ClassroomAdminService
 from app.services.cloudflare_stream import CloudflareStreamError, CloudflareStreamService
 from app.services.course_admin import CourseAdminService
 from app.services.payments import PaymentService
+from app.services.quiz_admin import QuizAdminService
 from app.services.self_paced import SelfPacedService
 from app.services.storage import StorageService
 
@@ -550,3 +560,80 @@ def admin_video_info(
         hls_url=video.hls_url,
         mode=stream.mode,
     )
+# ---------- Quizzes ----------
+
+
+@router.get("/quizzes", response_model=list[AdminQuizRow])
+def admin_list_quizzes(
+    _: User = Depends(require_course_author),
+    quizzes: QuizAdminService = Depends(get_quiz_admin_service),
+    course_slug: str | None = Query(default=None),
+) -> list[AdminQuizRow]:
+    return quizzes.list_quizzes(course_slug=course_slug)
+
+
+@router.get("/quizzes/{quiz_id}", response_model=AdminQuizDetail)
+def admin_get_quiz(
+    quiz_id: UUID,
+    _: User = Depends(require_course_author),
+    quizzes: QuizAdminService = Depends(get_quiz_admin_service),
+) -> AdminQuizDetail:
+    return quizzes.get_quiz(quiz_id)
+
+
+@router.post("/courses/{slug}/quizzes", response_model=AdminQuizDetail, status_code=201)
+def admin_create_quiz(
+    slug: str,
+    payload: QuizCreate,
+    _: User = Depends(require_course_author),
+    quizzes: QuizAdminService = Depends(get_quiz_admin_service),
+) -> AdminQuizDetail:
+    return quizzes.create_quiz(slug, payload)
+
+
+@router.patch("/quizzes/{quiz_id}", response_model=AdminQuizDetail)
+def admin_update_quiz(
+    quiz_id: UUID,
+    payload: QuizUpdate,
+    _: User = Depends(require_course_author),
+    quizzes: QuizAdminService = Depends(get_quiz_admin_service),
+) -> AdminQuizDetail:
+    return quizzes.update_quiz(quiz_id, payload)
+
+
+@router.delete("/quizzes/{quiz_id}", status_code=204)
+def admin_delete_quiz(
+    quiz_id: UUID,
+    _: User = Depends(require_course_author),
+    quizzes: QuizAdminService = Depends(get_quiz_admin_service),
+) -> None:
+    quizzes.delete_quiz(quiz_id)
+
+
+@router.post("/quizzes/{quiz_id}/questions", response_model=AdminQuizDetail, status_code=201)
+def admin_add_quiz_question(
+    quiz_id: UUID,
+    payload: QuizQuestionCreate,
+    _: User = Depends(require_course_author),
+    quizzes: QuizAdminService = Depends(get_quiz_admin_service),
+) -> AdminQuizDetail:
+    return quizzes.add_question(quiz_id, payload)
+
+
+@router.patch("/quiz-questions/{question_id}", response_model=AdminQuizDetail)
+def admin_update_quiz_question(
+    question_id: UUID,
+    payload: QuizQuestionUpdate,
+    _: User = Depends(require_course_author),
+    quizzes: QuizAdminService = Depends(get_quiz_admin_service),
+) -> AdminQuizDetail:
+    return quizzes.update_question(question_id, payload)
+
+
+@router.delete("/quiz-questions/{question_id}", response_model=AdminQuizDetail)
+def admin_delete_quiz_question(
+    question_id: UUID,
+    _: User = Depends(require_course_author),
+    quizzes: QuizAdminService = Depends(get_quiz_admin_service),
+) -> AdminQuizDetail:
+    return quizzes.delete_question(question_id)

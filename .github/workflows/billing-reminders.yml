@@ -1,0 +1,35 @@
+# Scheduled tuition installment reminders (plus manual run via workflow_dispatch).
+# The API also runs an in-process sweep when BILLING_REMINDERS_ENABLED=true; this
+# is a belt-and-braces backup that also works across process restarts. Requires
+# PUBLIC_API_URL plus BILLING_REMINDERS_TOKEN (or OPPORTUNITY_SYNC_TOKEN)
+# repository secrets. Without those secrets the job exits 0 and skips the call.
+
+name: Billing reminders
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Daily — email due-soon and overdue installment reminders.
+    - cron: "0 8 * * *"
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send installment reminders
+        env:
+          PUBLIC_API_URL: ${{ secrets.PUBLIC_API_URL }}
+          BILLING_REMINDERS_TOKEN: ${{ secrets.BILLING_REMINDERS_TOKEN }}
+          OPPORTUNITY_SYNC_TOKEN: ${{ secrets.OPPORTUNITY_SYNC_TOKEN }}
+        run: |
+          set -euo pipefail
+          token="${BILLING_REMINDERS_TOKEN:-${OPPORTUNITY_SYNC_TOKEN:-}}"
+          if [ -z "${PUBLIC_API_URL:-}" ] || [ -z "$token" ]; then
+            echo "Secrets PUBLIC_API_URL / BILLING_REMINDERS_TOKEN not set; skipping."
+            exit 0
+          fi
+          curl -fsS -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-Billing-Reminders-Token: ${token}" \
+            -d '{"scope": "all"}' \
+            "${PUBLIC_API_URL%/}/api/v1/internal/billing/run-reminders"

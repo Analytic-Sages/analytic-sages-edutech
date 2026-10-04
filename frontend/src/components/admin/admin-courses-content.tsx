@@ -21,6 +21,7 @@ import {
   type AdminCourseRow,
 } from "@/lib/api";
 import { ButtonLink } from "@/components/ui/button-link";
+import { Plus } from "lucide-react";
 
 export function AdminCoursesContent() {
   const [rows, setRows] = useState<AdminCourseRow[]>([]);
@@ -72,7 +73,16 @@ export function AdminCoursesContent() {
     <div>
       <PageHeader
         title="Courses"
-        description="Assign instructors to catalog courses and live cohorts. Lesson authoring is still seed-based."
+        description="Build and publish courses, modules, lessons and downloads — no developer needed."
+        action={
+          <ButtonLink
+            href="/admin/courses/new"
+            className="bg-brand-orange text-white hover:bg-brand-orange/90"
+          >
+            <Plus className="size-4" />
+            Create course
+          </ButtonLink>
+        }
       />
       {rows.length === 0 ? (
         <EmptyState
@@ -118,9 +128,18 @@ export function AdminCoursesContent() {
                   <TableCell>{row.completions_count}</TableCell>
                   <TableCell>{row.avg_progress_percent}%</TableCell>
                   <TableCell>
-                    <ButtonLink href={`/admin/courses/${row.slug}/instructors`} variant="outline" size="sm">
-                      {row.instructor_count ?? 0} assigned
-                    </ButtonLink>
+                    <div className="flex items-center gap-1">
+                      <ButtonLink href={`/admin/courses/${row.slug}`} variant="outline" size="sm">
+                        Edit
+                      </ButtonLink>
+                      <ButtonLink
+                        href={`/admin/courses/${row.slug}/instructors`}
+                        variant="outline"
+                        size="sm"
+                      >
+                        {row.instructor_count ?? 0} instructors
+                      </ButtonLink>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -168,8 +187,8 @@ export function AdminCoursesContent() {
       )}
 
       <p className="mt-4 text-sm text-muted-foreground">
-        Full create/edit/publish tools are not live yet. Public course pages render from this data
-        model, so a new seeded course appears without a new frontend.
+        Create a course, add modules and lessons, attach a video (YouTube or Cloudflare Stream),
+        upload PDFs/slides/datasets, then publish. Public course pages render from this data model.
       </p>
       <div className="mt-3">
         <ButtonLink href="/courses" variant="outline" size="sm">

@@ -18,6 +18,7 @@ from app.models.event import EventRegistration, EventRegistrationStatus
 from app.models.lms import LessonProgress
 from app.models.opportunity import Opportunity, OpportunityStatus, OpportunitySave
 from app.models.payment import Payment
+from app.models.quiz import Quiz, QuizAttempt
 from app.models.user import User
 from app.schemas.admin import (
     AdminAnalytics,
@@ -38,9 +39,8 @@ LIST_CAP = 500
 ANALYTICS_DAYS = 30
 UNTRACKED = [
     "Watch time is not recorded.",
-    "Quiz attempts and pass rates are not tracked yet.",
     "Last login is not stored; recent learners use last lesson activity only.",
-    "Certificate issuance is not live.",
+    "Certificate issuance is tracked via Certifier (see the Certificates page).",
 ]
 
 
@@ -100,6 +100,9 @@ class AdminService:
                 Enrollment, Enrollment.status == EnrollmentStatus.COMPLETED
             ),
             lessons_completed=self._count(LessonProgress, LessonProgress.completed.is_(True)),
+            quizzes_published=self._count(Quiz, Quiz.published.is_(True)),
+            quiz_attempts=self._count(QuizAttempt, QuizAttempt.completed_at.is_not(None)),
+            quiz_pass_rate=self._quiz_pass_rate(),
             learners_active_7d=int(
                 self.db.scalar(
                     select(func.count(func.distinct(Enrollment.user_id))).where(
@@ -196,6 +199,13 @@ class AdminService:
             .order_by(Cohort.starts_at.desc().nulls_last())
             .limit(1)
         )
+
+    def _quiz_pass_rate(self) -> float:
+        total = self._count(QuizAttempt, QuizAttempt.completed_at.is_not(None))
+        if not total:
+            return 0.0
+        passed = self._count(QuizAttempt, QuizAttempt.passed.is_(True))
+        return round((passed / total) * 100, 1)
 
     def _count(self, model: type, *filters: object) -> int:
         stmt = select(func.count()).select_from(model)

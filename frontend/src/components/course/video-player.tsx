@@ -31,7 +31,26 @@ function resolveSrc(
 ) {
   if (embedUrl) return embedUrl;
   if (videoId && provider === "youtube") return youtubeEmbedSrc(videoId, autoplay);
+  // Cloudflare Stream: the lesson stores the video UID; the embedder code comes
+  // from the customer subdomain passed via NEXT_PUBLIC_CLOUDFLARE_STREAM_CUSTOMER_CODE.
+  if (videoId && provider === "cloudflare_stream") {
+    const code = cloudflareStreamCustomerCode();
+    if (code) {
+      const params = autoplay ? "?autoplay=true" : "";
+      return `https://customer-${code}.cloudflarestream.com/${videoId}/iframe${params}`;
+    }
+  }
   return null;
+}
+
+/** The `customer-xxxx` subdomain code for Cloudflare Stream playback. */
+export function cloudflareStreamCustomerCode(): string {
+  return (process.env.NEXT_PUBLIC_CLOUDFLARE_STREAM_CUSTOMER_CODE || "").replace(/^customer-/, "");
+}
+
+export function cloudflareStreamThumbnailSrc(videoId: string): string | null {
+  const code = cloudflareStreamCustomerCode();
+  return code ? `https://customer-${code}.cloudflarestream.com/${videoId}/thumbnails/thumbnail.jpg` : null;
 }
 
 export function VideoPlayer({
@@ -64,6 +83,13 @@ export function VideoPlayer({
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={youtubeThumbnailSrc(videoId)}
+              alt={`${title} video thumbnail`}
+              className="absolute inset-0 size-full object-cover opacity-60"
+            />
+          ) : videoId && provider === "cloudflare_stream" ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={cloudflareStreamThumbnailSrc(videoId) ?? ""}
               alt={`${title} video thumbnail`}
               className="absolute inset-0 size-full object-cover opacity-60"
             />

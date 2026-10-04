@@ -363,12 +363,19 @@ export type SelfPacedLessonOutline = {
   completed: boolean;
 };
 
+export type SelfPacedModuleQuiz = {
+  id: string;
+  title: string;
+  questions_total: number;
+};
+
 export type SelfPacedModuleOutline = {
   id: string;
   title: string;
   description: string;
   order_index: number;
   lessons: SelfPacedLessonOutline[];
+  quiz?: SelfPacedModuleQuiz | null;
 };
 
 export type SelfPacedCourseCard = {
@@ -788,6 +795,418 @@ export function getMySelfPacedEnrollments() {
 
 export function getAdminCourses() {
   return apiFetch<AdminCourseRow[]>("/api/v1/admin/courses");
+}
+
+// ---------- Quizzes ----------
+
+export type QuizOptionPublic = {
+  id: string;
+  label: string;
+};
+
+export type QuizQuestionPublic = {
+  id: string;
+  prompt: string;
+  order_index: number;
+  options: QuizOptionPublic[];
+};
+
+export type QuizPublic = {
+  id: string;
+  course_id: string;
+  module_id: string | null;
+  lesson_id: string | null;
+  title: string;
+  description: string;
+  pass_score: number;
+  order_index: number;
+  questions: QuizQuestionPublic[];
+  questions_total: number;
+  best_score: number | null;
+  passed: boolean;
+  attempts_count: number;
+  last_attempt_at: string | null;
+};
+
+export type QuizQuestionResult = {
+  question_id: string;
+  prompt: string;
+  selected_option_id: string | null;
+  correct_option_id: string | null;
+  is_correct: boolean;
+  explanation: string | null;
+};
+
+export type QuizResult = {
+  attempt_id: string;
+  quiz_id: string;
+  score: number;
+  passed: boolean;
+  correct_count: number;
+  total_questions: number;
+  pass_score: number;
+  completed_at: string;
+  results: QuizQuestionResult[];
+};
+
+export type QuizAttemptSummary = {
+  id: string;
+  quiz_id: string;
+  score: number;
+  passed: boolean;
+  correct_count: number;
+  total_questions: number;
+  completed_at: string | null;
+};
+
+export function getQuiz(quizId: string) {
+  return apiFetch<QuizPublic>(`/api/v1/quizzes/${encodeURIComponent(quizId)}`);
+}
+
+export function submitQuiz(
+  quizId: string,
+  answers: { question_id: string; option_id: string | null }[],
+) {
+  return apiFetch<QuizResult>(`/api/v1/quizzes/${encodeURIComponent(quizId)}/submit`, {
+    method: "POST",
+    body: JSON.stringify({ answers }),
+  });
+}
+
+export function listMyQuizAttempts(quizId: string) {
+  return apiFetch<QuizAttemptSummary[]>(
+    `/api/v1/quizzes/${encodeURIComponent(quizId)}/attempts`,
+  );
+}
+
+export function listCourseQuizzes(courseSlug: string) {
+  return apiFetch<QuizPublic[]>(
+    `/api/v1/quizzes/course/${encodeURIComponent(courseSlug)}`,
+  );
+}
+
+// ---------- Quiz authoring (admin) ----------
+
+export type AdminQuizOption = {
+  id: string;
+  label: string;
+  is_correct: boolean;
+  order_index: number;
+};
+
+export type AdminQuizQuestion = {
+  id: string;
+  prompt: string;
+  explanation: string | null;
+  order_index: number;
+  options: AdminQuizOption[];
+};
+
+export type AdminQuizRow = {
+  id: string;
+  course_id: string;
+  course_slug: string;
+  module_id: string | null;
+  lesson_id: string | null;
+  title: string;
+  description: string;
+  pass_score: number;
+  published: boolean;
+  order_index: number;
+  questions_total: number;
+  attempts_count: number;
+  pass_rate: number;
+};
+
+export type AdminQuizDetail = AdminQuizRow & {
+  questions: AdminQuizQuestion[];
+};
+
+export type QuizOptionInput = { label: string; is_correct: boolean };
+
+export function getAdminQuizzes(courseSlug?: string) {
+  const qs = courseSlug ? `?course_slug=${encodeURIComponent(courseSlug)}` : "";
+  return apiFetch<AdminQuizRow[]>(`/api/v1/admin/quizzes${qs}`);
+}
+
+export function getAdminQuiz(quizId: string) {
+  return apiFetch<AdminQuizDetail>(`/api/v1/admin/quizzes/${encodeURIComponent(quizId)}`);
+}
+
+export function createAdminQuiz(
+  courseSlug: string,
+  payload: {
+    title: string;
+    description?: string;
+    pass_score?: number;
+    published?: boolean;
+    module_id?: string | null;
+    lesson_id?: string | null;
+    order_index?: number;
+  },
+) {
+  return apiFetch<AdminQuizDetail>(
+    `/api/v1/admin/courses/${encodeURIComponent(courseSlug)}/quizzes`,
+    { method: "POST", body: JSON.stringify(payload) },
+  );
+}
+
+export function updateAdminQuiz(
+  quizId: string,
+  payload: Partial<{
+    title: string;
+    description: string;
+    pass_score: number;
+    published: boolean;
+    order_index: number;
+  }>,
+) {
+  return apiFetch<AdminQuizDetail>(`/api/v1/admin/quizzes/${encodeURIComponent(quizId)}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteAdminQuiz(quizId: string) {
+  return apiFetch<void>(`/api/v1/admin/quizzes/${encodeURIComponent(quizId)}`, {
+    method: "DELETE",
+  });
+}
+
+export function addAdminQuizQuestion(
+  quizId: string,
+  payload: { prompt: string; explanation?: string | null; options: QuizOptionInput[] },
+) {
+  return apiFetch<AdminQuizDetail>(
+    `/api/v1/admin/quizzes/${encodeURIComponent(quizId)}/questions`,
+    { method: "POST", body: JSON.stringify(payload) },
+  );
+}
+
+export function updateAdminQuizQuestion(
+  questionId: string,
+  payload: { prompt?: string; explanation?: string | null; options?: QuizOptionInput[] },
+) {
+  return apiFetch<AdminQuizDetail>(
+    `/api/v1/admin/quiz-questions/${encodeURIComponent(questionId)}`,
+    { method: "PATCH", body: JSON.stringify(payload) },
+  );
+}
+
+export function deleteAdminQuizQuestion(questionId: string) {
+  return apiFetch<AdminQuizDetail>(
+    `/api/v1/admin/quiz-questions/${encodeURIComponent(questionId)}`,
+    { method: "DELETE" },
+  );
+}
+
+// ---------- Course authoring (admin) ----------
+
+export type AdminLessonResource = {
+  label: string;
+  url: string;
+  kind: "pdf" | "slides" | "dataset" | "code" | "repo" | "reading" | "doc" | "other";
+};
+
+export type AdminLessonRow = {
+  id: string;
+  module_id: string;
+  slug: string;
+  title: string;
+  subtitle: string | null;
+  description: string;
+  video_provider: string;
+  video_id: string | null;
+  duration_seconds: number | null;
+  order_index: number;
+  published: boolean;
+  what_you_learn: string[];
+  key_concepts: string[];
+  resources: AdminLessonResource[];
+};
+
+export type AdminModuleRow = {
+  id: string;
+  title: string;
+  description: string;
+  order_index: number;
+  lessons: AdminLessonRow[];
+};
+
+export type AdminCourseDetail = {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  long_description: string;
+  thumbnail: string | null;
+  category: string;
+  difficulty: string;
+  duration: string;
+  lessons_count: number;
+  price: number;
+  currency: string;
+  delivery_type: string;
+  is_free: boolean;
+  certificate_enabled: boolean;
+  published: boolean;
+  modules: AdminModuleRow[];
+};
+
+export type AdminCourseUpsert = {
+  slug: string;
+  title: string;
+  description?: string;
+  long_description?: string;
+  thumbnail?: string | null;
+  category?: string;
+  difficulty?: string;
+  duration?: string;
+  price?: number;
+  currency?: string;
+  delivery_type?: string;
+  is_free?: boolean;
+  certificate_enabled?: boolean;
+  published?: boolean;
+};
+
+export type AdminLessonUpsert = {
+  title: string;
+  slug?: string | null;
+  subtitle?: string | null;
+  description?: string;
+  video_provider?: string;
+  video_id?: string | null;
+  duration_seconds?: number | null;
+  order_index?: number | null;
+  published?: boolean;
+  what_you_learn?: string[];
+  key_concepts?: string[];
+};
+
+export type AdminVideoUploadResponse = {
+  uid: string;
+  upload_url: string;
+  embed_url: string | null;
+  hls_url: string | null;
+  thumbnail_url: string | null;
+  mode: "live" | "mock";
+};
+
+export function getAdminCourseDetail(slug: string) {
+  return apiFetch<AdminCourseDetail>(`/api/v1/admin/courses/${encodeURIComponent(slug)}/detail`);
+}
+
+export function createAdminCourse(payload: AdminCourseUpsert) {
+  return apiFetch<AdminCourseDetail>("/api/v1/admin/courses", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateAdminCourse(slug: string, payload: Partial<AdminCourseUpsert>) {
+  return apiFetch<AdminCourseDetail>(`/api/v1/admin/courses/${encodeURIComponent(slug)}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteAdminCourse(slug: string) {
+  return apiFetch<void>(`/api/v1/admin/courses/${encodeURIComponent(slug)}`, {
+    method: "DELETE",
+  });
+}
+
+export function createAdminModule(
+  slug: string,
+  payload: { title: string; description?: string; order_index?: number | null }
+) {
+  return apiFetch<AdminModuleRow>(`/api/v1/admin/courses/${encodeURIComponent(slug)}/modules`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateAdminModule(
+  moduleId: string,
+  payload: { title?: string; description?: string; order_index?: number }
+) {
+  return apiFetch<AdminModuleRow>(`/api/v1/admin/modules/${encodeURIComponent(moduleId)}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteAdminModule(moduleId: string) {
+  return apiFetch<void>(`/api/v1/admin/modules/${encodeURIComponent(moduleId)}`, {
+    method: "DELETE",
+  });
+}
+
+export function createAdminLesson(moduleId: string, payload: AdminLessonUpsert) {
+  return apiFetch<AdminLessonRow>(
+    `/api/v1/admin/modules/${encodeURIComponent(moduleId)}/lessons`,
+    { method: "POST", body: JSON.stringify(payload) }
+  );
+}
+
+export function updateAdminLesson(lessonId: string, payload: Partial<AdminLessonUpsert>) {
+  return apiFetch<AdminLessonRow>(`/api/v1/admin/lessons/${encodeURIComponent(lessonId)}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteAdminLesson(lessonId: string) {
+  return apiFetch<void>(`/api/v1/admin/lessons/${encodeURIComponent(lessonId)}`, {
+    method: "DELETE",
+  });
+}
+
+export function addAdminLessonResource(
+  lessonId: string,
+  payload: { label: string; url: string; kind: string }
+) {
+  return apiFetch<AdminLessonRow>(
+    `/api/v1/admin/lessons/${encodeURIComponent(lessonId)}/resources`,
+    { method: "POST", body: JSON.stringify(payload) }
+  );
+}
+
+export function uploadAdminLessonResource(
+  lessonId: string,
+  params: { label: string; kind: string },
+  file: File
+) {
+  const headers = new Headers();
+  const token = getAccessToken();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  const body = new FormData();
+  body.append("file", file);
+  const qs = new URLSearchParams({ label: params.label, kind: params.kind });
+  return fetch(
+    resolveApiUrl(`/api/v1/admin/lessons/${encodeURIComponent(lessonId)}/resources/upload?${qs}`),
+    { method: "POST", headers, credentials: "include", body }
+  ).then(async (response) => {
+    if (!response.ok) {
+      let detail = "Upload failed";
+      try {
+        detail = (await response.json()).detail ?? detail;
+      } catch {
+        // keep default
+      }
+      throw new ApiError(response.status, detail);
+    }
+    return (await response.json()) as AdminLessonRow;
+  });
+}
+
+export function createLessonVideoUpload(lessonId: string, maxDurationSeconds?: number) {
+  const qs = maxDurationSeconds ? `?max_duration_seconds=${maxDurationSeconds}` : "";
+  return apiFetch<AdminVideoUploadResponse>(
+    `/api/v1/admin/lessons/${encodeURIComponent(lessonId)}/video/direct-upload${qs}`,
+    { method: "POST" }
+  );
 }
 
 export function listAdminInstructorProfiles() {
@@ -1432,6 +1851,189 @@ export type ReconcileStaleResult = {
 export function reconcileStaleAdminPayments() {
   return apiFetch<ReconcileStaleResult>("/api/v1/admin/payments/reconcile-stale", {
     method: "POST",
+  });
+}
+
+export type AdminCohortOption = {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  course_title: string | null;
+  sessions_count: number;
+};
+
+export type AdminLiveSessionResource = {
+  title: string;
+  url: string;
+  kind: "slides" | "dataset" | "repo" | "reading" | "doc" | "other";
+};
+
+export type AdminLiveSessionRow = {
+  id: string;
+  cohort_id: string;
+  cohort_name: string;
+  cohort_slug: string;
+  title: string;
+  week_label: string;
+  session_number: number;
+  session_type: "teaching" | "office_hour";
+  objectives: string[];
+  resources: AdminLiveSessionResource[];
+  assignment_summary: string | null;
+  starts_at: string;
+  ends_at: string;
+  status: "scheduled" | "live" | "ended" | "cancelled";
+  phase: "upcoming" | "live" | "ended" | "cancelled";
+  recording_url: string | null;
+  member_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdminLiveSessionInput = {
+  cohort_id: string;
+  title: string;
+  week_label?: string;
+  session_number: number;
+  session_type: "teaching" | "office_hour";
+  objectives?: string[];
+  resources?: AdminLiveSessionResource[];
+  assignment_summary?: string | null;
+  starts_at: string;
+  ends_at: string;
+};
+
+export function getAdminClassroomCohorts() {
+  return apiFetch<AdminCohortOption[]>("/api/v1/admin/classroom/cohorts");
+}
+
+export function getAdminClassroomSessions(cohortId?: string) {
+  const suffix = cohortId ? `?cohort_id=${encodeURIComponent(cohortId)}` : "";
+  return apiFetch<AdminLiveSessionRow[]>(`/api/v1/admin/classroom/sessions${suffix}`);
+}
+
+export function createAdminClassroomSession(payload: AdminLiveSessionInput) {
+  return apiFetch<AdminLiveSessionRow>("/api/v1/admin/classroom/sessions", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateAdminClassroomSession(
+  sessionId: string,
+  payload: Partial<AdminLiveSessionInput> & { status?: string; recording_url?: string | null }
+) {
+  return apiFetch<AdminLiveSessionRow>(
+    `/api/v1/admin/classroom/sessions/${encodeURIComponent(sessionId)}`,
+    { method: "PATCH", body: JSON.stringify(payload) }
+  );
+}
+
+export function cancelAdminClassroomSession(sessionId: string) {
+  return apiFetch<AdminLiveSessionRow>(
+    `/api/v1/admin/classroom/sessions/${encodeURIComponent(sessionId)}/cancel`,
+    { method: "POST" }
+  );
+}
+
+export function deleteAdminClassroomSession(sessionId: string) {
+  return apiFetch<void>(`/api/v1/admin/classroom/sessions/${encodeURIComponent(sessionId)}`, {
+    method: "DELETE",
+  });
+}
+
+export type AdminStudentRow = {
+  user_id: string;
+  email: string;
+  full_name: string | null;
+  role: string;
+  cohorts: string[];
+  courses: string[];
+  plan_name: string | null;
+  plan_type: string | null;
+  payment_status: "paid" | "partial" | "unpaid";
+  currency: string | null;
+  amount_paid: string;
+  amount_outstanding: string;
+  installments_total: number;
+  installments_paid: number;
+  next_due_date: string | null;
+  next_due_amount: string | null;
+  next_due_status: string | null;
+  has_outstanding: boolean;
+  billing_account_id: string | null;
+  created_at: string;
+};
+
+export type AdminStudentList = {
+  rows: AdminStudentRow[];
+  total: number;
+  paid: number;
+  partial: number;
+  unpaid: number;
+};
+
+export type AdminInstallmentRow = {
+  obligation_id: string;
+  billing_account_id: string;
+  user_id: string;
+  email: string;
+  full_name: string | null;
+  cohort_name: string | null;
+  course_title: string | null;
+  plan_name: string | null;
+  sequence_number: number;
+  installments_total: number;
+  description: string;
+  amount_due: string;
+  currency: string;
+  due_date: string | null;
+  status: "upcoming" | "open" | "processing" | "past_due" | "paid" | "waived" | "cancelled";
+  bucket: "overdue" | "due_soon" | "upcoming" | "paid";
+  days_until_due: number | null;
+  reminder_sent_at: string | null;
+};
+
+export type ReminderResult = { sent: number; skipped: number; failed: number };
+
+export function getAdminStudents(params?: {
+  paymentStatus?: string;
+  plan?: string;
+  cohortId?: string;
+  hasOutstanding?: boolean;
+  q?: string;
+}) {
+  const qs = new URLSearchParams();
+  if (params?.paymentStatus && params.paymentStatus !== "all")
+    qs.set("payment_status", params.paymentStatus);
+  if (params?.plan && params.plan !== "all") qs.set("plan", params.plan);
+  if (params?.cohortId) qs.set("cohort_id", params.cohortId);
+  if (params?.hasOutstanding) qs.set("has_outstanding", "true");
+  if (params?.q) qs.set("q", params.q);
+  const suffix = qs.toString() ? `?${qs}` : "";
+  return apiFetch<AdminStudentList>(`/api/v1/admin/students${suffix}`);
+}
+
+export function getAdminInstallments(params?: { status?: string; cohortId?: string }) {
+  const qs = new URLSearchParams();
+  if (params?.status && params.status !== "all") qs.set("status", params.status);
+  if (params?.cohortId) qs.set("cohort_id", params.cohortId);
+  const suffix = qs.toString() ? `?${qs}` : "";
+  return apiFetch<AdminInstallmentRow[]>(`/api/v1/admin/installments${suffix}`);
+}
+
+export function remindAdminObligation(obligationId: string) {
+  return apiFetch<ReminderResult>(
+    `/api/v1/admin/obligations/${encodeURIComponent(obligationId)}/remind`,
+    { method: "POST" }
+  );
+}
+
+export function remindAdminInstallments(payload: { scope: string; cohort_id?: string | null }) {
+  return apiFetch<ReminderResult>("/api/v1/admin/installments/remind", {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 }
 

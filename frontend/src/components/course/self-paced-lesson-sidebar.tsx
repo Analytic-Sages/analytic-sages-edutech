@@ -46,6 +46,22 @@ export function SelfPacedLessonSidebar({ course, currentLessonSlug }: Props) {
                 </li>
               );
             })}
+            {module.quiz && (
+              <li>
+                <Link
+                  href={`/courses/${course.slug}/quiz/${module.quiz.id}`}
+                  className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-brand-orange transition-colors hover:bg-brand-orange/10"
+                >
+                  <span className="flex size-4 items-center justify-center rounded bg-brand-orange/20 text-[10px] font-bold">
+                    Q
+                  </span>
+                  <span className="line-clamp-2 flex-1">{module.quiz.title}</span>
+                  <span className="shrink-0 text-xs opacity-70">
+                    {module.quiz.questions_total} Qs
+                  </span>
+                </Link>
+              </li>
+            )}
           </ul>
         </div>
       ))}

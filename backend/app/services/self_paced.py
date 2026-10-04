@@ -12,6 +12,7 @@ from app.core.payments import EnrollmentStatus
 from app.models.course import Course
 from app.models.enrollment import Enrollment
 from app.models.lms import CourseModule, Lesson, LessonProgress
+from app.models.quiz import Quiz
 from app.models.user import User
 from app.schemas.instructors import InstructorPublic
 from app.schemas.self_paced import (
@@ -25,6 +26,7 @@ from app.schemas.self_paced import (
     LessonOutlinePublic,
     LessonResourcePublic,
     ModuleOutlinePublic,
+    ModuleQuizPublic,
     SelfPacedCourseCard,
     SelfPacedCoursePublic,
 )
@@ -168,6 +170,16 @@ class SelfPacedService:
     ) -> list[ModuleOutlinePublic]:
         progress = self._progress_map(enrollment)
         modules: list[ModuleOutlinePublic] = []
+        course_quizzes = self.db.scalars(
+            select(Quiz)
+            .options(selectinload(Quiz.questions))
+            .where(Quiz.course_id == course.id, Quiz.published.is_(True))
+            .order_by(Quiz.order_index)
+        ).all()
+        quiz_by_module: dict[UUID, Quiz] = {}
+        for quiz in course_quizzes:
+            if quiz.module_id and quiz.module_id not in quiz_by_module:
+                quiz_by_module[quiz.module_id] = quiz
         for module in sorted(course.modules, key=lambda item: item.order_index):
             lessons: list[LessonOutlinePublic] = []
             for lesson in sorted(module.lessons, key=lambda item: item.order_index):
@@ -194,9 +206,18 @@ class SelfPacedService:
                     description=module.description,
                     order_index=module.order_index,
                     lessons=lessons,
+                    quiz=self._module_quiz(quiz_by_module.get(module.id)),
                 )
             )
         return modules
+
+    @staticmethod
+    def _module_quiz(quiz: Quiz | None) -> ModuleQuizPublic | None:
+        if not quiz:
+            return None
+        return ModuleQuizPublic(
+            id=quiz.id, title=quiz.title, questions_total=len(quiz.questions)
+        )
 
     def _course_public(
         self,

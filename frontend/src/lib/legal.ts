@@ -284,7 +284,7 @@ export const privacyPolicy: LegalDocumentContent = {
         },
         {
           type: "p",
-          text: "Examples may include Google (including Google Ads), Meta Platforms (Meta Pixel), Vercel, Render, RealtimeKit, Bunny Stream, Paystack, NOWPayments, YouTube, Plausible Analytics, Resend, and other service providers used by the platform.",
+          text: "Examples may include Google (including Google Ads), Meta Platforms (Meta Pixel), Vercel, Render, Cloudflare (RealtimeKit, Stream), Paystack, NOWPayments, YouTube, Plausible Analytics, Resend, and other service providers used by the platform.",
         },
         {
           type: "p",

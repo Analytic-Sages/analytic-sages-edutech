@@ -23,6 +23,8 @@ from app.services.classroom import ClassroomService
 from app.services.classroom_admin import ClassroomAdminService
 from app.services.cloudflare_stream import CloudflareStreamService
 from app.services.course_admin import CourseAdminService
+from app.services.quiz_admin import QuizAdminService
+from app.services.quizzes import QuizService
 from app.services.instructors import InstructorService
 from app.services.payments import PaymentService
 from app.services.self_paced import SelfPacedService
@@ -173,6 +175,14 @@ def get_cloudflare_stream_service(
     settings: Settings = Depends(get_settings),
 ) -> CloudflareStreamService:
     return CloudflareStreamService(settings)
+
+
+def get_quiz_service(db: Session = Depends(get_db)) -> QuizService:
+    return QuizService(db)
+
+
+def get_quiz_admin_service(db: Session = Depends(get_db)) -> QuizAdminService:
+    return QuizAdminService(db)
 
 
 def get_instructor_service(db: Session = Depends(get_db)) -> InstructorService:

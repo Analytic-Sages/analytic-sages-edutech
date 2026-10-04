@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.models.course import Course
 from app.models.lms import CourseModule, Lesson
+from app.models.quiz import Quiz, QuizOption, QuizQuestion
 
 DUNE_SLUG = "dune-analytics-practical-sql-dashboard-techniques"
 
@@ -180,6 +181,85 @@ def unpublish_pytest_courses(db: Session) -> None:
         course.published = False
 
 
+QUIZZES: dict[int, dict[str, Any]] = {
+    1: {
+        "title": "Module 1 Quiz: External API Calls in Dune",
+        "pass_score": 67,
+        "questions": [
+            {
+                "prompt": "What does an external API call let a Dune query do?",
+                "options": [
+                    ("Pull off-chain data (e.g. prices, metadata) into the query", True),
+                    ("Mint new tokens on-chain", False),
+                    ("Change past block rewards", False),
+                ],
+                "explanation": (
+                    "External API calls bring data from services outside the blockchain "
+                    "into Dune SQL."
+                ),
+            },
+            {
+                "prompt": "Why keep the number of external calls in a Dune query low?",
+                "options": [
+                    ("Because each call adds latency and counts against query limits", True),
+                    ("Because Dune only allows network requests at midnight", False),
+                    ("Because calls delete your saved dashboards", False),
+                ],
+                "explanation": "External calls are slower and rate-limited, so batch or cache them.",
+            },
+        ],
+    },
+    2: {
+        "title": "Module 2 Quiz: Interactive Dune Dashboards",
+        "pass_score": 67,
+        "questions": [
+            {
+                "prompt": "What do dashboard parameters let you do in Dune SQL?",
+                "options": [
+                    ("Let viewers change a value without editing the query", True),
+                    ("Permanently modify the underlying blockchain data", False),
+                    ("Disable the query cache", False),
+                ],
+                "explanation": "Parameters expose inputs so viewers can filter charts themselves.",
+            },
+            {
+                "prompt": "Which is the best way to keep a dashboard's dates current?",
+                "options": [
+                    ("Use dynamic date presets / relative ranges", True),
+                    ("Hard-code fixed dates for every chart", False),
+                    ("Recreate the dashboard each week by hand", False),
+                ],
+                "explanation": "Dynamic date presets keep charts fresh without manual edits.",
+            },
+        ],
+    },
+    3: {
+        "title": "Module 3 Quiz: Writing More Robust Dune SQL",
+        "pass_score": 67,
+        "questions": [
+            {
+                "prompt": "Which pattern safely handles NULL values in Dune SQL?",
+                "options": [
+                    ("COALESCE(value, fallback)", True),
+                    ("CONVERT(value, NULL)", False),
+                    ("DELETE FROM value WHERE NULL", False),
+                ],
+                "explanation": "COALESCE replaces NULLs with a fallback value.",
+            },
+            {
+                "prompt": "Why should you guard against dividing by zero in SQL?",
+                "options": [
+                    ("Division by zero errors out or returns invalid results", True),
+                    ("SQL silently returns 1 for any division by zero", False),
+                    ("Zero denominators make queries run forever", False),
+                ],
+                "explanation": "Use NULLIF on the denominator, then COALESCE the result.",
+            },
+        ],
+    },
+}
+
+
 def seed_dune_course(db: Session) -> Course:
     unpublish_pytest_courses(db)
     course = db.scalar(
@@ -214,5 +294,70 @@ def seed_dune_course(db: Session) -> Course:
         for lesson_payload in module_payload["lessons"]:
             _upsert_lesson(db, course, module, lesson_payload)
 
+    seed_dune_quizzes(db, course)
     db.flush()
     return course
+
+
+def seed_dune_quizzes(db: Session, course: Course) -> None:
+    """Idempotently attach one module quiz to each Dune module."""
+    modules = {
+        module.order_index: module
+        for module in db.scalars(
+            select(CourseModule).where(CourseModule.course_id == course.id)
+        ).all()
+    }
+    for order_index, payload in QUIZZES.items():
+        module = modules.get(order_index)
+        if not module:
+            continue
+        quiz = db.scalar(
+            select(Quiz)
+            .options(selectinload(Quiz.questions))
+            .where(Quiz.course_id == course.id, Quiz.module_id == module.id)
+        )
+        if quiz:
+            quiz.title = payload["title"]
+            quiz.pass_score = payload["pass_score"]
+            quiz.published = True
+        else:
+            quiz = Quiz(
+                id=uuid.uuid4(),
+                course_id=course.id,
+                module_id=module.id,
+                title=payload["title"],
+                description="",
+                pass_score=payload["pass_score"],
+                published=True,
+                order_index=order_index,
+            )
+            db.add(quiz)
+            db.flush()
+
+        for question in list(quiz.questions):
+            db.delete(question)
+        db.flush()
+
+        for question_index, question_payload in enumerate(payload["questions"], start=1):
+            question = QuizQuestion(
+                id=uuid.uuid4(),
+                quiz_id=quiz.id,
+                prompt=question_payload["prompt"],
+                explanation=question_payload.get("explanation"),
+                order_index=question_index,
+            )
+            db.add(question)
+            db.flush()
+            for option_index, (label, is_correct) in enumerate(
+                question_payload["options"], start=1
+            ):
+                db.add(
+                    QuizOption(
+                        id=uuid.uuid4(),
+                        question_id=question.id,
+                        label=label,
+                        is_correct=is_correct,
+                        order_index=option_index,
+                    )
+                )
+    db.flush()

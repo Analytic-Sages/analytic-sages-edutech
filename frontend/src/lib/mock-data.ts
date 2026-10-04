@@ -595,7 +595,7 @@ export function formatPrice(amount: number, currency = "USD"): string {
   }).format(amount);
 }
 
-/** Self-paced enrollment is gated until Bunny player is ready. Live product is Instructor-Led. */
+/** Self-paced enrollment is gated until the Cloudflare Stream player is ready. Live product is Instructor-Led. */
 export const LIVE_COURSE_SLUGS = new Set<string>([]);
 
 export function isCourseLive(slug: string): boolean {

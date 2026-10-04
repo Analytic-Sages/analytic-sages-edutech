@@ -189,4 +189,3 @@ class BillingReminderService:
         if outcome.sent:
             self.db.commit()
         return outcome
-        return bool(sent)
