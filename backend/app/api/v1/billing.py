@@ -2,20 +2,28 @@ from __future__ import annotations
 
 import csv
 import io
+import hmac
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import CurrentUser, get_payment_service, get_settings, require_admin
+from app.api.deps import (
+    CurrentUser,
+    get_billing_reminder_service,
+    get_payment_service,
+    get_settings,
+    require_admin,
+)
 from app.core.billing import BillingStatus
 from app.core.config import Settings
 from app.db.session import get_db
 from app.models.billing import BillingAuditEvent
 from app.models.payment import Payment
 from app.models.user import User
+from app.schemas.admin_students import InstallmentReminderRequest, ReminderResult
 from app.schemas.billing import (
     AdminBillingAccountPatch,
     AdminExtendRequest,
@@ -32,6 +40,7 @@ from app.schemas.payments import CheckoutResponse
 from app.services.billing_accounts import BillingAccountService
 from app.services.billing_obligations import PaymentObligationService
 from app.services.billing_reconciliation import BillingReconciliationService
+from app.services.billing_reminders import BillingReminderService
 from app.services.payments import PaymentService
 from app.services.tuition_plans import TuitionPlanService, money
 
@@ -389,3 +398,24 @@ def admin_update_tuition_plan(
 ) -> TuitionPlanPublic:
     plan = plans.update_plan(plan_id, payload, actor=admin)
     return TuitionPlanPublic.model_validate(plan)
+@router.post("/internal/billing/run-reminders", response_model=ReminderResult)
+def internal_run_billing_reminders(
+    payload: InstallmentReminderRequest,
+    settings: Settings = Depends(get_settings),
+    reminders: BillingReminderService = Depends(get_billing_reminder_service),
+    x_billing_reminders_token: str | None = Header(default=None),
+) -> ReminderResult:
+    """Cron/ops hook: email installment reminders. Token-protected
+    (BILLING_REMINDERS_TOKEN, falling back to OPPORTUNITY_SYNC_TOKEN)."""
+    expected = (
+        settings.billing_reminders_token or settings.opportunity_sync_token or ""
+    ).strip()
+    if not expected:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    provided = (x_billing_reminders_token or "").strip()
+    if len(provided) != len(expected) or not hmac.compare_digest(provided, expected):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid reminders token"
+        )
+    outcome = reminders.run(scope=payload.scope, cohort_id=payload.cohort_id)
+    return ReminderResult(**outcome.as_dict())

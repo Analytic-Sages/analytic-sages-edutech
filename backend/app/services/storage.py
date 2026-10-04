@@ -16,8 +16,27 @@ ALLOWED_IMAGE_TYPES = {
     "image/webp": ".webp",
     "image/gif": ".gif",
 }
+
+# Downloadable lesson resources (PDFs, slides, datasets, source code, archives).
+ALLOWED_DOCUMENT_TYPES = {
+    "application/pdf": ".pdf",
+    "application/vnd.ms-powerpoint": ".ppt",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
+    "application/vnd.ms-excel": ".xls",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
+    "application/zip": ".zip",
+    "application/x-zip-compressed": ".zip",
+    "application/gzip": ".gz",
+    "text/csv": ".csv",
+    "text/plain": ".txt",
+    "text/x-python": ".py",
+    "text/x-sql": ".sql",
+    "application/x-ipynb+json": ".ipynb",
+    "application/json": ".json",
+}
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
-SAFE_NAME = re.compile(r"^[0-9a-f-]{36}\.(jpg|png|webp|gif)$")
+MAX_DOCUMENT_BYTES = 25 * 1024 * 1024
+SAFE_NAME = re.compile(r"^[0-9a-f-]{36}\.(jpg|png|webp|gif|pdf|ppt|pptx|xls|xlsx|zip|gz|csv|txt|py|sql|ipynb|json)$")
 
 logger = logging.getLogger(__name__)
 
@@ -56,11 +75,37 @@ class StorageService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Upload a JPG, PNG, WebP, or GIF image",
             )
+        data = await self._read_upload(upload, MAX_UPLOAD_BYTES, "Image must be 5MB or smaller")
+        return await self._store(suffix, data, content_type)
+
+    async def save_document(self, upload: UploadFile) -> str:
+        """Persist a downloadable lesson resource (PDF, slides, dataset, source, zip)."""
+        content_type = (upload.content_type or "").lower()
+        suffix = ALLOWED_DOCUMENT_TYPES.get(content_type)
+        if not suffix:
+            # Fall back to the filename extension when the browser sends a generic type.
+            name_suffix = Path(upload.filename or "").suffix.lower()
+            if name_suffix in set(ALLOWED_DOCUMENT_TYPES.values()):
+                suffix = name_suffix
+        if not suffix:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Upload a PDF, slides, spreadsheet, dataset, source file, or zip archive",
+            )
+        data = await self._read_upload(
+            upload, MAX_DOCUMENT_BYTES, "File must be 25MB or smaller"
+        )
+        return await self._store(suffix, data, content_type or "application/octet-stream")
+
+    async def _read_upload(self, upload: UploadFile, max_bytes: int, too_large_detail: str) -> bytes:
         data = await upload.read()
         if not data:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Empty file")
-        if len(data) > MAX_UPLOAD_BYTES:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Image must be 5MB or smaller")
+        if len(data) > max_bytes:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=too_large_detail)
+        return data
+
+    async def _store(self, suffix: str, data: bytes, content_type: str) -> str:
         filename = f"{uuid.uuid4()}{suffix}"
         if self.is_live:
             return await self._upload_to_supabase(filename, data, content_type)

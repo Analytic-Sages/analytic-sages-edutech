@@ -95,6 +95,35 @@ class Settings(BaseSettings):
     supabase_service_role_key: str | None = None
     supabase_storage_bucket: str = "uploads"
 
+    # Cloudflare Stream (VOD for self-paced lessons) — reuses the Cloudflare account
+    # + API token used by RealtimeKit. Leave empty to keep lessons YouTube-only /
+    # mock uploads. CLOUDFLARE_STREAM_CUSTOMER_CODE is the `customer-xxxx` subdomain
+    # from the Stream dashboard, used to build playback/embed/thumbnail URLs.
+    cloudflare_stream_customer_code: str | None = None
+    cloudflare_stream_default_max_duration_seconds: int = 21600  # 6h ceiling for uploads
+
+    # Certifier.io certificates. Leave CERTIFIER_API_KEY empty for mock/log-only mode.
+    certifier_api_key: str | None = None
+    certifier_api_url: str = "https://api.certifier.io/v1"
+    certifier_version: str = "2022-10-26"
+    # Fallback Certifier group when a course has no certifier_group_id set.
+    certifier_group_id: str | None = None
+    # Optional shared secret for POST /api/v1/webhooks/certifier signature checks.
+    certifier_webhook_secret: str | None = None
+
+    # Feature gates — all default off so nothing changes in production until enabled.
+    certificates_enabled: bool = False
+    quizzes_enabled: bool = False
+    assignments_enabled: bool = False
+    notifications_enabled: bool = False
+    course_authoring_enabled: bool = False
+
+    # Installment payment reminders (due-soon / on-due / overdue emails).
+    billing_reminders_enabled: bool = False
+    billing_reminders_interval_seconds: int = 3600
+    billing_reminder_lead_days: int = 3
+    billing_reminders_token: str | None = None
+
     # Optional header token for POST /api/v1/internal/opportunities/sync and weekly digest.
     # Leave empty to keep the endpoints disabled.
     opportunity_sync_token: str | None = None
@@ -174,6 +203,18 @@ class Settings(BaseSettings):
     @property
     def google_oauth_configured(self) -> bool:
         return bool(self.google_client_id and self.google_client_secret)
+
+    @property
+    def certifier_configured(self) -> bool:
+        return bool(self.certifier_api_key)
+
+    @property
+    def cloudflare_stream_configured(self) -> bool:
+        return bool(
+            self.cloudflare_account_id
+            and self.cloudflare_api_token
+            and self.cloudflare_stream_customer_code
+        )
 
     @property
     def google_auth_mode(self) -> Literal["live", "mock", "disabled"]:

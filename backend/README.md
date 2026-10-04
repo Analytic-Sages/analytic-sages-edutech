@@ -195,6 +195,15 @@ Once set, uploads go straight to Supabase Storage and return a permanent `https:
 | `POST /api/v1/classroom/sessions/{id}/join` | Authorize join; returns RealtimeKit token or mock mode |
 | `GET /api/v1/classroom/calendar-token` | Personal classroom calendar subscribe URL |
 | `GET /api/v1/classroom/calendar.ics` | iCalendar feed (bearer token or `?token=`) with reminders |
+| `GET/POST /api/v1/admin/classroom/sessions` | Admin: list / create sessions |
+| `PATCH/DELETE /api/v1/admin/classroom/sessions/{id}` | Admin: edit / delete a session |
+| `POST /api/v1/admin/classroom/sessions/{id}/cancel` | Admin: cancel a session |
+
+Admin staff can create and manage live sessions from **Admin → Live sessions**
+(`/admin/classroom`) without a developer: pick a cohort, set title, week label,
+session number/type (teaching or office hour), start/end times, objectives and an
+assignment summary. Students see new sessions immediately (subject to the usual
+phase rules).
 
 Seed demo cohort + sessions:
 
@@ -227,8 +236,60 @@ Without Cloudflare keys, join returns `mode: "mock"` and the frontend shows a cl
 
 Default presets (must exist on your RealtimeKit app): `group_call_host` (instructor) and `group_call_participant` (student) so cam/mic work in class without a webinar “Join Stage” gate. For lecture-style webinars, switch to `webinar_presenter` / `webinar_viewer`. Override with `REALTIMEKIT_HOST_PRESET` / `REALTIMEKIT_PARTICIPANT_PRESET`.
 
+## Admin: course authoring (no developer needed)
+
+Staff (admin / operations / instructor) can build a full course from
+**Admin → Courses → Create course** (`/admin/courses/new`) then
+`/admin/courses/{slug}` (Details · Curriculum · Downloads · Preview):
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/v1/admin/courses/{slug}/detail` | Full course tree (modules + lessons + resources) |
+| `POST/PATCH/DELETE /api/v1/admin/courses[/{slug}]` | Create / update / delete a course |
+| `POST /api/v1/admin/courses/{slug}/modules` | Add a module |
+| `PATCH/DELETE /api/v1/admin/modules/{id}` | Edit / delete a module |
+| `POST /api/v1/admin/modules/{id}/lessons` | Add a lesson |
+| `PATCH/DELETE /api/v1/admin/lessons/{id}` | Edit / delete a lesson |
+| `POST /api/v1/admin/lessons/{id}/resources` | Attach a downloadable resource (by URL) |
+| `POST /api/v1/admin/lessons/{id}/resources/upload` | Upload a PDF / slides / dataset / source / zip |
+| `POST /api/v1/admin/lessons/{id}/video/direct-upload` | Cloudflare Stream direct upload → sets the lesson UID |
+| `GET /api/v1/admin/videos/{uid}` | Cloudflare Stream video status/metadata |
+
+Publishing is a boolean flag; the public self-paced API renders whatever is
+published. `lessons_count` is kept in sync automatically.
+
+### Lesson video (Cloudflare Stream)
+
+Recorded lessons use **Cloudflare Stream**, reusing the same `CLOUDFLARE_ACCOUNT_ID`
++ `CLOUDFLARE_API_TOKEN` as the live classroom (one token with `Stream:Edit` +
+`Realtime Admin` covers both). Set `CLOUDFLARE_STREAM_CUSTOMER_CODE` (the
+`customer-xxxx` subdomain from the Stream dashboard) so playback/thumbnail URLs
+resolve, and `NEXT_PUBLIC_CLOUDFLARE_STREAM_CUSTOMER_CODE` on the frontend for the
+browser player. Leave the keys empty for mock mode: the upload endpoint returns a
+mock UID and the lesson still saves, so authoring works without credentials.
+YouTube remains supported (`video_provider="youtube"`).
+
+## Admin: students, collections & reminders
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /api/v1/admin/students` | Paid / partial / unpaid students with next-due info (filters: `payment_status`, `plan`, `cohort_id`, `has_outstanding`, `q`) |
+| `GET /api/v1/admin/installments` | Installment board with buckets: `overdue` / `due_soon` / `upcoming` / `paid` |
+| `POST /api/v1/admin/obligations/{id}/remind` | Email one installment reminder |
+| `POST /api/v1/admin/installments/remind` | Bulk reminders (`{"scope": "overdue" | "due_soon" | "all"}`) |
+| `POST /api/v1/internal/billing/run-reminders` | Token-protected cron/ops hook (`X-Billing-Reminders-Token`) |
+
+**Admin UI:** `/admin/students` (paid vs unpaid filter + CSV export) and
+`/admin/collections` (deadlines with per-row + bulk reminder buttons).
+
+**Automated reminders:** set `BILLING_REMINDERS_ENABLED=true` for the in-process
+sweep (hourly by default; `BILLING_REMINDER_LEAD_DAYS` controls the due-soon window),
+and/or set `BILLING_REMINDERS_TOKEN` + `PUBLIC_API_URL` so the scheduled
+`.github/workflows/billing-reminders.yml` job hits the internal endpoint daily. An
+obligation is reminded once, then re-nagged every 3 days while it stays overdue.
+
 ## Not implemented yet (later phases)
 
 - Attendance webhooks, assignments gradebook, recording → Bunny pipeline
-- Full LMS (modules, lessons, Bunny VOD player, quizzes, certificates)
+- Full LMS (recorded lessons via Cloudflare Stream, quizzes, certificates)
 - Production email provider integration

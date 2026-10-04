@@ -191,6 +191,67 @@ class EmailService:
             link=f"order={order_id} amount={display_amount}",
         )
 
+    def send_installment_reminder(
+        self,
+        *,
+        email: str,
+        student_name: str | None,
+        title: str,
+        sequence_number: int,
+        installments_total: int,
+        amount: "Decimal | str",
+        currency: str,
+        due_date,
+        kind: str = "due_soon",
+    ) -> None:
+        """Tuition installment reminder. ``kind`` is due_soon | due_today | overdue."""
+        amount_text = f"{currency} {amount}"
+        if currency == "NGN":
+            amount_text = f"₦{amount:,}"
+        elif currency == "USD":
+            amount_text = f"${amount:,}"
+
+        due_text = ""
+        if due_date is not None:
+            try:
+                due_text = due_date.strftime("%d %b %Y")
+            except AttributeError:
+                due_text = str(due_date)
+
+        if kind == "overdue":
+            subject = f"Overdue: {title} installment {sequence_number} of {installments_total}"
+            lead = "Your installment is now overdue."
+        elif kind == "due_today":
+            subject = f"Due today: {title} installment {sequence_number} of {installments_total}"
+            lead = "Your installment is due today."
+        else:
+            subject = f"Upcoming: {title} installment {sequence_number} of {installments_total}"
+            lead = "This is a friendly reminder about your upcoming installment."
+
+        greeting = f"Hi {student_name}," if student_name else "Hello,"
+        pay_path = self.settings.frontend_url.rstrip("/") + "/dashboard/billing"
+        html = self._simple_html(
+            title="Tuition installment reminder",
+            body=(
+                f"<p>{greeting}</p>"
+                f"<p>{lead}</p>"
+                f"<p><strong>{title}</strong><br>"
+                f"Installment {sequence_number} of {installments_total}<br>"
+                f"Amount: {amount_text}"
+                + (f"<br>Due date: {due_text}" if due_text else "")
+                + "</p>"
+                f'<p><a href="{pay_path}">View your billing and pay</a></p>'
+                "<p>If you have already paid, you can ignore this message.</p>"
+            ),
+        )
+        return self._send(
+            to=email,
+            subject=subject,
+            html=html,
+            dev_label=f"installment-{kind}",
+            link=f"{title} #{sequence_number} {amount_text} due={due_text or 'n/a'}",
+        )
+
     def send_enrollment_confirmation(
         self,
         *,

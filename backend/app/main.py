@@ -11,6 +11,7 @@ from app.core.config import configure_logging, get_settings
 from app.db.session import SessionLocal
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.services.email import EmailService
+from app.services.billing_reminders import BillingReminderService
 from app.services.payments import PaymentService
 from app.services.seed_events import seed_featured_event
 from app.services.seed_insights import seed_insights_articles
@@ -62,6 +63,40 @@ async def _payments_reconcile_loop(stop: asyncio.Event) -> None:
             await asyncio.wait_for(stop.wait(), timeout=interval)
 
 
+def _run_billing_reminders_sweep() -> None:
+    """Sync worker: email due / overdue tuition installment reminders."""
+    settings = get_settings()
+    db = SessionLocal()
+    try:
+        service = BillingReminderService(
+            db, EmailService(settings), lead_days=settings.billing_reminder_lead_days
+        )
+        service.run(scope="all")
+    except Exception:
+        logger.exception("Billing reminders sweep failed")
+    finally:
+        db.close()
+
+
+async def _billing_reminders_loop(stop: asyncio.Event) -> None:
+    """Background installment reminders (due soon / due today / overdue)."""
+    settings = get_settings()
+    if not settings.billing_reminders_enabled:
+        return
+    interval = max(300, settings.billing_reminders_interval_seconds)
+
+    with suppress(asyncio.TimeoutError):
+        await asyncio.wait_for(stop.wait(), timeout=60)
+
+    while not stop.is_set():
+        try:
+            await asyncio.to_thread(_run_billing_reminders_sweep)
+        except Exception:
+            logger.exception("Billing reminders loop iteration failed")
+        with suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(stop.wait(), timeout=interval)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     db = SessionLocal()
@@ -80,13 +115,17 @@ async def lifespan(_app: FastAPI):
 
     stop = asyncio.Event()
     reconcile_task = asyncio.create_task(_payments_reconcile_loop(stop))
+    reminders_task = asyncio.create_task(_billing_reminders_loop(stop))
     try:
         yield
     finally:
         stop.set()
         reconcile_task.cancel()
+        reminders_task.cancel()
         with suppress(asyncio.CancelledError):
             await reconcile_task
+        with suppress(asyncio.CancelledError):
+            await reminders_task
 
 
 def create_app() -> FastAPI:

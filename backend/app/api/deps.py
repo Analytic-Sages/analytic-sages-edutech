@@ -17,7 +17,12 @@ from app.services.email import EmailService
 from app.services.events import EventService
 from app.services.google_oauth import GoogleOAuthService
 from app.services.admin import AdminService
+from app.services.admin_students import AdminStudentsService
+from app.services.billing_reminders import BillingReminderService
 from app.services.classroom import ClassroomService
+from app.services.classroom_admin import ClassroomAdminService
+from app.services.cloudflare_stream import CloudflareStreamService
+from app.services.course_admin import CourseAdminService
 from app.services.instructors import InstructorService
 from app.services.payments import PaymentService
 from app.services.self_paced import SelfPacedService
@@ -138,6 +143,38 @@ def get_classroom_service(
     return ClassroomService(db, settings)
 
 
+def get_classroom_admin_service(
+    db: Session = Depends(get_db),
+    classroom: ClassroomService = Depends(get_classroom_service),
+) -> ClassroomAdminService:
+    return ClassroomAdminService(db, classroom)
+
+
+def get_admin_students_service(
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> AdminStudentsService:
+    return AdminStudentsService(db, reminder_lead_days=settings.billing_reminder_lead_days)
+
+
+def get_billing_reminder_service(
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+    email_service: EmailService = Depends(get_email_service),
+) -> BillingReminderService:
+    return BillingReminderService(db, email_service, lead_days=settings.billing_reminder_lead_days)
+
+
+def get_course_admin_service(db: Session = Depends(get_db)) -> CourseAdminService:
+    return CourseAdminService(db)
+
+
+def get_cloudflare_stream_service(
+    settings: Settings = Depends(get_settings),
+) -> CloudflareStreamService:
+    return CloudflareStreamService(settings)
+
+
 def get_instructor_service(db: Session = Depends(get_db)) -> InstructorService:
     return InstructorService(db)
 
@@ -236,6 +273,8 @@ def require_event_registrant_manager(
         )
     return current_user
 require_catalog_ops = require_roles(UserRole.ADMIN, UserRole.OPERATIONS)
+# Course authoring: staff who can build courses/modules/lessons without a developer.
+require_course_author = require_roles(UserRole.ADMIN, UserRole.OPERATIONS, UserRole.INSTRUCTOR)
 require_opportunity_ops = require_roles(
     UserRole.ADMIN, UserRole.OPERATIONS, UserRole.PARTNERSHIPS
 )

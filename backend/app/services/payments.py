@@ -110,7 +110,7 @@ class PaymentService:
         if not course or not course.published:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Course not found")
 
-        # Progressive launch: self-paced purchases gated until Bunny player is ready.
+        # Progressive launch: self-paced purchases gated until the video player is ready.
         live_slugs: set[str] = set()
         if course.slug not in live_slugs or course.price <= 0:
             raise HTTPException(
