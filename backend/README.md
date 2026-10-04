@@ -208,6 +208,14 @@ phase rules). The cohort filter is applied client-side against one full fetch, a
 the list is ordered Week 1 → Week 10 so the table always shows the complete
 schedule for the selected cohort.
 
+**Complete schedule is guaranteed.** Deploys only run `alembic upgrade head`, never
+the seed scripts, so a cohort left on the earlier 2-session placeholder would show an
+incomplete plan. On startup the API calls `ensure_bde_classroom`, which re-provisions
+the canonical 40-session plan whenever it is missing or short (a complete,
+hand-managed schedule is never rewritten). The same repair is available on demand via
+`POST /api/v1/internal/classroom/sync-schedule`, or by hand with
+`python scripts/seed_blockchain_data_engineering.py` (add `--reset` to wipe first).
+
 Seed demo cohort + sessions:
 
 ```bash

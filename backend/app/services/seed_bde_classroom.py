@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.classroom import (
@@ -291,6 +291,31 @@ def bde_session_schedule(start: date = PROGRAM_START_DATE) -> list[ScheduledSess
     return sessions
 def _session_key(session_type: LiveSessionType, session_number: int) -> tuple[str, int]:
     return session_type.value, session_number
+
+
+def ensure_bde_classroom(db: Session) -> dict[str, int] | None:
+    """Guarantee the full canonical schedule exists, topping it up when incomplete.
+
+    Deployments never run the seed scripts, so a cohort created by the earlier
+    placeholder seed can be left with a couple of sessions — the admin Live
+    sessions board then shows an incomplete schedule. Re-provision whenever the
+    plan is missing or short. Returns the seed summary when it ran, else ``None``
+    (so a complete, hand-managed schedule is never rewritten).
+    """
+    expected = len(bde_session_schedule())
+    cohort = db.scalar(select(Cohort).where(Cohort.slug == COHORT_SLUG))
+    if cohort is not None:
+        existing = int(
+            db.scalar(
+                select(func.count())
+                .select_from(LiveSession)
+                .where(LiveSession.cohort_id == cohort.id)
+            )
+            or 0
+        )
+        if existing >= expected:
+            return None
+    return seed_bde_classroom(db)
 
 
 def seed_bde_classroom(db: Session, *, reset: bool = False) -> dict[str, int]:

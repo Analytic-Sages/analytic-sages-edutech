@@ -97,8 +97,9 @@ class ClassroomAdminService:
     def list_sessions(
         self, *, cohort_id: UUID | None = None, limit: int = 500
     ) -> list[AdminLiveSessionRow]:
+        """Schedule order (earliest first) so the full plan reads Week 1 → Week 10."""
         stmt = select(LiveSession).order_by(
-            LiveSession.starts_at.desc(), LiveSession.session_number.asc()
+            LiveSession.starts_at.asc().nulls_last(), LiveSession.session_number.asc()
         )
         if cohort_id:
             stmt = stmt.where(LiveSession.cohort_id == cohort_id)

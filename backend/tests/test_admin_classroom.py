@@ -11,10 +11,14 @@ from app.core.roles import UserRole
 from app.core.security import SecurityService
 from app.db.session import SessionLocal
 from app.main import app
-from app.models.classroom import Cohort, CohortMember, CohortMemberRole
+from app.models.classroom import Cohort, CohortMember, CohortMemberRole, LiveSession
 from app.models.user import User
 from app.services.classroom import ClassroomService
-from app.services.seed_bde_classroom import seed_bde_classroom
+from app.services.seed_bde_classroom import (
+    bde_session_schedule,
+    ensure_bde_classroom,
+    seed_bde_classroom,
+)
 
 client = TestClient(app)
 
@@ -122,6 +126,41 @@ def test_internal_sync_schedule_disabled_when_no_token(monkeypatch):
         headers={"X-Classroom-Sync-Token": "anything"},
     )
     assert response.status_code == 404
+
+
+def test_ensure_bde_classroom_tops_up_legacy_placeholder_schedule():
+    """A deploy left on the old 2-session placeholder must be repaired to all 40."""
+    db = SessionLocal()
+    try:
+        seed_bde_classroom(db)
+        cohort = db.scalar(select(Cohort).where(Cohort.slug == BDE_COHORT_SLUG))
+        assert len(bde_session_schedule()) == 40
+
+        # Complete schedule → the guard is a no-op (never rewrites a good plan).
+        assert ensure_bde_classroom(db) is None
+
+        # Simulate the placeholder: drop everything, then re-provision.
+        for session in list(
+            db.scalars(select(LiveSession).where(LiveSession.cohort_id == cohort.id)).all()
+        ):
+            db.delete(session)
+        db.commit()
+        db.flush()
+
+        summary = ensure_bde_classroom(db)
+        assert summary is not None
+        assert summary["total"] == 40
+
+        remaining = list(
+            db.scalars(select(LiveSession).where(LiveSession.cohort_id == cohort.id)).all()
+        )
+        assert len(remaining) == 40
+        # Ordered from the programme start date (Mon 5 Oct 2026, 18:00 WAT).
+        earliest = min(s.starts_at for s in remaining)
+        assert earliest.date().isoformat() == "2026-10-05"
+    finally:
+        seed_bde_classroom(db)
+        db.close()
 
 
 def test_admin_can_create_edit_cancel_and_delete_session():

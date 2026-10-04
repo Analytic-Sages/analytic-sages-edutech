@@ -13,6 +13,7 @@ from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.services.email import EmailService
 from app.services.billing_reminders import BillingReminderService
 from app.services.payments import PaymentService
+from app.services.seed_bde_classroom import ensure_bde_classroom
 from app.services.seed_events import seed_featured_event
 from app.services.seed_insights import seed_insights_articles
 from app.services.seed_opportunities import seed_opportunity_taxonomy
@@ -107,6 +108,19 @@ async def lifespan(_app: FastAPI):
         seed_opportunity_taxonomy(db)
         db.commit()
         logger.info("Featured catalog content, Insights articles, and opportunity taxonomy are ready.")
+
+        # Deploys never run the seed scripts, so guarantee the canonical live
+        # training schedule is complete (30 teaching sessions + 10 office hours).
+        schedule = ensure_bde_classroom(db)
+        if schedule:
+            logger.warning(
+                "Live training schedule was incomplete; provisioned %s sessions "
+                "(created=%s updated=%s deleted=%s).",
+                schedule["total"],
+                schedule["created"],
+                schedule["updated"],
+                schedule["deleted"],
+            )
     except Exception:
         db.rollback()
         logger.exception("Could not seed featured catalog content")
