@@ -20,6 +20,7 @@ import {
   VideoOff,
 } from "lucide-react";
 import { useTheme } from "@/components/providers/theme-provider";
+import { SessionCalendarMenu } from "@/components/classroom/add-to-calendar";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
 import {
@@ -29,6 +30,7 @@ import {
   type ClassroomJoinResponse,
   type LiveSessionPublic,
 } from "@/lib/api";
+import { sessionContextLabel } from "@/lib/classroom-calendar";
 import { cn } from "@/lib/utils";
 
 const RealtimeKitRoom = dynamic(
@@ -183,11 +185,7 @@ export function ClassroomRoom({ sessionId }: { sessionId: string }) {
             Analytic Sages
           </p>
           <h1 className="truncate font-heading text-lg font-semibold sm:text-xl">{session.title}</h1>
-          <p className="truncate text-xs text-muted-foreground">
-            {session.cohort_name}
-            {session.week_label ? ` · ${session.week_label}` : ""}
-            {` · Session ${session.session_number}`}
-          </p>
+          <p className="truncate text-xs text-muted-foreground">{sessionContextLabel(session)}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {phase === "live" && (
@@ -196,6 +194,7 @@ export function ClassroomRoom({ sessionId }: { sessionId: string }) {
               Live
             </span>
           )}
+          <SessionCalendarMenu session={session} />
           <Button
             type="button"
             variant="ghost"

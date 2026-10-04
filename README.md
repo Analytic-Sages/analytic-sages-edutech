@@ -65,6 +65,8 @@ See [backend/README.md](backend/README.md) for auth endpoints, admin seeding, an
 
 **Classroom V1:** cohorts + live sessions + authorized RealtimeKit join. Seed with `python scripts/seed_classroom.py --email you@example.com`. Bunny Stream remains for recorded premium courses.
 
+**Classroom schedule + calendar:** `python scripts/seed_blockchain_data_engineering.py` seeds the Blockchain Data Engineering cohort with its full 40-session schedule (30 teaching sessions Mon/Tue/Wed + 10 Friday office hours, from 5 Oct 2026). Students and instructors can add individual sessions or the whole schedule to Google/Outlook/Apple Calendar, and subscribe to a live-updating `.ics` feed with reminders (`GET /api/v1/classroom/calendar.ics`).
+
 **Next phases:** recording → Bunny, attendance webhooks, assignments, live payment keys, admin cohort ops.
 
 ## MVP Scope (Phase 1 Launch)

@@ -25,6 +25,7 @@ from app.schemas.classroom import (
     PublicCohortCard,
     SessionResource,
 )
+from app.services.calendar_ics import CalendarEvent, build_calendar
 from app.services.instructors import InstructorService
 from app.services.realtimekit import RealtimeKitError, RealtimeKitService
 
@@ -177,6 +178,7 @@ class ClassroomService:
             title=session.title,
             week_label=session.week_label,
             session_number=session.session_number,
+            session_type=session.session_type.value,  # type: ignore[arg-type]
             objectives=objectives,
             resources=resources,
             assignment_summary=session.assignment_summary,
@@ -225,6 +227,41 @@ class ClassroomService:
             self._to_public(s, member=member_by_cohort.get(s.cohort_id), staff=False)
             for s in sessions
         ]
+
+    def calendar_ics(self, user: User) -> str:
+        """RFC 5545 feed of every session the user can see.
+
+        Reuses ``list_my_sessions`` so authorization matches the classroom exactly:
+        students get their cohorts, instructors/admins get everything. Each event
+        carries a pop-up reminder and links back to the session page.
+        """
+        base = self.settings.frontend_url.rstrip("/")
+        events: list[CalendarEvent] = []
+        for session in self.list_my_sessions(user):
+            if session.session_type == "office_hour":
+                context = f"{session.cohort_name} · {session.week_label} · Office Hour"
+            else:
+                context = (
+                    f"{session.cohort_name} · {session.week_label} · "
+                    f"Session {session.session_number}"
+                )
+            description_parts = [context]
+            if session.objectives:
+                description_parts.append("")
+                description_parts.extend(f"- {objective}" for objective in session.objectives)
+            if session.assignment_summary:
+                description_parts.extend(["", f"Assignment: {session.assignment_summary}"])
+            events.append(
+                CalendarEvent(
+                    uid=f"session-{session.id}@analyticsages.io",
+                    starts_at=session.starts_at,
+                    ends_at=session.ends_at,
+                    summary=session.title,
+                    description="\n".join(description_parts),
+                    location=f"{base}/classroom/{session.id}",
+                )
+            )
+        return build_calendar(events, calendar_name="Analytic Sages Classroom")
 
     def get_session_for_user(self, user: User, session_id: UUID) -> LiveSessionPublic:
         session = self.db.scalar(

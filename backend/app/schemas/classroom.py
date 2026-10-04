@@ -24,6 +24,7 @@ class LiveSessionPublic(BaseModel):
     title: str
     week_label: str
     session_number: int
+    session_type: Literal["teaching", "office_hour"] = "teaching"
     objectives: list[str] = Field(default_factory=list)
     resources: list[SessionResource] = Field(default_factory=list)
     assignment_summary: str | None = None
@@ -45,6 +46,14 @@ class ClassroomJoinResponse(BaseModel):
     display_name: str
     phase: Literal["upcoming", "live", "ended", "cancelled"]
     message: str | None = None
+
+
+class ClassroomCalendarFeed(BaseModel):
+    """Personal subscribe URL for classroom sessions (used by calendar apps)."""
+
+    token: str
+    url: str
+    webcal_url: str
 
 
 class PublicCohortCard(BaseModel):

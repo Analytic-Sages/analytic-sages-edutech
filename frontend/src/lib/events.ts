@@ -1,4 +1,5 @@
 import type { EventCardPublic, EventPublic } from "@/lib/api";
+import { escapeIcs, icsUtc } from "@/lib/calendar-ics";
 import { PUBLIC_SITE_ORIGIN } from "@/lib/program-pages";
 
 export const FEATURED_EVENT_SLUG = "dune-analytics-building-your-first-defi-dashboard";
@@ -134,10 +135,6 @@ export function registerLoginPath(slug: string) {
   return `/login?next=${encodeURIComponent(`/events/${slug}?register=1`)}`;
 }
 
-function icsUtc(value: string) {
-  return new Date(value).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-}
-
 export function eventPageUrl(slug: string) {
   return `${PUBLIC_SITE_ORIGIN}/events/${slug}`;
 }
@@ -208,10 +205,6 @@ export function downloadEventIcs(event: EventCardPublic | EventPublic) {
   link.click();
   link.remove();
   URL.revokeObjectURL(href);
-}
-
-function escapeIcs(value: string) {
-  return value.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
 }
 
 export function splitEvents(events: EventCardPublic[]) {

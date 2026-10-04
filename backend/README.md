@@ -193,6 +193,8 @@ Once set, uploads go straight to Supabase Storage and return a permanent `https:
 | `GET /api/v1/classroom/sessions` | Sessions for the current user's cohorts |
 | `GET /api/v1/classroom/sessions/{id}` | Session detail (objectives, resources, phase) |
 | `POST /api/v1/classroom/sessions/{id}/join` | Authorize join; returns RealtimeKit token or mock mode |
+| `GET /api/v1/classroom/calendar-token` | Personal classroom calendar subscribe URL |
+| `GET /api/v1/classroom/calendar.ics` | iCalendar feed (bearer token or `?token=`) with reminders |
 
 Seed demo cohort + sessions:
 
@@ -200,6 +202,26 @@ Seed demo cohort + sessions:
 python scripts/seed_classroom.py --email student@example.com
 alembic upgrade head   # includes 003_classroom
 ```
+
+### Blockchain Data Engineering schedule
+
+`scripts/seed_blockchain_data_engineering.py` seeds the BDE cohort **and** its full
+schedule: **40 sessions** = 30 teaching sessions (Mon/Tue/Wed, 18:00–20:00 WAT) plus a
+weekly Friday office hour (18:00–19:00 WAT) across 10 weeks, starting Mon 5 Oct 2026.
+It is idempotent (keyed on `session_type` + `session_number`) and safe to re-run; pass
+`--reset` to wipe and rebuild. Titles/objectives mirror the website curriculum
+(`frontend/src/lib/blockchain-data-engineering-program.ts`).
+
+```bash
+python scripts/seed_blockchain_data_engineering.py
+python scripts/seed_tuition_plans.py
+```
+
+Students and instructors can add individual sessions or the whole schedule to Google
+Calendar, Outlook, or Apple Calendar (`.ics`). The "subscribe link" from
+`/api/v1/classroom/calendar-token` keeps the schedule (and its 15-minute reminders) in
+sync as dates change. Feed authorization matches the classroom: students see only their
+cohorts, staff see everything.
 
 Without Cloudflare keys, join returns `mode: "mock"` and the frontend shows a classroom shell you can walk through. With keys (`CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `REALTIMEKIT_APP_ID`), join creates/reuses a meeting and returns a participant auth token.
 

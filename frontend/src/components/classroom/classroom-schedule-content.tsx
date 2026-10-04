@@ -13,9 +13,11 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
+import { AllSessionsCalendarMenu, SessionCalendarMenu } from "@/components/classroom/add-to-calendar";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ApiError, listClassroomSessions, type LiveSessionPublic } from "@/lib/api";
+import { sessionContextLabel } from "@/lib/classroom-calendar";
 import { cn } from "@/lib/utils";
 
 function formatWhen(iso: string) {
@@ -120,14 +122,19 @@ export function ClassroomScheduleContent({
 
   return (
     <div>
-      <PageHeader
-        title={isStaff ? "Staff classroom" : "Live Classroom"}
-        description={
-          isStaff
-            ? "Join Cohort 9 sessions as instructor. Student seats unlock after payment is confirmed."
-            : "Expert-led sessions for your cohort. Join when class is live; review resources anytime."
-        }
-      />
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <PageHeader
+          title={isStaff ? "Staff classroom" : "Live Classroom"}
+          description={
+            isStaff
+              ? "Join Cohort 9 sessions as instructor. Student seats unlock after payment is confirmed."
+              : "Expert-led sessions for your cohort. Join when class is live; review resources anytime."
+          }
+        />
+        <div className="pt-1">
+          <AllSessionsCalendarMenu sessions={sessions} />
+        </div>
+      </div>
 
       {sessions.length === 0 ? (
         <EmptyState
@@ -202,29 +209,33 @@ function SessionCard({
         <div>
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <PhaseBadge phase={session.phase} />
-            <span className="text-xs text-muted-foreground">
-              {session.cohort_name}
-              {session.week_label ? ` · ${session.week_label}` : ""}
-              {` · Session ${session.session_number}`}
-            </span>
+            {session.session_type === "office_hour" && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-brand-navy/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-brand-navy dark:bg-white/10 dark:text-brand-orange">
+                Office hour
+              </span>
+            )}
+            <span className="text-xs text-muted-foreground">{sessionContextLabel(session)}</span>
           </div>
           <CardTitle className="font-heading text-xl">{session.title}</CardTitle>
           {session.course_title && (
             <p className="mt-1 text-sm text-muted-foreground">{session.course_title}</p>
           )}
         </div>
-        {session.can_join ? (
-          <ButtonLink
-            href={`/classroom/${session.id}`}
-            className="shrink-0 bg-brand-orange text-white hover:bg-brand-orange/90"
-          >
-            Join live class
-          </ButtonLink>
-        ) : (
-          <ButtonLink href={`/classroom/${session.id}`} variant="outline" className="shrink-0">
-            View session
-          </ButtonLink>
-        )}
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          {session.can_join ? (
+            <ButtonLink
+              href={`/classroom/${session.id}`}
+              className="bg-brand-orange text-white hover:bg-brand-orange/90"
+            >
+              Join live class
+            </ButtonLink>
+          ) : (
+            <ButtonLink href={`/classroom/${session.id}`} variant="outline">
+              View session
+            </ButtonLink>
+          )}
+          <SessionCalendarMenu session={session} />
+        </div>
       </CardHeader>
       <CardContent className="flex flex-wrap gap-4 text-sm text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">

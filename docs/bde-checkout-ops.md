@@ -22,10 +22,11 @@ python scripts/seed_tuition_plans.py
 Expected:
 
 - Cohort `blockchain-data-engineering` created or updated with status **open**, price **$200**
+- **40 classroom sessions** scheduled: 30 teaching sessions (Mon/Tue/Wed, 18:00–20:00 WAT) + 10 Friday office hours (18:00–19:00 WAT), from Mon 5 Oct 2026
 - Plans **Pay in Full** ($200) and **Pay in 2 Installments** ($110 + $110 = $220)
 - Seed script reminder to enable `BILLING_PLANS_ENABLED=true`
 
-Idempotent: safe to re-run; existing plans are left in place (installment due date may be refreshed).
+Idempotent: safe to re-run; existing plans are left in place (installment due date may be refreshed). Sessions are matched on type + number and updated in place; use `--reset` to wipe the cohort's sessions and rebuild them.
 
 ## 2. Enable billing plans + live payments
 

@@ -12,6 +12,9 @@ from app.core.config import Settings
 
 logger = logging.getLogger(__name__)
 
+# A personal calendar subscribe link stays valid for a year.
+CALENDAR_FEED_TOKEN_DAYS = 365
+
 password_hasher = PasswordHasher(
     time_cost=3,
     memory_cost=65536,
@@ -47,6 +50,28 @@ class SecurityService:
 
     def decode_access_token(self, token: str) -> dict:
         return jwt.decode(token, self.settings.secret_key, algorithms=["HS256"])
+
+    def create_calendar_feed_token(self, *, user_id: str) -> str:
+        """Long-lived token embedded in a personal calendar subscribe URL.
+
+        Calendar clients (Google/Apple) cannot send an Authorization header, so the
+        feed URL carries its own credential. Rotating SECRET_KEY revokes every feed.
+        """
+        expires = datetime.now(UTC) + timedelta(days=CALENDAR_FEED_TOKEN_DAYS)
+        payload = {
+            "sub": user_id,
+            "type": "calendar",
+            "exp": expires,
+            "iat": datetime.now(UTC),
+        }
+        return jwt.encode(payload, self.settings.secret_key, algorithm="HS256")
+
+    def decode_calendar_feed_token(self, token: str) -> str:
+        """Return the user id encoded in a calendar feed token, or raise."""
+        payload = jwt.decode(token, self.settings.secret_key, algorithms=["HS256"])
+        if payload.get("type") != "calendar":
+            raise jwt.InvalidTokenError("Not a calendar feed token")
+        return str(payload["sub"])
 
     @staticmethod
     def generate_opaque_token() -> str:

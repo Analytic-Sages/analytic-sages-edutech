@@ -47,6 +47,11 @@ class LiveSessionStatus(str, enum.Enum):
     CANCELLED = "cancelled"
 
 
+class LiveSessionType(str, enum.Enum):
+    TEACHING = "teaching"
+    OFFICE_HOUR = "office_hour"
+
+
 class Cohort(Base):
     __tablename__ = "cohorts"
 
@@ -130,6 +135,11 @@ class LiveSession(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     week_label: Mapped[str] = mapped_column(String(80), nullable=False, default="")
     session_number: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    session_type: Mapped[LiveSessionType] = mapped_column(
+        pg_enum(LiveSessionType, name="live_session_type"),
+        nullable=False,
+        default=LiveSessionType.TEACHING,
+    )
     objectives: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
     resources: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
     assignment_summary: Mapped[str | None] = mapped_column(Text, nullable=True)

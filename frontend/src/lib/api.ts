@@ -1181,6 +1181,7 @@ export type LiveSessionPublic = {
   title: string;
   week_label: string;
   session_number: number;
+  session_type: "teaching" | "office_hour";
   objectives: string[];
   resources: Array<{
     title: string;
@@ -1244,6 +1245,16 @@ export function joinClassroomSession(sessionId: string) {
   return apiFetch<ClassroomJoinResponse>(`/api/v1/classroom/sessions/${sessionId}/join`, {
     method: "POST",
   });
+}
+
+export type ClassroomCalendarFeed = {
+  token: string;
+  url: string;
+  webcal_url: string;
+};
+
+export function getClassroomCalendarToken() {
+  return apiFetch<ClassroomCalendarFeed>("/api/v1/classroom/calendar-token");
 }
 
 export type AdminUserRow = {

@@ -15,6 +15,7 @@ export type LiveSession = {
   title: string;
   week_label: string;
   session_number: number;
+  session_type: "teaching" | "office_hour";
   objectives: string[];
   resources: SessionResource[];
   assignment_summary: string | null;
