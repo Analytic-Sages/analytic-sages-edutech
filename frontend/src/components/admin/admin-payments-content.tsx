@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -38,6 +38,30 @@ function isStalePending(payment: AdminPaymentRow): boolean {
   return ageMs > STALE_PENDING_HOURS * 60 * 60 * 1000;
 }
 
+// Money the provider has recorded as actually captured.
+const PAID_STATUSES = new Set(["confirmed", "refunded"]);
+// A checkout that is still in flight (waiting on the provider).
+const PENDING_STATUSES = new Set(["pending", "confirming"]);
+// A checkout that will never complete: expired, failed, or cancelled upstream.
+const ABANDONED_STATUSES = new Set(["failed", "expired", "cancelled"]);
+
+type PaymentFilter = "all" | "paid" | "pending" | "abandoned";
+
+const FILTER_LABELS: Record<PaymentFilter, string> = {
+  all: "All",
+  paid: "Paid",
+  pending: "Pending",
+  abandoned: "Abandoned",
+};
+
+/** Paid → captured in full; Pending → still in flight; Abandoned → will never land. */
+function matchesPaymentFilter(payment: AdminPaymentRow, filter: PaymentFilter): boolean {
+  if (filter === "all") return true;
+  if (filter === "paid") return PAID_STATUSES.has(payment.status);
+  if (filter === "pending") return PENDING_STATUSES.has(payment.status);
+  return ABANDONED_STATUSES.has(payment.status) || isStalePending(payment);
+}
+
 export function AdminPaymentsContent() {
   const [payments, setPayments] = useState<AdminPaymentRow[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +72,28 @@ export function AdminPaymentsContent() {
   const [paymentIdDraft, setPaymentIdDraft] = useState("");
   const [reconcilingAll, setReconcilingAll] = useState(false);
   const [sweepMessage, setSweepMessage] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<PaymentFilter>("all");
+
+  const counts = useMemo(() => {
+    const result: Record<PaymentFilter, number> = {
+      all: 0,
+      paid: 0,
+      pending: 0,
+      abandoned: 0,
+    };
+    for (const payment of payments) {
+      result.all += 1;
+      for (const key of ["paid", "pending", "abandoned"] as const) {
+        if (matchesPaymentFilter(payment, key)) result[key] += 1;
+      }
+    }
+    return result;
+  }, [payments]);
+
+  const visible = useMemo(
+    () => payments.filter((payment) => matchesPaymentFilter(payment, statusFilter)),
+    [payments, statusFilter]
+  );
 
   async function handleReconcileAll() {
     setReconcileError(null);
@@ -156,11 +202,31 @@ export function AdminPaymentsContent() {
         </span>
         {sweepMessage && <span className="text-xs text-muted-foreground">{sweepMessage}</span>}
       </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {(["all", "paid", "pending", "abandoned"] as const).map((key) => (
+          <Button
+            key={key}
+            size="sm"
+            variant={statusFilter === key ? "default" : "outline"}
+            onClick={() => setStatusFilter(key)}
+          >
+            {FILTER_LABELS[key]} ({counts[key]})
+          </Button>
+        ))}
+      </div>
+
       {payments.length === 0 ? (
         <EmptyState
           icon={<Loader2 className="size-6" />}
           title="No payments yet"
           description="Checkout attempts for the featured cohort and courses will show here."
+        />
+      ) : visible.length === 0 ? (
+        <EmptyState
+          icon={<Loader2 className="size-6" />}
+          title="No payments match this filter"
+          description="Try another status — Paid, Pending or Abandoned."
         />
       ) : (
         <div className="rounded-xl border shadow-card">
@@ -178,7 +244,7 @@ export function AdminPaymentsContent() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {payments.map((payment) => (
+              {visible.map((payment) => (
                 <TableRow key={payment.id}>
                   <TableCell className="font-mono text-xs">{payment.order_id}</TableCell>
                   <TableCell>

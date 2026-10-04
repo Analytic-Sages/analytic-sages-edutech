@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from uuid import UUID
 
+import hmac
+
 import jwt
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
@@ -24,8 +26,11 @@ from app.schemas.classroom import (
     PublicCohortCard,
 )
 from app.services.classroom import ClassroomService
+from app.services.seed_bde_classroom import seed_bde_classroom
 
 router = APIRouter(prefix="/classroom", tags=["classroom"])
+# Token-protected ops hooks, mounted at /api/v1/internal/* (mirrors billing.admin_router).
+internal_router = APIRouter(tags=["internal"])
 
 
 def _resolve_feed_user(
@@ -139,3 +144,29 @@ def classroom_calendar_feed(
             "Cache-Control": "no-store",
         },
     )
+
+
+@internal_router.post("/internal/classroom/sync-schedule")
+def internal_sync_classroom_schedule(
+    settings: Settings = Depends(get_settings),
+    db: Session = Depends(get_db),
+    x_classroom_sync_token: str | None = Header(default=None),
+) -> dict[str, int]:
+    """Cron/ops hook: re-provision the canonical classroom schedule for every cohort.
+
+    Idempotent — it creates/updates the 40-session Blockchain Data Engineering plan
+    (30 teaching sessions Mon/Tue/Wed + 10 Friday office hours) and collapses any
+    stale placeholder rows, so a deployment can guarantee the *complete* schedule
+    exists without running a seed script by hand.
+
+    Token-protected (CLASSROOM_SYNC_TOKEN, falling back to OPPORTUNITY_SYNC_TOKEN).
+    """
+    expected = (settings.classroom_sync_token or settings.opportunity_sync_token or "").strip()
+    if not expected:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    provided = (x_classroom_sync_token or "").strip()
+    if len(provided) != len(expected) or not hmac.compare_digest(provided, expected):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid classroom sync token"
+        )
+    return seed_bde_classroom(db)

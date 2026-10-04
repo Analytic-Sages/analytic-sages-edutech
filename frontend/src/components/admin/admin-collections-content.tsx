@@ -88,7 +88,9 @@ export function AdminCollectionsContent() {
     try {
       const result = await remindAdminObligation(row.obligation_id);
       setMessage(
-        result.sent ? `Reminder sent to ${row.email}.` : `${row.email} was skipped (already sent).`
+        result.sent
+          ? `Reminder sent to ${row.email}.`
+          : `${row.email} was skipped — nothing outstanding or already reminded recently.`
       );
       await load();
     } catch (err) {
@@ -128,7 +130,7 @@ export function AdminCollectionsContent() {
     <div>
       <PageHeader
         title="Collections"
-        description="Installment deadlines and payment reminders for tuition plans."
+        description="Installment deadlines and payment reminders. Only installments that still owe money are listed — students who have paid in full never appear here."
       />
 
       <div className="mb-4 flex flex-wrap items-center gap-2">

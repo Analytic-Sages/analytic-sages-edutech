@@ -99,7 +99,12 @@ export function AdminCohortContent() {
   }
 
   const { cohort, members, payments } = detail;
+  // Roster = students only. Instructors/TAs are counted separately in "Staff"
+  // and must never inflate the student roster.
   const students = members.filter((member) => member.role === "student");
+  // Checkouts = students whose payment actually confirmed. Pending/abandoned
+  // attempts stay visible via the "Pending checkout" stat above.
+  const confirmedPayments = payments.filter((payment) => payment.status === "confirmed");
 
   return (
     <div>
@@ -138,7 +143,7 @@ export function AdminCohortContent() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {members.map((member) => (
+                {students.map((member) => (
                   <TableRow key={member.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -168,8 +173,11 @@ export function AdminCohortContent() {
 
       <div>
         <h2 className="mb-4 font-heading text-xl font-semibold">Cohort checkouts</h2>
-        {payments.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No Cohort 9 checkouts yet.</p>
+        {confirmedPayments.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No confirmed checkouts yet. Pending or abandoned attempts appear in the
+            “Pending checkout” count above.
+          </p>
         ) : (
           <div className="rounded-xl border shadow-card">
             <Table>
@@ -183,7 +191,7 @@ export function AdminCohortContent() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {payments.map((payment) => (
+                {confirmedPayments.map((payment) => (
                   <TableRow key={payment.id}>
                     <TableCell className="font-mono text-xs">{payment.order_id}</TableCell>
                     <TableCell>

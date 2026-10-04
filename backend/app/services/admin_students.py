@@ -16,8 +16,9 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.billing import ObligationStatus, TuitionPlanType
 from app.core.payments import EnrollmentStatus, PaymentStatus
+from app.core.roles import UserRole
 from app.models.billing import PaymentObligation, StudentBillingAccount
-from app.models.classroom import Cohort, CohortMember
+from app.models.classroom import Cohort, CohortMember, CohortMemberRole
 from app.models.course import Course
 from app.models.enrollment import Enrollment
 from app.models.payment import Payment
@@ -217,7 +218,15 @@ class AdminStudentsService:
         user_ids: set[UUID] = set(
             self.db.scalars(select(StudentBillingAccount.student_id)).all()
         )
-        user_ids |= set(self.db.scalars(select(CohortMember.user_id)).all())
+        # Instructors and TAs hold cohort membership too — only students belong on
+        # this roster, so filter the membership ids down to student members.
+        user_ids |= set(
+            self.db.scalars(
+                select(CohortMember.user_id).where(
+                    CohortMember.role == CohortMemberRole.STUDENT
+                )
+            ).all()
+        )
         user_ids |= set(
             self.db.scalars(
                 select(Enrollment.user_id).where(
@@ -229,7 +238,9 @@ class AdminStudentsService:
         users = (
             list(
                 self.db.scalars(
-                    select(User).where(User.id.in_(user_ids)).order_by(User.created_at.desc())
+                    select(User)
+                    .where(User.id.in_(user_ids), User.role == UserRole.STUDENT)
+                    .order_by(User.created_at.desc())
                 ).all()
             )
             if user_ids
@@ -347,9 +358,15 @@ class AdminStudentsService:
             if cohort_id and account.cohort_id != cohort_id:
                 continue
             bucket = self._obligation_bucket(obligation, now)
-            if status_filter in {"overdue", "due_soon", "upcoming"} and bucket != status_filter:
+            if status_filter == "paid":
+                if bucket != "paid":
+                    continue
+            elif bucket == "paid":
+                # Settled installments (paid / waived) are not collectable, so they
+                # never belong on the collections board — reminders only matter for
+                # money still owed.
                 continue
-            if status_filter == "paid" and bucket != "paid":
+            elif status_filter in {"overdue", "due_soon", "upcoming"} and bucket != status_filter:
                 continue
             due = obligation.due_date
             if due is not None and due.tzinfo is None:

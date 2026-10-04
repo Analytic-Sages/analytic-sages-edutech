@@ -91,6 +91,39 @@ def test_cohort_options_list_includes_featured_cohort():
         _cleanup_user(admin)
 
 
+def test_internal_sync_schedule_is_token_protected_and_idempotent(monkeypatch):
+    """Ops hook that guarantees the complete 40-session BDE schedule in any env."""
+    settings = get_settings()
+    monkeypatch.setattr(settings, "classroom_sync_token", "classroom-token")
+    monkeypatch.setattr(settings, "opportunity_sync_token", None)
+
+    url = "/api/v1/internal/classroom/sync-schedule"
+
+    # Missing token → unauthorized (the token is set, so this is not a 404).
+    assert client.post(url).status_code == 401
+    # Wrong token → unauthorized.
+    assert (
+        client.post(url, headers={"X-Classroom-Sync-Token": "nope"}).status_code == 401
+    )
+    # Correct token → full canonical schedule, idempotent.
+    response = client.post(url, headers={"X-Classroom-Sync-Token": "classroom-token"})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["total"] == 40
+    assert body["created"] + body["updated"] == 40
+
+
+def test_internal_sync_schedule_disabled_when_no_token(monkeypatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "classroom_sync_token", None)
+    monkeypatch.setattr(settings, "opportunity_sync_token", None)
+    response = client.post(
+        "/api/v1/internal/classroom/sync-schedule",
+        headers={"X-Classroom-Sync-Token": "anything"},
+    )
+    assert response.status_code == 404
+
+
 def test_admin_can_create_edit_cancel_and_delete_session():
     admin = _make_user(UserRole.ADMIN)
     student = _make_user(UserRole.STUDENT)

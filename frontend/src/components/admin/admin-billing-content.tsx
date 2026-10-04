@@ -45,6 +45,21 @@ function planLabel(row: BillingAccountPublic): string {
   return "-";
 }
 
+// Plans that were closed out (abandoned / refunded) are not collectable and do not
+// belong on the billing board.
+const CLOSED_STATUSES = new Set(["cancelled", "refunded"]);
+
+/**
+ * Ordering for the board: installment plans that still owe money come first (they
+ * are the priority for follow-up), then payments captured in full, then the rest.
+ */
+function accountPriority(row: BillingAccountPublic): number {
+  const isInstallment = row.plan_type === "installment" || row.plan_type === "monthly";
+  if (isInstallment && !row.is_paid_in_full) return 0;
+  if (row.is_paid_in_full) return 1;
+  return 2;
+}
+
 export function AdminBillingContent() {
   const [accounts, setAccounts] = useState<BillingAccountPublic[]>([]);
   const [selected, setSelected] = useState<BillingAccountPublic | null>(null);
@@ -95,10 +110,19 @@ export function AdminBillingContent() {
     }
   }
 
-  const paidCount = accounts.filter((row) => row.is_paid_in_full).length;
-  const installmentCount = accounts.filter((row) => !row.is_paid_in_full).length;
-  const dueCount = accounts.filter((row) => matchesPlanFilter(row, "due")).length;
-  const visibleAccounts = accounts.filter((row) => matchesPlanFilter(row, planFilter));
+  const openAccounts = accounts.filter((row) => !CLOSED_STATUSES.has(row.billing_status));
+  const paidCount = openAccounts.filter((row) => row.is_paid_in_full).length;
+  const installmentCount = openAccounts.filter((row) => !row.is_paid_in_full).length;
+  const dueCount = openAccounts.filter((row) => matchesPlanFilter(row, "due")).length;
+  // Installments are the priority: they carry money still owed (including partial
+  // payers), so they sort above fully-settled accounts.
+  const visibleAccounts = openAccounts
+    .filter((row) => matchesPlanFilter(row, planFilter))
+    .sort(
+      (a, b) =>
+        accountPriority(a) - accountPriority(b) ||
+        Number(b.amount_outstanding) - Number(a.amount_outstanding)
+    );
 
   if (loading) {
     return (
@@ -159,13 +183,6 @@ export function AdminBillingContent() {
       <div className="mt-4 flex flex-wrap gap-2">
         <Button
           size="sm"
-          variant={planFilter === "all" ? "default" : "outline"}
-          onClick={() => setPlanFilter("all")}
-        >
-          All ({accounts.length})
-        </Button>
-        <Button
-          size="sm"
           variant={planFilter === "installments" ? "default" : "outline"}
           onClick={() => setPlanFilter("installments")}
         >
@@ -185,6 +202,16 @@ export function AdminBillingContent() {
         >
           Past due ({dueCount})
         </Button>
+        <Button
+          size="sm"
+          variant={planFilter === "all" ? "default" : "outline"}
+          onClick={() => setPlanFilter("all")}
+        >
+          All ({openAccounts.length})
+        </Button>
+        <span className="self-center text-xs text-muted-foreground">
+          Installment plans shown first.
+        </span>
       </div>
       {error ? (
         <p className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -192,7 +219,7 @@ export function AdminBillingContent() {
         </p>
       ) : null}
 
-      {accounts.length === 0 ? (
+      {openAccounts.length === 0 ? (
         <EmptyState
           icon={<Loader2 className="size-6" />}
           title="No billing accounts"

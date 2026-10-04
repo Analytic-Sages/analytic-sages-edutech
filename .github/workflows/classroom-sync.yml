@@ -1,0 +1,35 @@
+# Safety net for the live classroom schedule (plus manual run via workflow_dispatch).
+# The canonical Blockchain Data Engineering plan is code (30 teaching sessions +
+# 10 Friday office hours); this hook re-provisions it idempotently so any deployed
+# environment always shows the complete 40-session schedule. Requires PUBLIC_API_URL
+# plus CLASSROOM_SYNC_TOKEN (or OPPORTUNITY_SYNC_TOKEN) repository secrets. Without
+# those secrets the job exits 0 and skips the API call.
+
+name: Classroom schedule sync
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly on Mondays — keeps every environment on the canonical BDE schedule.
+    - cron: "0 6 * * 1"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync classroom schedule
+        env:
+          PUBLIC_API_URL: ${{ secrets.PUBLIC_API_URL }}
+          CLASSROOM_SYNC_TOKEN: ${{ secrets.CLASSROOM_SYNC_TOKEN }}
+          OPPORTUNITY_SYNC_TOKEN: ${{ secrets.OPPORTUNITY_SYNC_TOKEN }}
+        run: |
+          set -euo pipefail
+          token="${CLASSROOM_SYNC_TOKEN:-${OPPORTUNITY_SYNC_TOKEN:-}}"
+          if [ -z "${PUBLIC_API_URL:-}" ] || [ -z "$token" ]; then
+            echo "Secrets PUBLIC_API_URL / CLASSROOM_SYNC_TOKEN not set; skipping."
+            exit 0
+          fi
+          curl -fsS -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-Classroom-Sync-Token: ${token}" \
+            "${PUBLIC_API_URL%/}/api/v1/internal/classroom/sync-schedule"

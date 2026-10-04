@@ -106,8 +106,19 @@ export function AdminClassroomContent() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const loadSessions = useCallback(async (cohortId?: string) => {
-    const rows = await getAdminClassroomSessions(cohortId || undefined);
+  const refreshCohorts = useCallback(async () => {
+    try {
+      setCohorts(await getAdminClassroomCohorts());
+    } catch {
+      // Non-fatal: the cohort list only powers the filter dropdown.
+    }
+  }, []);
+
+  // Load every session once and filter client-side. Re-fetching per cohort opened a
+  // race (and swallowed errors) that could leave the table showing a partial list,
+  // which read as "the cohort isn't showing the complete sessions".
+  const reloadSessions = useCallback(async () => {
+    const rows = await getAdminClassroomSessions();
     setSessions(rows);
   }, []);
 
@@ -136,10 +147,17 @@ export function AdminClassroomContent() {
     };
   }, []);
 
-  const filtered = useMemo(
-    () => (cohortFilter ? sessions.filter((s) => s.cohort_id === cohortFilter) : sessions),
-    [sessions, cohortFilter]
-  );
+  const selectedCohort = cohorts.find((cohort) => cohort.id === cohortFilter) ?? null;
+
+  // Always show the full schedule in teaching order (Week 1 → Week 10).
+  const filtered = useMemo(() => {
+    const rows = cohortFilter
+      ? sessions.filter((s) => s.cohort_id === cohortFilter)
+      : sessions;
+    return [...rows].sort(
+      (a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()
+    );
+  }, [sessions, cohortFilter]);
 
   function openCreate() {
     setEditing(null);
@@ -201,8 +219,8 @@ export function AdminClassroomContent() {
         await createAdminClassroomSession(payload);
       }
       setDialogOpen(false);
-      await loadSessions(cohortFilter || undefined);
-      getAdminClassroomCohorts().then(setCohorts).catch(() => {});
+      await reloadSessions();
+      await refreshCohorts();
     } catch (err) {
       setFormError(err instanceof ApiError ? err.detail : "Could not save the session");
     } finally {
@@ -215,7 +233,7 @@ export function AdminClassroomContent() {
     setError(null);
     try {
       await cancelAdminClassroomSession(row.id);
-      await loadSessions(cohortFilter || undefined);
+      await reloadSessions();
     } catch (err) {
       setError(err instanceof ApiError ? err.detail : "Could not cancel the session");
     } finally {
@@ -229,8 +247,8 @@ export function AdminClassroomContent() {
     setError(null);
     try {
       await deleteAdminClassroomSession(row.id);
-      await loadSessions(cohortFilter || undefined);
-      getAdminClassroomCohorts().then(setCohorts).catch(() => {});
+      await reloadSessions();
+      await refreshCohorts();
     } catch (err) {
       setError(err instanceof ApiError ? err.detail : "Could not delete the session");
     } finally {
@@ -255,10 +273,7 @@ export function AdminClassroomContent() {
           id="cohort-filter"
           className={cn(field, "w-64")}
           value={cohortFilter}
-          onChange={(e) => {
-            setCohortFilter(e.target.value);
-            loadSessions(e.target.value || undefined).catch(() => {});
-          }}
+          onChange={(e) => setCohortFilter(e.target.value)}
         >
           <option value="">All cohorts ({sessions.length} sessions)</option>
           {cohorts.map((cohort) => (
@@ -275,6 +290,10 @@ export function AdminClassroomContent() {
           <CalendarPlus className="size-4" />
           Create session
         </Button>
+        <span className="text-xs text-muted-foreground">
+          Showing {filtered.length}{" "}
+          {selectedCohort ? `of ${selectedCohort.sessions_count} sessions for ${selectedCohort.name}` : "sessions"}
+        </span>
       </div>
 
       {error && (

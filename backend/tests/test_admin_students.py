@@ -14,8 +14,8 @@ from app.core.roles import UserRole
 from app.core.security import SecurityService
 from app.db.session import SessionLocal
 from app.main import app
-from app.models.billing import PaymentObligation, StudentBillingAccount, TuitionPlan
-from app.models.classroom import Cohort, CohortMember, CohortStatus
+from app.models.billing import StudentBillingAccount, TuitionPlan
+from app.models.classroom import Cohort, CohortMember, CohortMemberRole, CohortStatus
 from app.models.user import User
 from app.schemas.billing import TuitionPlanCreate, TuitionPlanScheduleCreate
 from app.services.admin_students import AdminStudentsService
@@ -273,5 +273,54 @@ def test_list_installments_buckets(students_env):
         )
         assert response.status_code == 200
         assert len(response.json()) == 1
+    finally:
+        db.close()
+
+
+def test_instructors_are_not_counted_as_students(students_env):
+    """Cohort membership includes staff roles — the student roster must ignore them."""
+    db = SessionLocal()
+    try:
+        instructor = _make_user("students-test", UserRole.INSTRUCTOR)
+        student = _make_user("students-test")
+        db.add(
+            CohortMember(
+                cohort_id=students_env.id,
+                user_id=instructor.id,
+                role=CohortMemberRole.INSTRUCTOR,
+            )
+        )
+        db.add(
+            CohortMember(
+                cohort_id=students_env.id,
+                user_id=student.id,
+                role=CohortMemberRole.STUDENT,
+            )
+        )
+        db.commit()
+
+        result = AdminStudentsService(db).list_students(cohort_id=students_env.id)
+        ids = {row.user_id for row in result.rows}
+        assert student.id in ids
+        assert instructor.id not in ids
+        assert result.total == 1
+    finally:
+        db.close()
+
+
+def test_installments_board_ignores_settled_obligations(students_env):
+    """Reminders target money still owed — fully paid accounts stay off the board."""
+    db = SessionLocal()
+    try:
+        student = _make_user("students-test")
+        account = _create_account(db, students_env, student, "paid")
+        service = AdminStudentsService(db)
+
+        assert service.list_installments(cohort_id=students_env.id) == []
+
+        settled = service.list_installments(cohort_id=students_env.id, status_filter="paid")
+        assert {row.obligation_id for row in settled} == {
+            obligation.id for obligation in account.obligations
+        }
     finally:
         db.close()

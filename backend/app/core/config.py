@@ -128,6 +128,11 @@ class Settings(BaseSettings):
     # Leave empty to keep the endpoints disabled.
     opportunity_sync_token: str | None = None
 
+    # Optional header token for POST /api/v1/internal/classroom/sync-schedule.
+    # Re-provisions the canonical Blockchain Data Engineering 40-session schedule in
+    # any environment (idempotent). Falls back to OPPORTUNITY_SYNC_TOKEN when unset.
+    classroom_sync_token: str | None = None
+
     # Public opportunities hub. Off until go-live so listings stay staff-only.
     opportunities_public: bool = False
 

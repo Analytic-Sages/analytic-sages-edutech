@@ -198,12 +198,15 @@ Once set, uploads go straight to Supabase Storage and return a permanent `https:
 | `GET/POST /api/v1/admin/classroom/sessions` | Admin: list / create sessions |
 | `PATCH/DELETE /api/v1/admin/classroom/sessions/{id}` | Admin: edit / delete a session |
 | `POST /api/v1/admin/classroom/sessions/{id}/cancel` | Admin: cancel a session |
+| `POST /api/v1/internal/classroom/sync-schedule` | Ops: re-provision the canonical 40-session schedule (token `CLASSROOM_SYNC_TOKEN` → `OPPORTUNITY_SYNC_TOKEN`) |
 
 Admin staff can create and manage live sessions from **Admin → Live sessions**
 (`/admin/classroom`) without a developer: pick a cohort, set title, week label,
 session number/type (teaching or office hour), start/end times, objectives and an
 assignment summary. Students see new sessions immediately (subject to the usual
-phase rules).
+phase rules). The cohort filter is applied client-side against one full fetch, and
+the list is ordered Week 1 → Week 10 so the table always shows the complete
+schedule for the selected cohort.
 
 Seed demo cohort + sessions:
 
