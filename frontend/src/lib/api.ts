@@ -652,6 +652,7 @@ export type BillingAccountPublic = {
   amount_paid: string;
   amount_outstanding: string;
   billing_status: string;
+  access_blocked?: boolean;
   created_at: string;
   obligations: ObligationPublic[];
   tuition_plan?: TuitionPlanPublic | null;
@@ -735,6 +736,30 @@ export function extendAdminObligation(
     {
       method: "POST",
       body: JSON.stringify({ due_date: dueDate, note }),
+    },
+  );
+}
+
+export function extendAdminNextDue(accountId: string, dueDate: string, note?: string) {
+  return apiFetch<BillingAccountPublic>(
+    `/api/v1/admin/billing/accounts/${encodeURIComponent(accountId)}/extend-next-due`,
+    {
+      method: "POST",
+      body: JSON.stringify({ due_date: dueDate, note }),
+    },
+  );
+}
+
+export function setAdminAccountAccess(
+  accountId: string,
+  accessBlocked: boolean,
+  note?: string,
+) {
+  return apiFetch<BillingAccountPublic>(
+    `/api/v1/admin/billing/accounts/${encodeURIComponent(accountId)}/access`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ access_blocked: accessBlocked, note }),
     },
   );
 }
@@ -1282,6 +1307,40 @@ export function putAdminCohortInstructors(slug: string, items: InstructorPublic[
   );
 }
 
+export type AdminTutorRow = {
+  user_id: string;
+  email: string;
+  full_name: string | null;
+  role: string;
+  role_label: string;
+};
+
+export function getAdminCourseTutors(slug: string) {
+  return apiFetch<AdminTutorRow[]>(
+    `/api/v1/admin/courses/${encodeURIComponent(slug)}/tutors`
+  );
+}
+
+export function putAdminCourseTutors(slug: string, userIds: string[]) {
+  return apiFetch<AdminTutorRow[]>(
+    `/api/v1/admin/courses/${encodeURIComponent(slug)}/tutors`,
+    { method: "PUT", body: JSON.stringify({ user_ids: userIds }) }
+  );
+}
+
+export function getAdminCohortTutors(slug: string) {
+  return apiFetch<AdminTutorRow[]>(
+    `/api/v1/admin/cohorts/${encodeURIComponent(slug)}/tutors`
+  );
+}
+
+export function putAdminCohortTutors(slug: string, userIds: string[]) {
+  return apiFetch<AdminTutorRow[]>(
+    `/api/v1/admin/cohorts/${encodeURIComponent(slug)}/tutors`,
+    { method: "PUT", body: JSON.stringify({ user_ids: userIds }) }
+  );
+}
+
 export type EventLifecycle =
   | "draft"
   | "coming_soon"
@@ -1615,6 +1674,8 @@ export type LiveSessionPublic = {
   recording_url: string | null;
   can_join: boolean;
   member_role: "student" | "instructor" | "ta" | null;
+  access_blocked?: boolean;
+  access_blocked_reason?: string | null;
 };
 
 export type ClassroomJoinResponse = {
@@ -1950,6 +2011,8 @@ export type AdminStudentRow = {
   role: string;
   cohorts: string[];
   courses: string[];
+  course_ids: string[];
+  cohort_ids: string[];
   plan_name: string | null;
   plan_type: string | null;
   payment_status: "paid" | "partial" | "unpaid";
@@ -1962,6 +2025,7 @@ export type AdminStudentRow = {
   next_due_amount: string | null;
   next_due_status: string | null;
   has_outstanding: boolean;
+  access_blocked: boolean;
   billing_account_id: string | null;
   created_at: string;
 };
@@ -2001,6 +2065,7 @@ export function getAdminStudents(params?: {
   paymentStatus?: string;
   plan?: string;
   cohortId?: string;
+  courseId?: string;
   hasOutstanding?: boolean;
   q?: string;
 }) {
@@ -2009,6 +2074,7 @@ export function getAdminStudents(params?: {
     qs.set("payment_status", params.paymentStatus);
   if (params?.plan && params.plan !== "all") qs.set("plan", params.plan);
   if (params?.cohortId) qs.set("cohort_id", params.cohortId);
+  if (params?.courseId) qs.set("course_id", params.courseId);
   if (params?.hasOutstanding) qs.set("has_outstanding", "true");
   if (params?.q) qs.set("q", params.q);
   const suffix = qs.toString() ? `?${qs}` : "";

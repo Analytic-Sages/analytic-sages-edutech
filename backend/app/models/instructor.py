@@ -13,6 +13,7 @@ from app.db.session import Base
 if TYPE_CHECKING:
     from app.models.classroom import Cohort
     from app.models.course import Course
+    from app.models.user import User
 
 
 class InstructorProfile(Base):
@@ -89,3 +90,32 @@ class CohortInstructor(Base):
 
     cohort: Mapped[Cohort] = relationship(back_populates="instructor_links")
     instructor: Mapped[InstructorProfile] = relationship(back_populates="cohort_links")
+
+
+class CourseAccessGrant(Base):
+    """Custom access grant linking a login user to a course.
+
+    Public instructor profiles (above) drive marketing display; these grants drive
+    *who can actually open a course / its content* — e.g. a Blockchain Data
+    Engineering tutor should only reach the BDE course.
+    """
+
+    __tablename__ = "course_access_grants"
+    __table_args__ = (
+        UniqueConstraint("user_id", "course_id", name="uq_course_access_grants_user_course"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    course_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("courses.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    role_label: Mapped[str] = mapped_column(String(80), nullable=False, default="Instructor")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    user: Mapped[User] = relationship()
+    course: Mapped[Course] = relationship()

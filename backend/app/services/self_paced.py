@@ -9,8 +9,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.core.payments import EnrollmentStatus
+from app.core.roles import UserRole
 from app.models.course import Course
 from app.models.enrollment import Enrollment
+from app.models.instructor import CourseAccessGrant
 from app.models.lms import CourseModule, Lesson, LessonProgress
 from app.models.quiz import Quiz
 from app.models.user import User
@@ -79,6 +81,20 @@ class SelfPacedService:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Enroll in this course to access lessons",
+        )
+
+    def _staff_can_view(self, user: User, course: Course) -> bool:
+        """Admins and tutors with a course access grant can open course content."""
+        if user.role == UserRole.ADMIN:
+            return True
+        return (
+            self.db.scalar(
+                select(CourseAccessGrant.id).where(
+                    CourseAccessGrant.user_id == user.id,
+                    CourseAccessGrant.course_id == course.id,
+                )
+            )
+            is not None
         )
 
     def _progress_map(self, enrollment: Enrollment | None) -> dict[UUID, LessonProgress]:
@@ -309,7 +325,11 @@ class SelfPacedService:
 
     def get_learn_course(self, user: User, slug: str) -> SelfPacedCoursePublic:
         course = self._get_course_by_slug(slug)
-        self._require_enrollment(user, course)
+        if not self._active_enrollment(user, course.id) and not self._staff_can_view(user, course):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Enroll in this course to access lessons",
+            )
         return self._course_public(course, user, include_video_ids=True)
 
     def get_progress(self, user: User, slug: str) -> CourseProgressPublic:
@@ -364,22 +384,29 @@ class SelfPacedService:
 
     def get_lesson(self, user: User, course_slug: str, lesson_slug: str) -> LessonDetailPublic:
         course = self._get_course_by_slug(course_slug)
-        enrollment = self._require_enrollment(user, course)
+        enrollment = self._active_enrollment(user, course.id)
+        staff_view = enrollment is None and self._staff_can_view(user, course)
+        if enrollment is None and not staff_view:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Enroll in this course to access lessons",
+            )
         lessons = self._published_lessons(course)
         lesson = next((item for item in lessons if item.slug == lesson_slug), None)
         if not lesson:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lesson not found")
 
-        self._touch_view(enrollment, lesson)
-        try:
-            self.db.commit()
-        except IntegrityError:
-            self.db.rollback()
-            course = self._get_course_by_slug(course_slug)
-            enrollment = self._require_enrollment(user, course)
-            lesson = next((item for item in self._published_lessons(course) if item.slug == lesson_slug))
+        if enrollment is not None:
             self._touch_view(enrollment, lesson)
-            self.db.commit()
+            try:
+                self.db.commit()
+            except IntegrityError:
+                self.db.rollback()
+                course = self._get_course_by_slug(course_slug)
+                enrollment = self._require_enrollment(user, course)
+                lesson = next((item for item in self._published_lessons(course) if item.slug == lesson_slug))
+                self._touch_view(enrollment, lesson)
+                self.db.commit()
 
         lessons = self._published_lessons(course)
         completed_count, total, percent, _, _ = self._progress_stats(course, enrollment)
@@ -408,7 +435,7 @@ class SelfPacedService:
             next_slug=lessons[index + 1].slug if index + 1 < len(lessons) else None,
             course_title=course.title,
             course_slug=course.slug,
-            course_completed=bool(enrollment.completed_at),
+            course_completed=bool(enrollment and enrollment.completed_at),
             progress_percent=percent,
             lessons_completed=completed_count,
         )

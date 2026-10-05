@@ -137,6 +137,7 @@ class StudentBillingAccount(Base):
         nullable=False,
         default=BillingStatus.PENDING,
     )
+    access_blocked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

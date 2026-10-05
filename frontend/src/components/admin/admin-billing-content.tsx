@@ -16,12 +16,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatAdminDate } from "@/components/admin/admin-format";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   ApiError,
-  extendAdminObligation,
+  extendAdminNextDue,
   getAccessToken,
   getAdminBillingAccounts,
   patchAdminBillingAccount,
+  setAdminAccountAccess,
   waiveAdminObligation,
   type BillingAccountPublic,
 } from "@/lib/api";
@@ -29,8 +32,12 @@ import { formatPrice } from "@/lib/mock-data";
 
 type PlanFilter = "all" | "installments" | "paid" | "due";
 
+function isInstallmentPlan(row: BillingAccountPublic): boolean {
+  return row.plan_type === "installment" || row.plan_type === "monthly";
+}
+
 function matchesPlanFilter(row: BillingAccountPublic, filter: PlanFilter): boolean {
-  if (filter === "installments") return !row.is_paid_in_full;
+  if (filter === "installments") return isInstallmentPlan(row);
   if (filter === "paid") return Boolean(row.is_paid_in_full);
   if (filter === "due") {
     return row.next_due_status === "past_due" || row.billing_status === "past_due";
@@ -67,6 +74,8 @@ export function AdminBillingContent() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [planFilter, setPlanFilter] = useState<PlanFilter>("all");
+  const [dueDate, setDueDate] = useState("");
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
 
   async function reload() {
     const rows = await getAdminBillingAccounts();
@@ -110,9 +119,48 @@ export function AdminBillingContent() {
     }
   }
 
+  async function saveNextDue() {
+    if (!selected || !dueDate) return;
+    setBusy(true);
+    setActionMessage(null);
+    try {
+      const iso = new Date(`${dueDate}T00:00:00.000Z`).toISOString();
+      const updated = await extendAdminNextDue(selected.id, iso, "Admin set due date");
+      setSelected(updated);
+      setActionMessage("Next due date updated.");
+      await reload();
+    } catch (err) {
+      setActionMessage(err instanceof ApiError ? err.detail : "Could not update due date");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleAccess() {
+    if (!selected) return;
+    setBusy(true);
+    setActionMessage(null);
+    try {
+      const updated = await setAdminAccountAccess(
+        selected.id,
+        !selected.access_blocked,
+        selected.access_blocked ? "Admin restored access" : "Admin restricted access",
+      );
+      setSelected(updated);
+      setActionMessage(
+        selected.access_blocked ? "Live access restored." : "Live access restricted until paid.",
+      );
+      await reload();
+    } catch (err) {
+      setActionMessage(err instanceof ApiError ? err.detail : "Could not update access");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const openAccounts = accounts.filter((row) => !CLOSED_STATUSES.has(row.billing_status));
   const paidCount = openAccounts.filter((row) => row.is_paid_in_full).length;
-  const installmentCount = openAccounts.filter((row) => !row.is_paid_in_full).length;
+  const installmentCount = openAccounts.filter((row) => isInstallmentPlan(row)).length;
   const dueCount = openAccounts.filter((row) => matchesPlanFilter(row, "due")).length;
   // Installments are the priority: they carry money still owed (including partial
   // payers), so they sort above fully-settled accounts.
@@ -359,29 +407,48 @@ export function AdminBillingContent() {
                           >
                             Waive
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={busy}
-                            onClick={() => {
-                              const next = new Date();
-                              next.setDate(next.getDate() + 14);
-                              return runAction(() =>
-                                extendAdminObligation(
-                                  o.id,
-                                  next.toISOString(),
-                                  "Admin extend +14d",
-                                ),
-                              );
-                            }}
-                          >
-                            Extend +14d
-                          </Button>
                         </div>
                       ) : null}
                     </li>
                   ))}
                 </ul>
+                <div className="space-y-3 rounded-md border p-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="next-due">Next due date</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="next-due"
+                        type="date"
+                        value={dueDate}
+                        onChange={(e) => setDueDate(e.target.value)}
+                      />
+                      <Button size="sm" disabled={!dueDate || busy} onClick={saveNextDue}>
+                        {busy ? "Saving…" : "Save"}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-sm">
+                      <p className="font-medium">Live session access</p>
+                      <p className="text-muted-foreground">
+                        {selected.access_blocked
+                          ? "Restricted until tuition is paid."
+                          : "Access enabled."}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant={selected.access_blocked ? "default" : "outline"}
+                      disabled={busy}
+                      onClick={toggleAccess}
+                    >
+                      {selected.access_blocked ? "Restore" : "Restrict"}
+                    </Button>
+                  </div>
+                  {actionMessage && (
+                    <p className="text-sm text-muted-foreground">{actionMessage}</p>
+                  )}
+                </div>
                 <div className="flex flex-wrap gap-2">
                   <Button
                     size="sm"

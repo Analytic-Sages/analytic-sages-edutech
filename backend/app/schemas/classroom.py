@@ -35,6 +35,8 @@ class LiveSessionPublic(BaseModel):
     recording_url: str | None = None
     can_join: bool = False
     member_role: Literal["student", "instructor", "ta"] | None = None
+    access_blocked: bool = False
+    access_blocked_reason: str | None = None
 
 
 class ClassroomJoinResponse(BaseModel):

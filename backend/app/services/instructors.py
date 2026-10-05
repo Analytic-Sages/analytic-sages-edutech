@@ -6,15 +6,24 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models.classroom import Cohort
+from app.core.roles import UserRole
+from app.models.classroom import Cohort, CohortMember, CohortMemberRole
 from app.models.course import Course
-from app.models.instructor import CohortInstructor, CourseInstructor, InstructorProfile
+from app.models.instructor import (
+    CohortInstructor,
+    CourseAccessGrant,
+    CourseInstructor,
+    InstructorProfile,
+)
+from app.models.user import User
 from app.schemas.instructors import (
     AdminCohortInstructorRow,
+    AdminTutorRow,
     InstructorAssignmentItem,
     InstructorProfileAdmin,
     InstructorProfileWrite,
     InstructorPublic,
+    TutorAssignmentWrite,
 )
 
 
@@ -244,3 +253,104 @@ class InstructorService:
             )
             or 0
         )
+
+    # ---------- login-user tutor access (who can open a course / cohort) ----------
+
+    def _validate_tutor_users(self, user_ids: list[UUID]) -> None:
+        seen: set[UUID] = set()
+        for user_id in user_ids:
+            if user_id in seen:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="The same tutor cannot be assigned twice",
+                )
+            seen.add(user_id)
+            user = self.db.get(User, user_id)
+            if not user or not user.is_active:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tutor not found")
+            if user.role == UserRole.STUDENT:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Students cannot be assigned as tutors",
+                )
+
+    def _tutor_row(self, user: User, role_label: str) -> AdminTutorRow:
+        return AdminTutorRow(
+            user_id=user.id,
+            email=user.email,
+            full_name=user.full_name,
+            role=user.role.value,
+            role_label=role_label,
+        )
+
+    def list_course_tutors(self, slug: str) -> list[AdminTutorRow]:
+        course = self._get_course(slug)
+        grants = list(
+            self.db.scalars(
+                select(CourseAccessGrant)
+                .options(selectinload(CourseAccessGrant.user))
+                .where(CourseAccessGrant.course_id == course.id)
+                .order_by(CourseAccessGrant.created_at)
+            ).all()
+        )
+        return [self._tutor_row(g.user, g.role_label) for g in grants]
+
+    def replace_course_tutors(self, slug: str, payload: TutorAssignmentWrite) -> list[AdminTutorRow]:
+        course = self._get_course(slug)
+        self._validate_tutor_users(payload.user_ids)
+        for row in list(
+            self.db.scalars(
+                select(CourseAccessGrant).where(CourseAccessGrant.course_id == course.id)
+            ).all()
+        ):
+            self.db.delete(row)
+        self.db.flush()
+        for user_id in payload.user_ids:
+            self.db.add(
+                CourseAccessGrant(user_id=user_id, course_id=course.id, role_label="Instructor")
+            )
+        self.db.commit()
+        return self.list_course_tutors(slug)
+
+    def list_cohort_tutors(self, slug: str) -> list[AdminTutorRow]:
+        cohort = self._get_cohort(slug)
+        members = list(
+            self.db.scalars(
+                select(CohortMember)
+                .options(selectinload(CohortMember.user))
+                .where(
+                    CohortMember.cohort_id == cohort.id,
+                    CohortMember.role.in_(
+                        (CohortMemberRole.INSTRUCTOR, CohortMemberRole.TA)
+                    ),
+                )
+                .order_by(CohortMember.joined_at)
+            ).all()
+        )
+        return [self._tutor_row(m.user, m.role.value) for m in members]
+
+    def replace_cohort_tutors(self, slug: str, payload: TutorAssignmentWrite) -> list[AdminTutorRow]:
+        cohort = self._get_cohort(slug)
+        self._validate_tutor_users(payload.user_ids)
+        for row in list(
+            self.db.scalars(
+                select(CohortMember).where(
+                    CohortMember.cohort_id == cohort.id,
+                    CohortMember.role.in_(
+                        (CohortMemberRole.INSTRUCTOR, CohortMemberRole.TA)
+                    ),
+                )
+            ).all()
+        ):
+            self.db.delete(row)
+        self.db.flush()
+        for user_id in payload.user_ids:
+            self.db.add(
+                CohortMember(
+                    cohort_id=cohort.id,
+                    user_id=user_id,
+                    role=CohortMemberRole.INSTRUCTOR,
+                )
+            )
+        self.db.commit()
+        return self.list_cohort_tutors(slug)

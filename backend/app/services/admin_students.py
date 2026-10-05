@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.billing import ObligationStatus, TuitionPlanType
 from app.core.payments import EnrollmentStatus, PaymentStatus
 from app.core.roles import UserRole
-from app.models.billing import PaymentObligation, StudentBillingAccount
+from app.models.billing import PaymentObligation, StudentBillingAccount, TuitionPlan
 from app.models.classroom import Cohort, CohortMember, CohortMemberRole
 from app.models.course import Course
 from app.models.enrollment import Enrollment
@@ -187,6 +187,8 @@ class AdminStudentsService:
             role=user.role.value,
             cohorts=sorted({cohort_names[c] for c in cohort_ids if c in cohort_names}),
             courses=sorted({course_titles[c] for c in course_ids if c in course_titles}),
+            course_ids=sorted({c for c in course_ids if c in course_titles}),
+            cohort_ids=sorted({c for c in cohort_ids if c in cohort_names}),
             plan_name=plan_name,
             plan_type=plan_type,
             payment_status=payment_status,
@@ -199,6 +201,7 @@ class AdminStudentsService:
             next_due_amount=next_obligation.amount_due if next_obligation else None,
             next_due_status=next_obligation.status.value if next_obligation else None,
             has_outstanding=total_outstanding > Decimal("0.00"),
+            access_blocked=bool(primary.access_blocked) if primary else False,
             billing_account_id=primary.id if primary else None,
             created_at=user.created_at,
         )
@@ -211,27 +214,16 @@ class AdminStudentsService:
         payment_status: str = "all",
         plan: str = "all",
         cohort_id: UUID | None = None,
+        course_id: UUID | None = None,
         has_outstanding: bool | None = None,
         q: str | None = None,
         limit: int = 500,
     ) -> AdminStudentList:
-        user_ids: set[UUID] = set(
-            self.db.scalars(select(StudentBillingAccount.student_id)).all()
-        )
-        # Instructors and TAs hold cohort membership too — only students belong on
-        # this roster, so filter the membership ids down to student members.
-        user_ids |= set(
+        # The Students board is only for learners who have actually paid — full or
+        # an installment. Pending / never-paid accounts stay out of this roster.
+        paid_user_ids: set[UUID] = set(
             self.db.scalars(
-                select(CohortMember.user_id).where(
-                    CohortMember.role == CohortMemberRole.STUDENT
-                )
-            ).all()
-        )
-        user_ids |= set(
-            self.db.scalars(
-                select(Enrollment.user_id).where(
-                    Enrollment.status.in_((EnrollmentStatus.ACTIVE, EnrollmentStatus.COMPLETED))
-                )
+                select(Payment.user_id).where(Payment.status == PaymentStatus.CONFIRMED)
             ).all()
         )
 
@@ -239,13 +231,14 @@ class AdminStudentsService:
             list(
                 self.db.scalars(
                     select(User)
-                    .where(User.id.in_(user_ids), User.role == UserRole.STUDENT)
+                    .where(User.id.in_(paid_user_ids), User.role == UserRole.STUDENT)
                     .order_by(User.created_at.desc())
                 ).all()
             )
-            if user_ids
+            if paid_user_ids
             else []
         )
+        user_ids = {u.id for u in users}
 
         accounts_by_user = self._accounts_for_users(user_ids)
         confirmed = self._confirmed_paid(user_ids)
@@ -256,15 +249,6 @@ class AdminStudentsService:
         rows: list[AdminStudentRow] = []
         for user in users:
             accounts = accounts_by_user.get(user.id, [])
-            if cohort_id and not any(a.cohort_id == cohort_id for a in accounts):
-                is_member = self.db.scalar(
-                    select(CohortMember.id).where(
-                        CohortMember.user_id == user.id,
-                        CohortMember.cohort_id == cohort_id,
-                    )
-                )
-                if not is_member:
-                    continue
             row = self._build_row(
                 user,
                 accounts,
@@ -273,6 +257,10 @@ class AdminStudentsService:
                 course_titles=course_titles,
             )
             if payment_status != "all" and row.payment_status != payment_status:
+                continue
+            if cohort_id and cohort_id not in row.cohort_ids:
+                continue
+            if course_id and course_id not in row.course_ids:
                 continue
             if not self._matches_plan_filter(accounts, plan):
                 continue
@@ -326,11 +314,16 @@ class AdminStudentsService:
         now = datetime.now(UTC)
         stmt = (
             select(PaymentObligation)
+            .join(StudentBillingAccount, PaymentObligation.billing_account_id == StudentBillingAccount.id)
+            .join(TuitionPlan, StudentBillingAccount.tuition_plan_id == TuitionPlan.id)
+            .join(User, StudentBillingAccount.student_id == User.id)
             .options(
                 selectinload(PaymentObligation.billing_account).selectinload(
                     StudentBillingAccount.tuition_plan
                 )
             )
+            .where(User.role == UserRole.STUDENT)
+            .where(TuitionPlan.plan_type.in_(INSTALLMENT_PLAN_TYPES))
             .order_by(PaymentObligation.due_date.asc().nulls_last())
             .limit(limit)
         )

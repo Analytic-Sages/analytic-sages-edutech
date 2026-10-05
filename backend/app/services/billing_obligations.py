@@ -121,6 +121,7 @@ class PaymentObligationService:
             account.amount_outstanding = money(
                 max(Decimal("0.00"), account.amount_outstanding - obligation.amount_due)
             )
+            account.access_blocked = False
             if account.amount_outstanding <= Decimal("0.00"):
                 account.billing_status = BillingStatus.PAID_IN_FULL
                 account.amount_outstanding = Decimal("0.00")

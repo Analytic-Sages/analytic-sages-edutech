@@ -729,19 +729,24 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
 };
 
 
+/**
+ * Live instructor-led program registry. When a new program goes live, add its
+ * `EngineeringProgramPageContent` here — the `/programs/[slug]`, `/instructor-led`
+ * and `generateStaticParams` routing all pick it up automatically.
+ */
+export const engineeringProgramPages: EngineeringProgramPageContent[] = [
+  blockchainDataEngineeringProgram,
+];
+
 export function getEngineeringProgramPage(
   slug: string,
 ): EngineeringProgramPageContent | undefined {
-  const page = blockchainDataEngineeringProgram;
-  if (page.pageSlug === slug || page.aliases.includes(slug) || page.cohortSlug === slug) {
-    return page;
-  }
-  return undefined;
+  return engineeringProgramPages.find(
+    (page) =>
+      page.pageSlug === slug || page.aliases.includes(slug) || page.cohortSlug === slug,
+  );
 }
 
 export function listEngineeringProgramSlugs(): string[] {
-  return [
-    blockchainDataEngineeringProgram.pageSlug,
-    ...blockchainDataEngineeringProgram.aliases,
-  ];
+  return engineeringProgramPages.flatMap((page) => [page.pageSlug, ...page.aliases]);
 }

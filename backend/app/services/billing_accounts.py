@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.billing import BillingStatus, DueRule, ObligationStatus
 from app.core.payments import PaymentStatus
+from app.core.roles import UserRole
 from app.models.billing import (
     BillingAuditEvent,
     PaymentObligation,
@@ -176,10 +177,12 @@ class BillingAccountService:
     ) -> list[StudentBillingAccount]:
         stmt = (
             select(StudentBillingAccount)
+            .join(User, StudentBillingAccount.student_id == User.id)
             .options(
                 selectinload(StudentBillingAccount.obligations),
                 selectinload(StudentBillingAccount.tuition_plan),
             )
+            .where(User.role == UserRole.STUDENT)
             .order_by(StudentBillingAccount.created_at.desc())
             .limit(limit)
         )
@@ -208,6 +211,78 @@ class BillingAccountService:
             note=note,
             before={"billing_status": before},
             after={"billing_status": billing_status.value},
+        )
+        self.db.commit()
+        return self.get_account(account.id)
+
+    def extend_next_due(
+        self,
+        *,
+        account_id: UUID,
+        due_date: datetime,
+        actor: User,
+        note: str | None = None,
+    ) -> StudentBillingAccount:
+        """Set a custom date on the student's next open installment obligation."""
+        account = self.get_account(account_id)
+        open_obligations = sorted(
+            [
+                o
+                for o in account.obligations
+                if o.status
+                in {
+                    ObligationStatus.OPEN,
+                    ObligationStatus.PAST_DUE,
+                    ObligationStatus.PROCESSING,
+                    ObligationStatus.UPCOMING,
+                }
+            ],
+            key=lambda o: o.sequence_number,
+        )
+        if not open_obligations:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No open installment to reschedule",
+            )
+        obligation = open_obligations[0]
+        before = obligation.due_date.isoformat() if obligation.due_date else None
+        obligation.due_date = due_date
+        if obligation.status == ObligationStatus.PAST_DUE and due_date > datetime.now(UTC):
+            obligation.status = ObligationStatus.OPEN
+        self._audit(
+            actor_id=actor.id,
+            action="obligation.extended",
+            entity_type="payment_obligation",
+            entity_id=obligation.id,
+            note=note,
+            before={"due_date": before},
+            after={"due_date": due_date.isoformat()},
+        )
+        self.db.commit()
+        return self.get_account(account.id)
+
+    def set_access_blocked(
+        self,
+        *,
+        account_id: UUID,
+        access_blocked: bool,
+        actor: User,
+        note: str | None = None,
+    ) -> StudentBillingAccount:
+        """Manually restrict / restore a student's live-session access."""
+        account = self.get_account(account_id)
+        before = account.access_blocked
+        account.access_blocked = access_blocked
+        self._audit(
+            actor_id=actor.id,
+            action="billing_account.access_blocked"
+            if access_blocked
+            else "billing_account.access_unblocked",
+            entity_type="student_billing_account",
+            entity_id=account.id,
+            note=note,
+            before={"access_blocked": before},
+            after={"access_blocked": access_blocked},
         )
         self.db.commit()
         return self.get_account(account.id)

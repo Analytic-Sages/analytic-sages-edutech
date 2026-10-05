@@ -16,6 +16,8 @@ class AdminStudentRow(BaseModel):
     role: str
     cohorts: list[str] = Field(default_factory=list)
     courses: list[str] = Field(default_factory=list)
+    course_ids: list[UUID] = Field(default_factory=list)
+    cohort_ids: list[UUID] = Field(default_factory=list)
     plan_name: str | None = None
     plan_type: str | None = None
     payment_status: str  # paid | partial | unpaid
@@ -28,6 +30,7 @@ class AdminStudentRow(BaseModel):
     next_due_amount: Decimal | None = None
     next_due_status: str | None = None
     has_outstanding: bool = False
+    access_blocked: bool = False
     billing_account_id: UUID | None = None
     created_at: datetime
 

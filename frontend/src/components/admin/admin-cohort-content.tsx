@@ -22,26 +22,36 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   ApiError,
+  getAdminClassroomCohorts,
   getAdminCohort,
   getAdminOverview,
   type AdminCohortDetail,
+  type AdminCohortOption,
 } from "@/lib/api";
 import { FEATURED_COHORT_SLUG } from "@/lib/auth-redirect";
 import { formatPrice } from "@/lib/mock-data";
 
 export function AdminCohortContent() {
   const [detail, setDetail] = useState<AdminCohortDetail | null>(null);
+  const [cohorts, setCohorts] = useState<AdminCohortOption[]>([]);
+  const [slug, setSlug] = useState<string>(FEATURED_COHORT_SLUG);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getAdminClassroomCohorts().then(setCohorts).catch(() => {});
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
+      setLoading(true);
+      setError(null);
       try {
         try {
-          const featured = await getAdminCohort(FEATURED_COHORT_SLUG);
-          if (!cancelled) setDetail(featured);
+          const selected = await getAdminCohort(slug);
+          if (!cancelled) setDetail(selected);
           return;
         } catch (err) {
           if (!(err instanceof ApiError) || err.status !== 404) throw err;
@@ -55,7 +65,7 @@ export function AdminCohortContent() {
         if (!cancelled) setDetail(fallback);
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof ApiError ? err.detail : "Failed to load featured cohort");
+          setError(err instanceof ApiError ? err.detail : "Failed to load cohort");
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -66,7 +76,7 @@ export function AdminCohortContent() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [slug]);
 
   if (loading) {
     return (
@@ -108,10 +118,24 @@ export function AdminCohortContent() {
 
   return (
     <div>
-      <PageHeader
-        title={cohort.name}
-        description={`Live roster and checkouts. Price ${formatPrice(cohort.price, cohort.currency)}.`}
-      />
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <PageHeader
+          title={cohort.name}
+          description={`Live roster and checkouts. Price ${formatPrice(cohort.price, cohort.currency)}.`}
+        />
+        <select
+          className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+          value={slug}
+          onChange={(e) => setSlug(e.target.value)}
+          aria-label="Select cohort"
+        >
+          {cohorts.map((option) => (
+            <option key={option.id} value={option.slug}>
+              {option.name}
+            </option>
+          ))}
+        </select>
+      </div>
 
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatsCard title="Student seats" value={cohort.student_seats} icon="users" />

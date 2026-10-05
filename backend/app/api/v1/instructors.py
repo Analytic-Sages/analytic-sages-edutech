@@ -4,15 +4,17 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
 
-from app.api.deps import get_instructor_service, require_catalog_ops
+from app.api.deps import get_instructor_service, require_admin, require_catalog_ops
 from app.models.user import User
 from app.schemas.auth import MessageResponse
 from app.schemas.instructors import (
     AdminCohortInstructorRow,
+    AdminTutorRow,
     InstructorAssignmentWrite,
     InstructorProfileAdmin,
     InstructorProfileWrite,
     InstructorPublic,
+    TutorAssignmentWrite,
 )
 from app.services.instructors import InstructorService
 
@@ -104,3 +106,41 @@ def replace_cohort_instructors(
     instructors: InstructorService = Depends(get_instructor_service),
 ) -> list[InstructorPublic]:
     return instructors.replace_cohort_assignments(slug, payload.items)
+
+
+@router.get("/admin/courses/{slug}/tutors", response_model=list[AdminTutorRow])
+def list_course_tutors(
+    slug: str,
+    _: User = Depends(require_admin),
+    instructors: InstructorService = Depends(get_instructor_service),
+) -> list[AdminTutorRow]:
+    return instructors.list_course_tutors(slug)
+
+
+@router.put("/admin/courses/{slug}/tutors", response_model=list[AdminTutorRow])
+def replace_course_tutors(
+    slug: str,
+    payload: TutorAssignmentWrite,
+    _: User = Depends(require_admin),
+    instructors: InstructorService = Depends(get_instructor_service),
+) -> list[AdminTutorRow]:
+    return instructors.replace_course_tutors(slug, payload)
+
+
+@router.get("/admin/cohorts/{slug}/tutors", response_model=list[AdminTutorRow])
+def list_cohort_tutors(
+    slug: str,
+    _: User = Depends(require_admin),
+    instructors: InstructorService = Depends(get_instructor_service),
+) -> list[AdminTutorRow]:
+    return instructors.list_cohort_tutors(slug)
+
+
+@router.put("/admin/cohorts/{slug}/tutors", response_model=list[AdminTutorRow])
+def replace_cohort_tutors(
+    slug: str,
+    payload: TutorAssignmentWrite,
+    _: User = Depends(require_admin),
+    instructors: InstructorService = Depends(get_instructor_service),
+) -> list[AdminTutorRow]:
+    return instructors.replace_cohort_tutors(slug, payload)

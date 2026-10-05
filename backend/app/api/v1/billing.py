@@ -25,7 +25,9 @@ from app.models.payment import Payment
 from app.models.user import User
 from app.schemas.admin_students import InstallmentReminderRequest, ReminderResult
 from app.schemas.billing import (
+    AdminAccountAccessRequest,
     AdminBillingAccountPatch,
+    AdminExtendNextDueRequest,
     AdminExtendRequest,
     AdminManualPaymentRequest,
     AdminWaiveRequest,
@@ -219,6 +221,44 @@ def admin_extend_obligation(
     return BillingAccountPublic.model_validate(
         accounts.get_account(obligation.billing_account_id)
     )
+
+
+@admin_router.post(
+    "/billing/accounts/{account_id}/extend-next-due",
+    response_model=BillingAccountPublic,
+)
+def admin_extend_next_due(
+    account_id: UUID,
+    payload: AdminExtendNextDueRequest,
+    admin: User = Depends(require_admin),
+    accounts: BillingAccountService = Depends(_accounts),
+) -> BillingAccountPublic:
+    account = accounts.extend_next_due(
+        account_id=account_id,
+        due_date=payload.due_date,
+        actor=admin,
+        note=payload.note,
+    )
+    return BillingAccountPublic.model_validate(account)
+
+
+@admin_router.patch(
+    "/billing/accounts/{account_id}/access",
+    response_model=BillingAccountPublic,
+)
+def admin_set_account_access(
+    account_id: UUID,
+    payload: AdminAccountAccessRequest,
+    admin: User = Depends(require_admin),
+    accounts: BillingAccountService = Depends(_accounts),
+) -> BillingAccountPublic:
+    account = accounts.set_access_blocked(
+        account_id=account_id,
+        access_blocked=payload.access_blocked,
+        actor=admin,
+        note=payload.note,
+    )
+    return BillingAccountPublic.model_validate(account)
 
 
 @admin_router.post(

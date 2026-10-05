@@ -222,7 +222,11 @@ function SessionCard({
           )}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
-          {session.can_join ? (
+          {session.access_blocked ? (
+            <span className="rounded-md bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive">
+              Payment required
+            </span>
+          ) : session.can_join ? (
             <ButtonLink
               href={`/classroom/${session.id}`}
               className="bg-brand-orange text-white hover:bg-brand-orange/90"
@@ -237,11 +241,17 @@ function SessionCard({
           <SessionCalendarMenu session={session} />
         </div>
       </CardHeader>
-      <CardContent className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5">
-          <Calendar className="size-3.5" />
-          {formatWhen(session.starts_at)}
-        </span>
+      <CardContent className="space-y-3">
+        {session.access_blocked && session.access_blocked_reason ? (
+          <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {session.access_blocked_reason}
+          </p>
+        ) : null}
+        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <Calendar className="size-3.5" />
+            {formatWhen(session.starts_at)}
+          </span>
         <span className="inline-flex items-center gap-1.5">
           <Clock className="size-3.5" />
           Until {formatWhen(session.ends_at)}
@@ -263,6 +273,7 @@ function SessionCard({
             Watch recording
           </Link>
         )}
+        </div>
       </CardContent>
     </Card>
   );

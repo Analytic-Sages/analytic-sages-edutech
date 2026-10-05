@@ -6,10 +6,12 @@ from uuid import UUID
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
+from app.core.billing import ObligationStatus
 from app.core.config import Settings
 from app.core.roles import UserRole
+from app.models.billing import StudentBillingAccount
 from app.models.classroom import (
     Cohort,
     CohortMember,
@@ -55,13 +57,61 @@ class ClassroomService:
     def _is_staff(self, user: User) -> bool:
         return user.role in {UserRole.ADMIN, UserRole.INSTRUCTOR}
 
+    def _is_admin(self, user: User) -> bool:
+        return user.role == UserRole.ADMIN
+
     def _can_access(self, user: User, session: LiveSession) -> CohortMember | None:
         member = self._member_for(user, session.cohort_id)
         if member:
             return member
-        if self._is_staff(user):
-            # Staff can observe any session; treat as instructor for presets.
+        if self._is_admin(user):
+            # Admins can observe any session; treat as instructor for presets.
             return None
+        return None
+
+    def _payment_standing_block(self, user: User, session: LiveSession) -> str | None:
+        """Block reason when a paying student owes tuition for this session's cohort.
+
+        Only students are evaluated. A manual ``access_blocked`` flag or a past-due
+        open obligation removes live-session access until the account is settled.
+        """
+        if user.role != UserRole.STUDENT:
+            return None
+
+        cohort = session.cohort
+        accounts = list(
+            self.db.scalars(
+                select(StudentBillingAccount)
+                .options(selectinload(StudentBillingAccount.obligations))
+                .where(StudentBillingAccount.student_id == user.id)
+            ).all()
+        )
+        relevant = [
+            a
+            for a in accounts
+            if a.cohort_id == session.cohort_id
+            or (cohort is not None and cohort.course_id is not None and a.course_id == cohort.course_id)
+        ]
+        now = self._utcnow()
+        for account in relevant:
+            if account.access_blocked:
+                return "Your live session access is restricted until your tuition is paid."
+            for obligation in account.obligations:
+                if obligation.status in {
+                    ObligationStatus.OPEN,
+                    ObligationStatus.PROCESSING,
+                    ObligationStatus.UPCOMING,
+                    ObligationStatus.PAST_DUE,
+                }:
+                    due = obligation.due_date
+                    if due is not None:
+                        if due.tzinfo is None:
+                            due = due.replace(tzinfo=timezone.utc)
+                        if obligation.status == ObligationStatus.PAST_DUE or due < now:
+                            return (
+                                "A tuition installment is past due. Pay the outstanding "
+                                "amount to regain access to live sessions."
+                            )
         return None
 
     def _effective_phase(self, session: LiveSession) -> str:
@@ -147,7 +197,7 @@ class ClassroomService:
         return self.settings.realtimekit_participant_preset
 
     def _to_public(
-        self, session: LiveSession, *, member: CohortMember | None, staff: bool
+        self, session: LiveSession, *, member: CohortMember | None, staff: bool, user: User
     ) -> LiveSessionPublic:
         phase = self._effective_phase(session)
         resources: list[SessionResource] = []
@@ -169,6 +219,10 @@ class ClassroomService:
         elif staff:
             role = "instructor"
 
+        blocked_reason = None
+        if member is not None and member.role == CohortMemberRole.STUDENT:
+            blocked_reason = self._payment_standing_block(user, session)
+
         return LiveSessionPublic(
             id=session.id,
             cohort_id=session.cohort_id,
@@ -187,12 +241,14 @@ class ClassroomService:
             status=session.status.value,
             phase=phase,  # type: ignore[arg-type]
             recording_url=session.recording_url,
-            can_join=self._can_join(phase) and (member is not None or staff),
+            can_join=self._can_join(phase) and (member is not None or staff) and blocked_reason is None,
             member_role=role,  # type: ignore[arg-type]
+            access_blocked=blocked_reason is not None,
+            access_blocked_reason=blocked_reason,
         )
 
     def list_my_sessions(self, user: User) -> list[LiveSessionPublic]:
-        if self._is_staff(user):
+        if self._is_admin(user):
             sessions = list(
                 self.db.scalars(
                     select(LiveSession)
@@ -202,7 +258,7 @@ class ClassroomService:
                 .unique()
                 .all()
             )
-            return [self._to_public(s, member=None, staff=True) for s in sessions]
+            return [self._to_public(s, member=None, staff=True, user=user) for s in sessions]
 
         memberships = list(
             self.db.scalars(select(CohortMember).where(CohortMember.user_id == user.id)).all()
@@ -224,7 +280,9 @@ class ClassroomService:
             .all()
         )
         return [
-            self._to_public(s, member=member_by_cohort.get(s.cohort_id), staff=False)
+            self._to_public(
+                s, member=member_by_cohort.get(s.cohort_id), staff=False, user=user
+            )
             for s in sessions
         ]
 
@@ -273,13 +331,13 @@ class ClassroomService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
 
         member = self._can_access(user, session)
-        staff = self._is_staff(user)
+        staff = self._is_admin(user)
         if member is None and not staff:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You are not enrolled in this cohort",
             )
-        return self._to_public(session, member=member, staff=staff)
+        return self._to_public(session, member=member, staff=staff, user=user)
 
     def join_session(self, user: User, session_id: UUID) -> ClassroomJoinResponse:
         session = self.db.scalar(
@@ -291,12 +349,16 @@ class ClassroomService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
 
         member = self._can_access(user, session)
-        staff = self._is_staff(user)
+        staff = self._is_admin(user)
         if member is None and not staff:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You are not enrolled in this cohort",
             )
+
+        blocked_reason = self._payment_standing_block(user, session)
+        if blocked_reason:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=blocked_reason)
 
         phase = self._effective_phase(session)
         preset = self._preset_for(member, user)

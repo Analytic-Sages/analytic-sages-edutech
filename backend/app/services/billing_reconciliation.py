@@ -92,6 +92,9 @@ class BillingReconciliationService:
         obligation.status = ObligationStatus.PAID
 
         account.amount_paid = money(account.amount_paid + allocated)
+        # A successful payment restores live access (admin may have restricted it
+        # while the student was behind).
+        account.access_blocked = False
         account.amount_outstanding = money(
             max(Decimal("0.00"), account.final_amount_due - account.amount_paid)
         )

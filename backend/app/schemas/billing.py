@@ -119,6 +119,7 @@ class BillingAccountPublic(BaseModel):
     amount_paid: Decimal
     amount_outstanding: Decimal
     billing_status: BillingStatus
+    access_blocked: bool = False
     created_at: datetime
     obligations: list[ObligationPublic] = []
     tuition_plan: TuitionPlanPublic | None = None
@@ -219,6 +220,16 @@ class AdminWaiveRequest(BaseModel):
 
 class AdminExtendRequest(BaseModel):
     due_date: datetime
+    note: str | None = None
+
+
+class AdminExtendNextDueRequest(BaseModel):
+    due_date: datetime
+    note: str | None = None
+
+
+class AdminAccountAccessRequest(BaseModel):
+    access_blocked: bool
     note: str | None = None
 
 

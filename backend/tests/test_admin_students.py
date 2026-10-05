@@ -10,12 +10,14 @@ from sqlalchemy import select
 
 from app.core.billing import BillingStatus, DueRule, ObligationStatus, TuitionPlanType
 from app.core.config import get_settings
+from app.core.payments import PaymentProviderName, PaymentStatus
 from app.core.roles import UserRole
 from app.core.security import SecurityService
 from app.db.session import SessionLocal
 from app.main import app
 from app.models.billing import StudentBillingAccount, TuitionPlan
 from app.models.classroom import Cohort, CohortMember, CohortMemberRole, CohortStatus
+from app.models.payment import Payment
 from app.models.user import User
 from app.schemas.billing import TuitionPlanCreate, TuitionPlanScheduleCreate
 from app.services.admin_students import AdminStudentsService
@@ -60,6 +62,10 @@ def _cleanup() -> None:
     try:
         cohort = db.scalar(select(Cohort).where(Cohort.slug == COHORT_SLUG))
         if cohort:
+            for payment in db.scalars(
+                select(Payment).where(Payment.cohort_id == cohort.id)
+            ).all():
+                db.delete(payment)
             accounts = list(
                 db.scalars(
                     select(StudentBillingAccount).where(
@@ -169,6 +175,24 @@ def _create_account(db, cohort: Cohort, student: User, state: str) -> StudentBil
     return account
 
 
+def _make_payment(db, cohort: Cohort, user: User, amount: int) -> Payment:
+    payment = Payment(
+        order_id=f"test-{uuid.uuid4().hex[:12]}",
+        user_id=user.id,
+        cohort_id=cohort.id,
+        provider=PaymentProviderName.MOCK,
+        provider_payment_id=f"mock_{uuid.uuid4().hex[:8]}",
+        amount=amount,
+        currency=cohort.currency,
+        status=PaymentStatus.CONFIRMED,
+        confirmed_at=datetime.now(UTC),
+    )
+    db.add(payment)
+    db.commit()
+    db.refresh(payment)
+    return payment
+
+
 @pytest.fixture
 def students_env():
     _cleanup()
@@ -195,16 +219,19 @@ def test_list_students_classifies_paid_partial_unpaid(students_env):
         _create_account(db, students_env, paid, "paid")
         _create_account(db, students_env, partial, "partial")
         _create_account(db, students_env, unpaid, "unpaid")
+        _make_payment(db, students_env, paid, students_env.price)
+        _make_payment(db, students_env, partial, students_env.price // 2)
 
         result = AdminStudentsService(db).list_students(cohort_id=students_env.id)
         by_id = {row.user_id: row for row in result.rows}
         assert by_id[paid.id].payment_status == "paid"
         assert by_id[partial.id].payment_status == "partial"
-        assert by_id[unpaid.id].payment_status == "unpaid"
+        # Unpaid / pending-only students are excluded from the paid roster.
+        assert unpaid.id not in by_id
         assert by_id[partial.id].has_outstanding is True
         assert by_id[paid.id].has_outstanding is False
-        assert result.total == 3
-        assert result.paid == 1 and result.partial == 1 and result.unpaid == 1
+        assert result.total == 2
+        assert result.paid == 1 and result.partial == 1 and result.unpaid == 0
     finally:
         db.close()
 
@@ -213,9 +240,11 @@ def test_list_students_filters(students_env):
     db = SessionLocal()
     try:
         paid = _make_user("students-test")
-        unpaid = _make_user("students-test")
+        partial = _make_user("students-test")
         _create_account(db, students_env, paid, "paid")
-        _create_account(db, students_env, unpaid, "unpaid")
+        _create_account(db, students_env, partial, "partial")
+        _make_payment(db, students_env, paid, students_env.price)
+        _make_payment(db, students_env, partial, students_env.price // 2)
         service = AdminStudentsService(db)
 
         paid_only = service.list_students(cohort_id=students_env.id, payment_status="paid")
@@ -298,6 +327,7 @@ def test_instructors_are_not_counted_as_students(students_env):
             )
         )
         db.commit()
+        _make_payment(db, students_env, student, students_env.price)
 
         result = AdminStudentsService(db).list_students(cohort_id=students_env.id)
         ids = {row.user_id for row in result.rows}

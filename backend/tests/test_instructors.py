@@ -233,3 +233,40 @@ def test_empty_instructors_are_an_empty_list():
     assert public_course.status_code == 200
     assert public_course.json()["instructors"] == []
     _cleanup()
+
+
+def test_admin_can_assign_login_tutors_to_course_and_cohort():
+    _cleanup()
+    course = _seed_course()
+    _seed_cohort(course.id)
+    admin = _make_user(f"admin-tutors-{uuid.uuid4()}@example.com", role=UserRole.ADMIN)
+    tutor = _make_user(f"tutor-{uuid.uuid4()}@example.com", role=UserRole.INSTRUCTOR)
+
+    listed = client.get(f"/api/v1/admin/courses/{COURSE_SLUG}/tutors", headers=_auth(admin))
+    assert listed.status_code == 200
+    assert listed.json() == []
+
+    assigned = client.put(
+        f"/api/v1/admin/courses/{COURSE_SLUG}/tutors",
+        headers=_auth(admin),
+        json={"user_ids": [str(tutor.id)]},
+    )
+    assert assigned.status_code == 200
+    assert assigned.json()[0]["user_id"] == str(tutor.id)
+
+    cohort_assigned = client.put(
+        f"/api/v1/admin/cohorts/{COHORT_SLUG}/tutors",
+        headers=_auth(admin),
+        json={"user_ids": [str(tutor.id)]},
+    )
+    assert cohort_assigned.status_code == 200
+    assert cohort_assigned.json()[0]["user_id"] == str(tutor.id)
+
+    student = _make_user(f"student-tutors-{uuid.uuid4()}@example.com")
+    bad = client.put(
+        f"/api/v1/admin/courses/{COURSE_SLUG}/tutors",
+        headers=_auth(admin),
+        json={"user_ids": [str(student.id)]},
+    )
+    assert bad.status_code == 400
+    _cleanup()

@@ -96,3 +96,17 @@ class AdminCohortInstructorRow(BaseModel):
     name: str
     status: str
     instructor_count: int
+
+
+class AdminTutorRow(BaseModel):
+    """Login user assigned as a tutor to a course / cohort (access, not bio)."""
+
+    user_id: UUID
+    email: str
+    full_name: str | None
+    role: str
+    role_label: str = "Instructor"
+
+
+class TutorAssignmentWrite(BaseModel):
+    user_ids: list[UUID] = Field(default_factory=list)
