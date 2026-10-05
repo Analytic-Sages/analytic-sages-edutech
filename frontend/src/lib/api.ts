@@ -532,6 +532,12 @@ export type AuthUser = {
   phone_country_code?: string | null;
   phone_verified?: boolean;
   country_of_residence?: string | null;
+  discord_username?: string | null;
+  telegram_username?: string | null;
+  github_url?: string | null;
+  x_url?: string | null;
+  linkedin_url?: string | null;
+  portfolio_url?: string | null;
   created_at: string;
 };
 
@@ -1635,6 +1641,12 @@ export function updateMyProfile(payload: {
   phone_number?: string | null;
   phone_country_code?: string | null;
   country_of_residence?: string | null;
+  discord_username?: string | null;
+  telegram_username?: string | null;
+  github_url?: string | null;
+  x_url?: string | null;
+  linkedin_url?: string | null;
+  portfolio_url?: string | null;
 }) {
   return apiFetch<AuthUser>("/api/v1/auth/me", {
     method: "PATCH",
@@ -1735,6 +1747,460 @@ export type ClassroomCalendarFeed = {
 
 export function getClassroomCalendarToken() {
   return apiFetch<ClassroomCalendarFeed>("/api/v1/classroom/calendar-token");
+}
+
+export type ProgrammePublic = {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  overview: string;
+  learning_outcomes: string[];
+  duration: string;
+  programme_type: string;
+  status: string;
+  cover_image: string | null;
+  requirements: string[];
+  certificate_requirements: Record<string, unknown>;
+  course_id: string | null;
+};
+
+export type ProgrammeCohortPublic = {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  starts_at: string | null;
+  ends_at: string | null;
+  timezone: string;
+  capacity: number | null;
+  price: number;
+  currency: string;
+  community_links: Record<string, string>;
+};
+
+export type ProgrammeDetailPublic = ProgrammePublic & {
+  cohorts: ProgrammeCohortPublic[];
+};
+
+export type AttendanceSummary = {
+  attended: number;
+  late: number;
+  absent: number;
+  total: number;
+};
+
+export type AttendanceRecord = {
+  session_id: string;
+  session_title: string;
+  starts_at: string;
+  status: "attended" | "late" | "absent";
+  recorded_at: string;
+  note: string | null;
+};
+
+export type MyLiveEnrollment = {
+  programme_id: string | null;
+  programme_slug: string | null;
+  programme_title: string | null;
+  cohort_id: string;
+  cohort_name: string;
+  cohort_slug: string;
+  enrollment_status: string;
+  starts_at: string | null;
+  ends_at: string | null;
+  timezone: string;
+  progress_percent: number;
+  attendance_attended: number;
+  attendance_total: number;
+  next_session: LiveSessionPublic | null;
+};
+
+export type CohortStudentDetail = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  status: string;
+  starts_at: string | null;
+  ends_at: string | null;
+  timezone: string;
+  capacity: number | null;
+  community_links: Record<string, string>;
+  programme: ProgrammePublic | null;
+  progress_percent: number;
+  attendance: AttendanceSummary;
+  sessions: LiveSessionPublic[];
+};
+
+export type InstructorStudentRow = {
+  user_id: string;
+  email: string;
+  full_name: string | null;
+  country_of_residence: string | null;
+  enrollment_status: string;
+  attendance_attended: number;
+  attendance_total: number;
+  progress_percent: number;
+};
+
+export function listProgrammes() {
+  return apiFetch<ProgrammePublic[]>("/api/v1/programmes", { auth: false });
+}
+
+export function getProgramme(slug: string) {
+  return apiFetch<ProgrammeDetailPublic>(`/api/v1/programmes/${encodeURIComponent(slug)}`, {
+    auth: false,
+  });
+}
+
+export function getMyLiveEnrollments() {
+  return apiFetch<MyLiveEnrollment[]>("/api/v1/me/live");
+}
+
+export function getMyCohort(cohortId: string) {
+  return apiFetch<CohortStudentDetail>(`/api/v1/cohorts/${encodeURIComponent(cohortId)}`);
+}
+
+export function getMyAttendance(cohortId: string) {
+  return apiFetch<AttendanceRecord[]>(
+    `/api/v1/cohorts/${encodeURIComponent(cohortId)}/attendance`,
+  );
+}
+
+export function listInstructorCohorts() {
+  return apiFetch<CohortStudentDetail[]>("/api/v1/instructor/cohorts");
+}
+
+export function getInstructorStudents(cohortId: string) {
+  return apiFetch<InstructorStudentRow[]>(
+    `/api/v1/instructor/cohorts/${encodeURIComponent(cohortId)}/students`,
+  );
+}
+
+export function getInstructorAttendance(cohortId: string) {
+  return apiFetch<AttendanceRecord[]>(
+    `/api/v1/instructor/cohorts/${encodeURIComponent(cohortId)}/attendance`,
+  );
+}
+
+export function putInstructorAttendance(
+  cohortId: string,
+  items: { user_id: string; session_id: string; status: string; note?: string | null }[],
+) {
+  return apiFetch<AttendanceRecord[]>(
+    `/api/v1/instructor/cohorts/${encodeURIComponent(cohortId)}/attendance`,
+    { method: "PUT", body: JSON.stringify({ items }) },
+  );
+}
+
+export type AssignmentResource = {
+  title: string;
+  url: string;
+  kind: string;
+};
+
+export type AssignmentPublic = {
+  id: string;
+  cohort_id: string;
+  session_id: string | null;
+  title: string;
+  description: string;
+  instructions: string | null;
+  week_label: string;
+  due_date: string | null;
+  max_score: number;
+  passing_score: number | null;
+  required_fields: string[];
+  resources: AssignmentResource[];
+  status: string;
+};
+
+export type SubmissionPublic = {
+  id: string;
+  assignment_id: string;
+  user_id: string;
+  status: string;
+  text_response: string | null;
+  github_url: string | null;
+  live_url: string | null;
+  build_in_public_url: string | null;
+  documentation_url: string | null;
+  files: Record<string, unknown>[];
+  score: number | null;
+  feedback: string | null;
+  reviewer_name: string | null;
+  reviewed_at: string | null;
+  submitted_at: string | null;
+  updated_at: string;
+};
+
+export type AssignmentDetail = AssignmentPublic & {
+  my_submission: SubmissionPublic | null;
+};
+
+export type AssignmentTracking = AssignmentPublic & {
+  student_count: number;
+  submitted_count: number;
+  missing_count: number;
+  reviewed_count: number;
+  submissions: Array<{
+    submission: SubmissionPublic;
+    user_id: string;
+    email: string;
+    full_name: string | null;
+    enrollment_status: string;
+  }>;
+};
+
+export type SubmissionUpsertPayload = {
+  text_response?: string | null;
+  github_url?: string | null;
+  live_url?: string | null;
+  build_in_public_url?: string | null;
+  documentation_url?: string | null;
+  files?: Record<string, unknown>[];
+  status: "draft" | "submitted";
+};
+
+export type AssignmentUpsertPayload = {
+  cohort_id: string;
+  session_id?: string | null;
+  title: string;
+  description?: string;
+  instructions?: string | null;
+  week_label?: string;
+  due_date?: string | null;
+  max_score?: number;
+  passing_score?: number | null;
+  required_fields?: string[];
+  resources?: AssignmentResource[];
+  status: string;
+};
+
+export function getMyAssignments(cohortId: string) {
+  return apiFetch<AssignmentPublic[]>(`/api/v1/cohorts/${encodeURIComponent(cohortId)}/assignments`);
+}
+
+export function getAssignment(assignmentId: string) {
+  return apiFetch<AssignmentDetail>(`/api/v1/assignments/${encodeURIComponent(assignmentId)}`);
+}
+
+export function putMySubmission(assignmentId: string, payload: SubmissionUpsertPayload) {
+  return apiFetch<SubmissionPublic>(
+    `/api/v1/assignments/${encodeURIComponent(assignmentId)}/submissions/me`,
+    { method: "PUT", body: JSON.stringify(payload) },
+  );
+}
+
+export function listInstructorAssignments(cohortId: string) {
+  return apiFetch<AssignmentPublic[]>(
+    `/api/v1/instructor/cohorts/${encodeURIComponent(cohortId)}/assignments`,
+  );
+}
+
+export function createInstructorAssignment(payload: AssignmentUpsertPayload) {
+  return apiFetch<AssignmentPublic>("/api/v1/instructor/assignments", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getAssignmentTracking(assignmentId: string) {
+  return apiFetch<AssignmentTracking>(
+    `/api/v1/instructor/assignments/${encodeURIComponent(assignmentId)}/tracking`,
+  );
+}
+
+export function reviewSubmission(
+  submissionId: string,
+  payload: { score?: number | null; feedback?: string | null; status: string },
+) {
+  return apiFetch<SubmissionPublic>(
+    `/api/v1/instructor/submissions/${encodeURIComponent(submissionId)}/review`,
+    { method: "PATCH", body: JSON.stringify(payload) },
+  );
+}
+
+export type ProjectPublic = {
+  id: string;
+  cohort_id: string;
+  user_id: string;
+  title: string;
+  description: string;
+  status: string;
+  github_url: string | null;
+  live_url: string | null;
+  build_in_public_url: string | null;
+  documentation_url: string | null;
+  cover_image: string | null;
+  technologies: string[];
+  feedback: string | null;
+  reviewer_name: string | null;
+  reviewed_at: string | null;
+  is_public: boolean;
+  updated_at: string;
+};
+
+export type ProjectUpsertPayload = {
+  title: string;
+  description?: string;
+  status: string;
+  github_url?: string | null;
+  live_url?: string | null;
+  build_in_public_url?: string | null;
+  documentation_url?: string | null;
+  cover_image?: string | null;
+  technologies?: string[];
+  is_public?: boolean;
+};
+
+export type InstructorProjectRow = {
+  project: ProjectPublic;
+  user_id: string;
+  email: string;
+  full_name: string | null;
+};
+
+export type AtRiskStudentRow = {
+  user_id: string;
+  email: string;
+  full_name: string | null;
+  missed_sessions: number;
+  missing_assignments: number;
+  incomplete_projects: number;
+  at_risk: boolean;
+};
+
+export type CohortReport = {
+  cohort_id: string;
+  cohort_name: string;
+  student_count: number;
+  attendance_rate: number;
+  assignment_completion_rate: number;
+  projects_completed: number;
+  at_risk_count: number;
+  at_risk: AtRiskStudentRow[];
+};
+
+export function getMyProjects(cohortId: string) {
+  return apiFetch<ProjectPublic[]>(`/api/v1/cohorts/${encodeURIComponent(cohortId)}/projects`);
+}
+
+export function createProject(cohortId: string, payload: ProjectUpsertPayload) {
+  return apiFetch<ProjectPublic>(`/api/v1/cohorts/${encodeURIComponent(cohortId)}/projects`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateProject(projectId: string, payload: ProjectUpsertPayload) {
+  return apiFetch<ProjectPublic>(`/api/v1/projects/${encodeURIComponent(projectId)}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function listInstructorProjects(cohortId: string) {
+  return apiFetch<InstructorProjectRow[]>(
+    `/api/v1/instructor/cohorts/${encodeURIComponent(cohortId)}/projects`,
+  );
+}
+
+export function reviewProject(
+  projectId: string,
+  payload: { feedback?: string | null; status: string },
+) {
+  return apiFetch<ProjectPublic>(
+    `/api/v1/instructor/projects/${encodeURIComponent(projectId)}/review`,
+    { method: "PATCH", body: JSON.stringify(payload) },
+  );
+}
+
+export function getCohortReport(cohortId: string) {
+  return apiFetch<CohortReport>(
+    `/api/v1/instructor/cohorts/${encodeURIComponent(cohortId)}/report`,
+  );
+}
+
+export type ShowcaseProject = {
+  project: ProjectPublic;
+  full_name: string | null;
+  country_of_residence: string | null;
+};
+
+export type CertificateEligibility = {
+  cohort_id: string;
+  cohort_name: string;
+  programme_slug: string | null;
+  programme_title: string | null;
+  eligible: boolean;
+  attendance_percent: number;
+  assignments_submitted: number;
+  assignments_total: number;
+  projects_completed: number;
+  requirements: Record<string, unknown>;
+};
+
+export type PublicPortfolio = {
+  user_id: string;
+  full_name: string | null;
+  country_of_residence: string | null;
+  github_url: string | null;
+  x_url: string | null;
+  linkedin_url: string | null;
+  portfolio_url: string | null;
+  projects: ProjectPublic[];
+};
+
+export type MyPortfolio = PublicPortfolio & {
+  email: string;
+  portfolio_public: boolean;
+  public_url: string | null;
+  certificates: CertificateEligibility[];
+};
+
+export type NotificationPublic = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  link: string | null;
+  is_read: boolean;
+  created_at: string;
+};
+
+export function listShowcaseProjects() {
+  return apiFetch<ShowcaseProject[]>("/api/v1/showcase/projects", { auth: false });
+}
+
+export function getPublicPortfolio(userId: string) {
+  return apiFetch<PublicPortfolio>(`/api/v1/portfolio/${encodeURIComponent(userId)}`, {
+    auth: false,
+  });
+}
+
+export function getMyPortfolio() {
+  return apiFetch<MyPortfolio>("/api/v1/me/portfolio");
+}
+
+export function updateMyPortfolioVisibility(portfolioPublic: boolean) {
+  return apiFetch<MyPortfolio>("/api/v1/me/portfolio", {
+    method: "PATCH",
+    body: JSON.stringify({ portfolio_public: portfolioPublic }),
+  });
+}
+
+export function getMyCertificateEligibility() {
+  return apiFetch<CertificateEligibility[]>("/api/v1/me/certificate-eligibility");
+}
+
+export function getMyNotifications() {
+  return apiFetch<NotificationPublic[]>("/api/v1/me/notifications");
+}
+
+export function markNotificationsRead() {
+  return apiFetch<{ unread: number }>("/api/v1/me/notifications/read-all", { method: "POST" });
 }
 
 export type AdminUserRow = {

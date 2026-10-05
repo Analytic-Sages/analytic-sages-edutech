@@ -236,6 +236,12 @@ class ClassroomService:
             objectives=objectives,
             resources=resources,
             assignment_summary=session.assignment_summary,
+            description=session.description,
+            timezone=session.timezone or "UTC",
+            meeting_url=session.meeting_url,
+            instructor_name=(
+                session.instructor_user.full_name if session.instructor_user else None
+            ),
             starts_at=session.starts_at,
             ends_at=session.ends_at,
             status=session.status.value,
@@ -252,7 +258,10 @@ class ClassroomService:
             sessions = list(
                 self.db.scalars(
                     select(LiveSession)
-                    .options(joinedload(LiveSession.cohort).joinedload(Cohort.course))
+                    .options(
+                        joinedload(LiveSession.cohort).joinedload(Cohort.course),
+                        joinedload(LiveSession.instructor_user),
+                    )
                     .order_by(LiveSession.starts_at.asc())
                 )
                 .unique()
@@ -273,7 +282,10 @@ class ClassroomService:
             self.db.scalars(
                 select(LiveSession)
                 .where(LiveSession.cohort_id.in_(cohort_ids))
-                .options(joinedload(LiveSession.cohort).joinedload(Cohort.course))
+                .options(
+                    joinedload(LiveSession.cohort).joinedload(Cohort.course),
+                    joinedload(LiveSession.instructor_user),
+                )
                 .order_by(LiveSession.starts_at.asc())
             )
             .unique()
@@ -325,7 +337,10 @@ class ClassroomService:
         session = self.db.scalar(
             select(LiveSession)
             .where(LiveSession.id == session_id)
-            .options(joinedload(LiveSession.cohort).joinedload(Cohort.course))
+            .options(
+                joinedload(LiveSession.cohort).joinedload(Cohort.course),
+                joinedload(LiveSession.instructor_user),
+            )
         )
         if not session:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")

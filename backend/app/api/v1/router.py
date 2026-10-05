@@ -2,16 +2,20 @@ from fastapi import APIRouter
 
 from app.api.v1 import (
     admin,
+    assignments,
     auth,
     billing,
     classroom,
     contact,
     events,
+    experience,
     health,
     insights,
     instructors,
+    live,
     opportunities,
     payments,
+    projects,
     quizzes,
     rbac,
     referrals,
@@ -29,10 +33,14 @@ api_router.include_router(billing.admin_router)
 api_router.include_router(payments.router)
 api_router.include_router(classroom.router)
 api_router.include_router(classroom.internal_router)
+api_router.include_router(assignments.router)
+api_router.include_router(projects.router)
+api_router.include_router(experience.router)
 api_router.include_router(self_paced.router)
 api_router.include_router(quizzes.router)
 api_router.include_router(events.router)
 api_router.include_router(instructors.router)
+api_router.include_router(live.router)
 api_router.include_router(insights.router)
 api_router.include_router(opportunities.router)
 api_router.include_router(referrals.router)

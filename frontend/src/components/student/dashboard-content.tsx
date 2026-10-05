@@ -7,6 +7,7 @@ import { CourseCard } from "@/components/course/course-card";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { StatsCard } from "@/components/shared/stats-card";
+import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -14,10 +15,15 @@ import {
   getAccessToken,
   getMe,
   getMyEvents,
+  getMyLiveEnrollments,
+  getMyNotifications,
   listClassroomSessions,
+  markNotificationsRead,
   type AuthUser,
   type EventRegistrationPublic,
   type LiveSessionPublic,
+  type MyLiveEnrollment,
+  type NotificationPublic,
 } from "@/lib/api";
 import { fetchEnrolledCourses, type EnrolledCourseBundle } from "@/lib/enrollments";
 
@@ -41,6 +47,8 @@ export function DashboardContent() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [items, setItems] = useState<EnrolledCourseBundle[]>([]);
   const [liveSession, setLiveSession] = useState<LiveSessionPublic | null>(null);
+  const [liveProgrammes, setLiveProgrammes] = useState<MyLiveEnrollment[]>([]);
+  const [notifications, setNotifications] = useState<NotificationPublic[]>([]);
   const [eventRegs, setEventRegs] = useState<EventRegistrationPublic[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,17 +70,21 @@ export function DashboardContent() {
       }
 
       try {
-        const [me, enrolled, sessions, myEvents] = await Promise.all([
+        const [me, enrolled, sessions, myEvents, programmes, notes] = await Promise.all([
           getMe(),
           fetchEnrolledCourses(),
           listClassroomSessions().catch(() => [] as LiveSessionPublic[]),
           getMyEvents().catch(() => [] as EventRegistrationPublic[]),
+          getMyLiveEnrollments().catch(() => [] as MyLiveEnrollment[]),
+          getMyNotifications().catch(() => [] as NotificationPublic[]),
         ]);
         if (!cancelled) {
           setAuthed(true);
           setUser(me);
           setItems(enrolled);
           setEventRegs(myEvents);
+          setLiveProgrammes(programmes);
+          setNotifications(notes);
           const next =
             sessions.find((s) => s.phase === "live") ||
             sessions.find((s) => s.phase === "upcoming") ||
@@ -182,6 +194,62 @@ export function DashboardContent() {
         </Card>
       )}
 
+      {liveProgrammes.length > 0 && (
+        <section className="mb-8">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-heading text-lg font-semibold">My Live Programmes</h2>
+            <ButtonLink href="/programmes" variant="ghost" size="sm">
+              View all
+            </ButtonLink>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {liveProgrammes.map((programme) => (
+              <Card key={programme.cohort_id} className="shadow-card">
+                <CardHeader className="pb-3">
+                  <div className="mb-1 flex items-center gap-2">
+                    <Radio className="size-4 text-brand-orange" />
+                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Live
+                    </span>
+                  </div>
+                  <CardTitle className="font-heading text-lg">
+                    {programme.programme_title || programme.cohort_name}
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">{programme.cohort_name}</p>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Progress</span>
+                    <span className="font-medium">{programme.progress_percent}%</span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-brand-orange"
+                      style={{ width: `${programme.progress_percent}%` }}
+                    />
+                  </div>
+                  {programme.next_session && (
+                    <div className="rounded-md border p-3 text-sm">
+                      <p className="font-medium">Next: {programme.next_session.title}</p>
+                      <p className="mt-1 text-muted-foreground">
+                        {formatWhen(programme.next_session.starts_at)}
+                      </p>
+                    </div>
+                  )}
+                  <ButtonLink
+                    href={`/programmes/${programme.programme_slug || programme.cohort_slug}`}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    View programme
+                  </ButtonLink>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
+
       {items.length > 0 ? (
         <div className="mb-8">
           <LearningProgress items={items} />
@@ -237,6 +305,44 @@ export function DashboardContent() {
           </div>
         )}
       </section>
+
+      {notifications.length > 0 && (
+        <section className="mb-8">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-heading text-lg font-semibold">Notifications</h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async () => {
+                await markNotificationsRead().catch(() => {});
+                setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
+              }}
+            >
+              Mark all read
+            </Button>
+          </div>
+          <div className="space-y-2">
+            {notifications.slice(0, 5).map((note) => (
+              <div
+                key={note.id}
+                className={`flex items-start justify-between gap-3 rounded-md border p-3 text-sm ${
+                  note.is_read ? "bg-muted/30" : "border-brand-orange/30"
+                }`}
+              >
+                <div>
+                  <p className="font-medium">{note.title}</p>
+                  <p className="text-muted-foreground">{note.body}</p>
+                </div>
+                {note.link && (
+                  <ButtonLink href={note.link} variant="outline" size="sm">
+                    View
+                  </ButtonLink>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="mt-10">
         <div className="mb-4 flex items-center justify-between">

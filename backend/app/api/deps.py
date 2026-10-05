@@ -12,7 +12,13 @@ from app.core.roles import UserRole
 from app.core.security import SecurityService
 from app.db.session import get_db
 from app.models.user import User
+from app.services.assignments import AssignmentService
 from app.services.auth import AuthService
+from app.services.certificates import CertificateService
+from app.services.notifications import NotificationService
+from app.services.portfolio import PortfolioService
+from app.services.projects import ProjectService
+from app.services.reports import CohortReportService
 from app.services.email import EmailService
 from app.services.events import EventService
 from app.services.google_oauth import GoogleOAuthService
@@ -26,6 +32,7 @@ from app.services.course_admin import CourseAdminService
 from app.services.quiz_admin import QuizAdminService
 from app.services.quizzes import QuizService
 from app.services.instructors import InstructorService
+from app.services.live import LiveLearningService
 from app.services.payments import PaymentService
 from app.services.self_paced import SelfPacedService
 from app.services.insights import InsightService
@@ -77,6 +84,40 @@ def get_payment_service(
 
 def get_self_paced_service(db: Session = Depends(get_db)) -> SelfPacedService:
     return SelfPacedService(db)
+
+
+def get_live_learning_service(
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> LiveLearningService:
+    return LiveLearningService(db, settings)
+
+
+def get_assignment_service(db: Session = Depends(get_db)) -> AssignmentService:
+    return AssignmentService(db)
+
+
+def get_project_service(db: Session = Depends(get_db)) -> ProjectService:
+    return ProjectService(db)
+
+
+def get_report_service(db: Session = Depends(get_db)) -> CohortReportService:
+    return CohortReportService(db)
+
+
+def get_certificate_service(db: Session = Depends(get_db)) -> CertificateService:
+    return CertificateService(db)
+
+
+def get_notification_service(db: Session = Depends(get_db)) -> NotificationService:
+    return NotificationService(db)
+
+
+def get_portfolio_service(
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> PortfolioService:
+    return PortfolioService(db, settings)
 
 
 def get_insight_service(

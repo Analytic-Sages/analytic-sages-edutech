@@ -84,6 +84,12 @@ class ClassroomAdminService:
             objectives=list(session.objectives or []),
             resources=list(session.resources or []),
             assignment_summary=session.assignment_summary,
+            description=session.description,
+            timezone=session.timezone or "UTC",
+            meeting_url=session.meeting_url,
+            instructor_name=(
+                session.instructor_user.full_name if session.instructor_user else None
+            ),
             starts_at=session.starts_at,
             ends_at=session.ends_at,
             status=session.status.value,
@@ -152,6 +158,10 @@ class ClassroomAdminService:
             objectives=list(payload.objectives),
             resources=[r.model_dump() for r in payload.resources],
             assignment_summary=payload.assignment_summary,
+            description=payload.description,
+            timezone=payload.timezone or "UTC",
+            meeting_url=payload.meeting_url,
+            instructor_user_id=payload.instructor_user_id,
             starts_at=payload.starts_at,
             ends_at=payload.ends_at,
             status=LiveSessionStatus.SCHEDULED,
@@ -199,6 +209,14 @@ class ClassroomAdminService:
             ]
         if "assignment_summary" in data:
             session.assignment_summary = data["assignment_summary"]
+        if "description" in data:
+            session.description = data["description"]
+        if "timezone" in data:
+            session.timezone = data["timezone"]
+        if "meeting_url" in data:
+            session.meeting_url = data["meeting_url"]
+        if "instructor_user_id" in data:
+            session.instructor_user_id = data["instructor_user_id"]
         if "starts_at" in data:
             session.starts_at = data["starts_at"]
         if "ends_at" in data:

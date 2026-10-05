@@ -29,6 +29,13 @@ class User(Base):
     phone_country_code: Mapped[str | None] = mapped_column(String(2), nullable=True)
     phone_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     country_of_residence: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    discord_username: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    telegram_username: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    github_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    x_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    linkedin_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    portfolio_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    portfolio_public: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

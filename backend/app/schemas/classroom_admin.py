@@ -26,6 +26,10 @@ class AdminLiveSessionCreate(BaseModel):
     objectives: list[str] = Field(default_factory=list)
     resources: list[SessionResource] = Field(default_factory=list)
     assignment_summary: str | None = None
+    description: str | None = None
+    timezone: str = Field(default="UTC", max_length=64)
+    meeting_url: str | None = Field(default=None, max_length=512)
+    instructor_user_id: UUID | None = None
     starts_at: datetime
     ends_at: datetime
 
@@ -38,6 +42,10 @@ class AdminLiveSessionUpdate(BaseModel):
     objectives: list[str] | None = None
     resources: list[SessionResource] | None = None
     assignment_summary: str | None = None
+    description: str | None = None
+    timezone: str | None = Field(default=None, max_length=64)
+    meeting_url: str | None = Field(default=None, max_length=512)
+    instructor_user_id: UUID | None = None
     starts_at: datetime | None = None
     ends_at: datetime | None = None
     status: str | None = Field(default=None, pattern="^(scheduled|live|ended|cancelled)$")
@@ -58,6 +66,10 @@ class AdminLiveSessionRow(BaseModel):
     objectives: list[str] = Field(default_factory=list)
     resources: list[SessionResource] = Field(default_factory=list)
     assignment_summary: str | None = None
+    description: str | None = None
+    timezone: str = "UTC"
+    meeting_url: str | None = None
+    instructor_name: str | None = None
     starts_at: datetime
     ends_at: datetime
     status: str

@@ -1,4 +1,7 @@
 from app.models.article import Article, ArticleContributor, AuthorProfile
+from app.models.assignment import Assignment, AssignmentSubmission
+from app.models.attendance import Attendance
+from app.models.notification import Notification
 from app.models.billing import (
     BillingAuditEvent,
     PaymentObligation,
@@ -31,6 +34,8 @@ from app.models.opportunity import (
     VerificationEvent,
 )
 from app.models.payment import Payment
+from app.models.programme import Programme
+from app.models.project import Project
 from app.models.quiz import Quiz, QuizAnswer, QuizAttempt, QuizOption, QuizQuestion
 from app.models.referral import (
     PartnerLedgerEntry,
@@ -104,4 +109,10 @@ __all__ = [
     "PartnerLedgerEntry",
     "PartnerPayoutRequest",
     "ReferralAuditEvent",
+    "Programme",
+    "Attendance",
+    "Assignment",
+    "AssignmentSubmission",
+    "Project",
+    "Notification",
 ]

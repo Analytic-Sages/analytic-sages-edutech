@@ -20,6 +20,12 @@ class UserPublic(BaseModel):
     phone_country_code: str | None = None
     phone_verified: bool = False
     country_of_residence: str | None = None
+    discord_username: str | None = None
+    telegram_username: str | None = None
+    github_url: str | None = None
+    x_url: str | None = None
+    linkedin_url: str | None = None
+    portfolio_url: str | None = None
     created_at: datetime
 
 
@@ -56,6 +62,12 @@ class UpdateProfileRequest(BaseModel):
     phone_number: str | None = Field(default=None, max_length=32)
     phone_country_code: str | None = Field(default=None, max_length=2)
     country_of_residence: str | None = Field(default=None, max_length=2)
+    discord_username: str | None = Field(default=None, max_length=80)
+    telegram_username: str | None = Field(default=None, max_length=80)
+    github_url: str | None = Field(default=None, max_length=512)
+    x_url: str | None = Field(default=None, max_length=512)
+    linkedin_url: str | None = Field(default=None, max_length=512)
+    portfolio_url: str | None = Field(default=None, max_length=512)
 
     @model_validator(mode="after")
     def normalize_contact_fields(self) -> "UpdateProfileRequest":

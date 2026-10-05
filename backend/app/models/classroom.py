@@ -18,12 +18,14 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.core.live import CohortEnrollmentStatus
 from app.db.enums import pg_enum
 from app.db.session import Base
 
 if TYPE_CHECKING:
     from app.models.course import Course
     from app.models.instructor import CohortInstructor
+    from app.models.programme import Programme
     from app.models.user import User
 
 
@@ -75,6 +77,13 @@ class Cohort(Base):
     referral_commission_eligible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    programme_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("programmes.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="UTC")
+    capacity: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    community_links: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    enrollment_settings: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -86,6 +95,7 @@ class Cohort(Base):
     )
 
     course: Mapped[Course | None] = relationship()
+    programme: Mapped[Programme | None] = relationship(back_populates="cohorts")
     instructor_links: Mapped[list[CohortInstructor]] = relationship(
         back_populates="cohort",
         cascade="all, delete-orphan",
@@ -117,6 +127,14 @@ class CohortMember(Base):
         nullable=False,
         default=CohortMemberRole.STUDENT,
     )
+    enrollment_status: Mapped[CohortEnrollmentStatus] = mapped_column(
+        pg_enum(CohortEnrollmentStatus, name="cohort_enrollment_status"),
+        nullable=False,
+        default=CohortEnrollmentStatus.ACTIVE,
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    certificate_eligible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    source: Mapped[str | None] = mapped_column(String(80), nullable=True)
     joined_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -143,6 +161,12 @@ class LiveSession(Base):
     objectives: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
     resources: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, default=list)
     assignment_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="UTC")
+    meeting_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    instructor_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     status: Mapped[LiveSessionStatus] = mapped_column(
@@ -163,3 +187,4 @@ class LiveSession(Base):
     )
 
     cohort: Mapped[Cohort] = relationship(back_populates="sessions")
+    instructor_user: Mapped[User | None] = relationship(foreign_keys=[instructor_user_id])

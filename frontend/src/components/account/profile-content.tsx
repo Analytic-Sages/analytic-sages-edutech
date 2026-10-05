@@ -14,6 +14,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ApiError, getMe, updateMyProfile, type AuthUser } from "@/lib/api";
 import { displayName, initialsFor } from "@/lib/user-display";
@@ -43,6 +45,15 @@ export function ProfileContent() {
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const [discord, setDiscord] = useState("");
+  const [telegram, setTelegram] = useState("");
+  const [github, setGithub] = useState("");
+  const [xUrl, setXUrl] = useState("");
+  const [linkedin, setLinkedin] = useState("");
+  const [portfolio, setPortfolio] = useState("");
+  const [socialSaving, setSocialSaving] = useState(false);
+  const [socialMessage, setSocialMessage] = useState<string | null>(null);
+
   useEffect(() => {
     let cancelled = false;
     getMe()
@@ -52,6 +63,12 @@ export function ProfileContent() {
         setPhone(me.phone_number || "");
         setPhoneCountry((me.phone_country_code as Country | null) || "NG");
         setResidence(me.country_of_residence || "");
+        setDiscord(me.discord_username || "");
+        setTelegram(me.telegram_username || "");
+        setGithub(me.github_url || "");
+        setXUrl(me.x_url || "");
+        setLinkedin(me.linkedin_url || "");
+        setPortfolio(me.portfolio_url || "");
       })
       .catch((err) => {
         if (!cancelled) {
@@ -102,6 +119,27 @@ export function ProfileContent() {
       setSaveError(err instanceof ApiError ? err.detail : "Could not save profile");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function saveSocial() {
+    setSocialSaving(true);
+    setSocialMessage(null);
+    try {
+      const updated = await updateMyProfile({
+        discord_username: discord,
+        telegram_username: telegram,
+        github_url: github,
+        x_url: xUrl,
+        linkedin_url: linkedin,
+        portfolio_url: portfolio,
+      });
+      setUser(updated);
+      setSocialMessage("Community links saved.");
+    } catch (err) {
+      setSocialMessage(err instanceof ApiError ? err.detail : "Could not save links");
+    } finally {
+      setSocialSaving(false);
     }
   }
 
@@ -221,6 +259,47 @@ export function ProfileContent() {
             className="bg-brand-navy text-white hover:bg-brand-navy/90"
           >
             {saving ? "Saving…" : "Save contact details"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="text-lg">Community & professional links</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Kept private. Visible only to you and authorized staff.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="discord">Discord username</Label>
+              <Input id="discord" value={discord} onChange={(e) => setDiscord(e.target.value)} placeholder="name#0000" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="telegram">Telegram username</Label>
+              <Input id="telegram" value={telegram} onChange={(e) => setTelegram(e.target.value)} placeholder="@username" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="github">GitHub URL</Label>
+              <Input id="github" value={github} onChange={(e) => setGithub(e.target.value)} placeholder="https://github.com/you" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="xurl">X (Twitter) URL</Label>
+              <Input id="xurl" value={xUrl} onChange={(e) => setXUrl(e.target.value)} placeholder="https://x.com/you" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="linkedin">LinkedIn URL</Label>
+              <Input id="linkedin" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} placeholder="https://linkedin.com/in/you" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="portfolio">Portfolio URL</Label>
+              <Input id="portfolio" value={portfolio} onChange={(e) => setPortfolio(e.target.value)} placeholder="https://you.com" />
+            </div>
+          </div>
+          {socialMessage ? <p className="text-sm text-muted-foreground">{socialMessage}</p> : null}
+          <Button type="button" disabled={socialSaving} onClick={saveSocial} variant="outline">
+            {socialSaving ? "Saving…" : "Save links"}
           </Button>
         </CardContent>
       </Card>

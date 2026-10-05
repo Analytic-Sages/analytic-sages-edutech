@@ -25,6 +25,7 @@ export type NavItem = {
 export const marketingNav = [
   { title: "Our Programs", href: "/programs" },
   { title: "Events", href: "/events" },
+  { title: "Student Projects", href: "/showcase" },
   { title: "Opportunities", href: "/opportunities" },
   { title: "Community", href: "/community" },
   { title: "Insights", href: "/insights" },
@@ -34,6 +35,7 @@ export const marketingNav = [
 
 export const studentNav: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: "dashboard" },
+  { title: "Live Programmes", href: "/programmes", icon: "classroom" },
   { title: "Classroom", href: "/classroom", icon: "classroom" },
   { title: "My Courses", href: "/my-courses", icon: "courses" },
   { title: "Billing", href: "/dashboard/billing", icon: "payments" },
@@ -42,6 +44,7 @@ export const studentNav: NavItem[] = [
   { title: "Saved", href: "/my-opportunities", icon: "opportunities" },
   { title: "Explore", href: "/explore", icon: "explore" },
   { title: "Certificates", href: "/certificates", icon: "certificates" },
+  { title: "Portfolio", href: "/portfolio", icon: "courses" },
 ];
 
 export const adminNav: NavItem[] = [

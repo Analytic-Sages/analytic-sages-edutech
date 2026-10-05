@@ -476,6 +476,22 @@ class AuthService:
         if "country_of_residence" in data:
             user.country_of_residence = payload.country_of_residence
 
+        for field in (
+            "discord_username",
+            "telegram_username",
+            "github_url",
+            "x_url",
+            "linkedin_url",
+            "portfolio_url",
+        ):
+            if field in data:
+                value = data[field]
+                setattr(
+                    user,
+                    field,
+                    value.strip() if isinstance(value, str) and value.strip() else None,
+                )
+
         self.db.add(user)
         self.db.commit()
         self.db.refresh(user)

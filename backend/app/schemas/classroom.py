@@ -28,6 +28,10 @@ class LiveSessionPublic(BaseModel):
     objectives: list[str] = Field(default_factory=list)
     resources: list[SessionResource] = Field(default_factory=list)
     assignment_summary: str | None = None
+    description: str | None = None
+    timezone: str = "UTC"
+    meeting_url: str | None = None
+    instructor_name: str | None = None
     starts_at: datetime
     ends_at: datetime
     status: Literal["scheduled", "live", "ended", "cancelled"]

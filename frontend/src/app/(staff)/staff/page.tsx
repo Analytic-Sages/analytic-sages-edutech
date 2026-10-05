@@ -1,10 +1,10 @@
-import { ClassroomScheduleContent } from "@/components/classroom/classroom-schedule-content";
+import { InstructorDashboardContent } from "@/components/classroom/instructor-dashboard-content";
 
 export const metadata = {
-  title: "Staff classroom",
-  description: "Join Cohort 9 live sessions as Analytic Sages staff.",
+  title: "Instructor dashboard",
+  description: "Manage your assigned cohorts, students, sessions and attendance.",
 };
 
 export default function StaffClassroomPage() {
-  return <ClassroomScheduleContent audience="staff" />;
+  return <InstructorDashboardContent />;
 }
