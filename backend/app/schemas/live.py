@@ -78,6 +78,7 @@ class MyLiveEnrollmentPublic(BaseModel):
     attendance_attended: int = 0
     attendance_total: int = 0
     next_session: LiveSessionPublic | None = None
+    is_preview: bool = False
 
 
 class CohortStudentDetailPublic(BaseModel):
@@ -95,6 +96,7 @@ class CohortStudentDetailPublic(BaseModel):
     progress_percent: int = 0
     attendance: AttendanceSummaryPublic = Field(default_factory=AttendanceSummaryPublic)
     sessions: list[LiveSessionPublic] = Field(default_factory=list)
+    is_preview: bool = False
 
 
 class AttendanceWriteItem(BaseModel):

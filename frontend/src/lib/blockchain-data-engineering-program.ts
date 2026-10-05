@@ -126,7 +126,7 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
   applyLabel: "Join the Next Cohort",
   registrationLive: true,
   tuitionSummary: "Pay in full or in installments. Choose at checkout.",
-  programSignal: "5 Modules · 10 Weeks · 30 Sessions · Learn by Building",
+  programSignal: "5 Modules · 10 Weeks · 20 Live Sessions + Weekly Office Hours · Learn by Building",
   learningMode: "Project-Based Learning",
   problemTitle: "Blockchain Data Is Growing. So Is the Need for Infrastructure.",
   problemSupport:
@@ -247,7 +247,7 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
     "Deploying practical data products to the cloud",
   ],
   curriculumPreviewTitle: "Your 10-Week Learning Journey",
-  curriculumPreviewClose: "30 Practical Sessions. One Connected Engineering Journey.",
+  curriculumPreviewClose: "20 Live Sessions + Weekly Office Hours. One Connected Engineering Journey.",
   curriculumPreview: [
     { range: "Module 1", title: "Blockchain & Data Engineering Foundations" },
     { range: "Module 2", title: "Blockchain Data Extraction & Pipeline Engineering" },
@@ -304,7 +304,7 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
     {
       question: "How is this programme taught?",
       answer:
-        "It is Project-Based Learning: live instructor-led sessions, hands-on builds, debugging, reviews and progressive projects across 5 modules, 10 weeks and 30 sessions.",
+        "It is Project-Based Learning: live instructor-led sessions, hands-on builds, debugging, reviews and progressive projects across 5 modules and 10 weeks. Live teaching sessions run on Monday and Wednesday, with a Friday office hour for Q&A and debugging each week.",
     },
     {
       question: "How long is the programme?",
@@ -318,11 +318,11 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
     },
   ],
   curriculum: {
-    seoTitle: "Blockchain Data Engineering Curriculum | 5 Modules, 30 Sessions",
+    seoTitle: "Blockchain Data Engineering Curriculum | 5 Modules, 20 Live Sessions",
     seoDescription:
       "Full Blockchain Data Engineering curriculum from Analytic Sages' global programme: Web3.py extraction, PostgreSQL warehousing, dbt, Prefect, Airflow, Kafka, FastAPI and cloud deployment across 10 weeks.",
     intro:
-      "Learn Blockchain Data Engineering by building real onchain data systems. Project-Based Learning across 5 modules, 10 weeks and 30 sessions - from blockchain RPCs to cloud deployment.",
+      "Learn Blockchain Data Engineering by building real onchain data systems. Project-Based Learning across 5 modules, 10 weeks, 20 live teaching sessions and a weekly office hour - from blockchain RPCs to cloud deployment.",
     modules: [
       {
         number: "01",
@@ -404,16 +404,11 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
         sessions: [
           {
             number: 1,
-            title: "Programme orientation & systems thinking",
-            summary: "Map the full path from chain data to product and set programme expectations.",
+            title: "Programme orientation & systems thinking · Python & SQL for data engineers",
+            summary: "Map the full path from chain data to product and set programme expectations. Practical language foundations used throughout the cohort.",
           },
           {
             number: 2,
-            title: "Python & SQL for data engineers",
-            summary: "Practical language foundations used throughout the cohort.",
-          },
-          {
-            number: 3,
             title: "Docker fundamentals for data work",
             summary: "Containerise a simple service and understand why reproducibility matters.",
           },
@@ -437,17 +432,12 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
         project: "Raw extraction service for a chosen contract or token set.",
         sessions: [
           {
+            number: 3,
+            title: "Web3.py & RPC access patterns · Transactions, receipts and event logs",
+            summary: "Connect, request and handle blockchain node responses. Understand the data shapes you will extract and store.",
+          },
+          {
             number: 4,
-            title: "Web3.py & RPC access patterns",
-            summary: "Connect, request and handle blockchain node responses.",
-          },
-          {
-            number: 5,
-            title: "Transactions, receipts and event logs",
-            summary: "Understand the data shapes you will extract and store.",
-          },
-          {
-            number: 6,
             title: "Building your first extraction job",
             summary: "Ship a working job that pulls and stores raw onchain data.",
           },
@@ -470,17 +460,12 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
         ],
         sessions: [
           {
-            number: 7,
-            title: "Pipeline architecture for onchain data",
-            summary: "Break work into dependable stages instead of one-off scripts.",
+            number: 5,
+            title: "Pipeline architecture for onchain data · Docker Compose for data services",
+            summary: "Break work into dependable stages instead of one-off scripts. Coordinate application and database containers locally.",
           },
           {
-            number: 8,
-            title: "Docker Compose for data services",
-            summary: "Coordinate application and database containers locally.",
-          },
-          {
-            number: 9,
+            number: 6,
             title: "Validation, idempotency and load",
             summary: "Make ingestion safer to re-run and easier to debug.",
           },
@@ -504,17 +489,12 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
         project: "Structured warehouse schema for extracted blockchain activity.",
         sessions: [
           {
-            number: 10,
-            title: "Warehouse thinking for blockchain data",
-            summary: "Move from dumping JSON to designing durable tables.",
+            number: 7,
+            title: "Warehouse thinking for blockchain data · Schema design for transfers & events",
+            summary: "Move from dumping JSON to designing durable tables. Normalize addresses, tokens and transfer facts.",
           },
           {
-            number: 11,
-            title: "Schema design for transfers & events",
-            summary: "Normalize addresses, tokens and transfer facts.",
-          },
-          {
-            number: 12,
+            number: 8,
             title: "Indexing and query performance basics",
             summary: "Keep analytical queries usable as volume grows.",
           },
@@ -537,17 +517,12 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
         ],
         sessions: [
           {
-            number: 13,
-            title: "dbt project structure",
-            summary: "Sources, models and the path from raw to marts.",
+            number: 9,
+            title: "dbt project structure · Staging models for blockchain tables",
+            summary: "Sources, models and the path from raw to marts. Clean and standardize fields before business logic.",
           },
           {
-            number: 14,
-            title: "Staging models for blockchain tables",
-            summary: "Clean and standardize fields before business logic.",
-          },
-          {
-            number: 15,
+            number: 10,
             title: "Testing and documenting models",
             summary: "Make transformations trustworthy and shareable.",
           },
@@ -571,17 +546,12 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
         project: "Analytics-ready protocol dataset from your warehouse.",
         sessions: [
           {
-            number: 16,
-            title: "Normalization patterns for onchain data",
-            summary: "Reduce duplication and inconsistency across entities.",
+            number: 11,
+            title: "Normalization patterns for onchain data · Protocol analytics datasets",
+            summary: "Reduce duplication and inconsistency across entities. Shape tables that analysts and apps can actually use.",
           },
           {
-            number: 17,
-            title: "Protocol analytics datasets",
-            summary: "Shape tables that analysts and apps can actually use.",
-          },
-          {
-            number: 18,
+            number: 12,
             title: "Review: transformation quality",
             summary: "Critique models, tests and documentation as a cohort.",
           },
@@ -604,17 +574,12 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
         ],
         sessions: [
           {
-            number: 19,
-            title: "Why orchestration matters",
-            summary: "From manual scripts to dependable scheduled systems.",
+            number: 13,
+            title: "Why orchestration matters · Prefect for practical workflows",
+            summary: "From manual scripts to dependable scheduled systems. Compose flows that match your existing pipeline stages.",
           },
           {
-            number: 20,
-            title: "Prefect for practical workflows",
-            summary: "Compose flows that match your existing pipeline stages.",
-          },
-          {
-            number: 21,
+            number: 14,
             title: "Apache Airflow DAGs",
             summary: "Model dependencies and schedules with industry-standard tooling.",
           },
@@ -638,17 +603,12 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
         project: "Data API over your analytics-ready tables.",
         sessions: [
           {
-            number: 22,
-            title: "Batch vs streaming for onchain systems",
-            summary: "Choose the right pattern for latency and reliability.",
+            number: 15,
+            title: "Batch vs streaming for onchain systems · Apache Kafka fundamentals",
+            summary: "Choose the right pattern for latency and reliability. Topics, producers, consumers and where they fit your stack.",
           },
           {
-            number: 23,
-            title: "Apache Kafka fundamentals",
-            summary: "Topics, producers, consumers and where they fit your stack.",
-          },
-          {
-            number: 24,
+            number: 16,
             title: "Building blockchain data APIs with FastAPI",
             summary: "Turn infrastructure into a service applications can call.",
           },
@@ -672,17 +632,12 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
         project: "Deployed service (pipeline worker, API, or both).",
         sessions: [
           {
-            number: 25,
-            title: "Cloud options for data products",
-            summary: "Compare AWS, GCP, Railway and Render for cohort projects.",
+            number: 17,
+            title: "Cloud options for data products · Deploying containerised services",
+            summary: "Compare AWS, GCP, Railway and Render for cohort projects. Ship a working service with environment configuration.",
           },
           {
-            number: 26,
-            title: "Deploying containerised services",
-            summary: "Ship a working service with environment configuration.",
-          },
-          {
-            number: 27,
+            number: 18,
             title: "Observability & operational basics",
             summary: "Logs, health checks and what to watch after deploy.",
           },
@@ -706,17 +661,12 @@ export const blockchainDataEngineeringProgram: EngineeringProgramPageContent = {
         project: "End-to-end Blockchain Data Engineering capstone.",
         sessions: [
           {
-            number: 28,
-            title: "Capstone architecture clinic",
-            summary: "Pressure-test designs before the final build push.",
+            number: 19,
+            title: "Capstone architecture clinic · Build & integration lab",
+            summary: "Pressure-test designs before the final build push. Connect remaining pieces and resolve production issues.",
           },
           {
-            number: 29,
-            title: "Build & integration lab",
-            summary: "Connect remaining pieces and resolve production issues.",
-          },
-          {
-            number: 30,
+            number: 20,
             title: "Demo day & portfolio packaging",
             summary: "Present what you built and how the system fits together.",
           },

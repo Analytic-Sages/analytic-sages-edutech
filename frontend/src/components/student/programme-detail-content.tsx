@@ -107,10 +107,17 @@ export function ProgrammeDetailContent({ slug }: { slug: string }) {
         <PageHeader title={cohort.programme?.title || cohort.name} description={cohort.name} />
         <div className="mb-6 flex flex-wrap items-center gap-2">
           <Badge className="capitalize">{cohort.status}</Badge>
+          {cohort.is_preview && <Badge variant="outline">Preview</Badge>}
           <span className="text-sm text-muted-foreground">
             {formatWhen(cohort.starts_at)} → {formatWhen(cohort.ends_at)}
           </span>
         </div>
+        {cohort.is_preview && (
+          <p className="mb-6 rounded-md border border-muted bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+            You are viewing this programme as a staff preview (read-only) — this is what an enrolled
+            student sees.
+          </p>
+        )}
 
         <div className="mb-8 grid gap-4 sm:grid-cols-3">
           <Card className="shadow-card">
@@ -203,22 +210,35 @@ export function ProgrammeDetailContent({ slug }: { slug: string }) {
                       {formatWhen(session.starts_at)}
                     </p>
                   </div>
-                  {session.access_blocked ? (
-                    <span className="rounded-md bg-destructive/10 px-2 py-1 text-xs text-destructive">
-                      Payment required
-                    </span>
-                  ) : session.can_join ? (
-                    <ButtonLink
-                      href={`/classroom/${session.id}`}
-                      className="bg-brand-orange text-white hover:bg-brand-orange/90"
-                    >
-                      Join
-                    </ButtonLink>
-                  ) : (
-                    <ButtonLink href={`/classroom/${session.id}`} variant="outline">
-                      View
-                    </ButtonLink>
-                  )}
+                  <div className="flex shrink-0 flex-col items-end gap-2">
+                    {session.access_blocked ? (
+                      <span className="rounded-md bg-destructive/10 px-2 py-1 text-xs text-destructive">
+                        Payment required
+                      </span>
+                    ) : session.can_join ? (
+                      <ButtonLink
+                        href={`/classroom/${session.id}`}
+                        className="bg-brand-orange text-white hover:bg-brand-orange/90"
+                      >
+                        Join
+                      </ButtonLink>
+                    ) : (
+                      <ButtonLink href={`/classroom/${session.id}`} variant="outline">
+                        View
+                      </ButtonLink>
+                    )}
+                    {session.recording_url && (
+                      <a
+                        href={session.recording_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-sm text-brand-orange hover:underline"
+                      >
+                        Watch recording
+                        <ExternalLink className="size-3" />
+                      </a>
+                    )}
+                  </div>
                 </CardHeader>
                 {session.resources.length > 0 && (
                   <CardContent className="pt-0">

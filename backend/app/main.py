@@ -110,7 +110,7 @@ async def lifespan(_app: FastAPI):
         logger.info("Featured catalog content, Insights articles, and opportunity taxonomy are ready.")
 
         # Deploys never run the seed scripts, so guarantee the canonical live
-        # training schedule is complete (30 teaching sessions + 10 office hours).
+        # training schedule is complete (20 teaching sessions + 10 office hours).
         schedule = ensure_bde_classroom(db)
         if schedule:
             logger.warning(

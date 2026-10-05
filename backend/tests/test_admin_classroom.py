@@ -96,7 +96,7 @@ def test_cohort_options_list_includes_featured_cohort():
 
 
 def test_internal_sync_schedule_is_token_protected_and_idempotent(monkeypatch):
-    """Ops hook that guarantees the complete 40-session BDE schedule in any env."""
+    """Ops hook that guarantees the complete 30-session BDE schedule in any env."""
     settings = get_settings()
     monkeypatch.setattr(settings, "classroom_sync_token", "classroom-token")
     monkeypatch.setattr(settings, "opportunity_sync_token", None)
@@ -113,8 +113,8 @@ def test_internal_sync_schedule_is_token_protected_and_idempotent(monkeypatch):
     response = client.post(url, headers={"X-Classroom-Sync-Token": "classroom-token"})
     assert response.status_code == 200, response.text
     body = response.json()
-    assert body["total"] == 40
-    assert body["created"] + body["updated"] == 40
+    assert body["total"] == 30
+    assert body["created"] + body["updated"] == 30
 
 
 def test_internal_sync_schedule_disabled_when_no_token(monkeypatch):
@@ -129,12 +129,12 @@ def test_internal_sync_schedule_disabled_when_no_token(monkeypatch):
 
 
 def test_ensure_bde_classroom_tops_up_legacy_placeholder_schedule():
-    """A deploy left on the old 2-session placeholder must be repaired to all 40."""
+    """A deploy left on the old 2-session placeholder must be repaired to all 30."""
     db = SessionLocal()
     try:
         seed_bde_classroom(db)
         cohort = db.scalar(select(Cohort).where(Cohort.slug == BDE_COHORT_SLUG))
-        assert len(bde_session_schedule()) == 40
+        assert len(bde_session_schedule()) == 30
 
         # Complete schedule → the guard is a no-op (never rewrites a good plan).
         assert ensure_bde_classroom(db) is None
@@ -149,17 +149,57 @@ def test_ensure_bde_classroom_tops_up_legacy_placeholder_schedule():
 
         summary = ensure_bde_classroom(db)
         assert summary is not None
-        assert summary["total"] == 40
+        assert summary["total"] == 30
 
         remaining = list(
             db.scalars(select(LiveSession).where(LiveSession.cohort_id == cohort.id)).all()
         )
-        assert len(remaining) == 40
+        assert len(remaining) == 30
         # Ordered from the programme start date (Mon 5 Oct 2026, 18:00 WAT).
         earliest = min(s.starts_at for s in remaining)
         assert earliest.date().isoformat() == "2026-10-05"
     finally:
         seed_bde_classroom(db)
+        db.close()
+
+
+def test_ensure_bde_classroom_migrates_retired_three_day_layout():
+    """A cohort on the old Mon/Tue/Wed plan is re-provisioned to the Mon/Wed plan."""
+    db = SessionLocal()
+    try:
+        seed_bde_classroom(db)
+        cohort = db.scalar(select(Cohort).where(Cohort.slug == BDE_COHORT_SLUG))
+        # Simulate the retired layout: add a Tuesday teaching session.
+        tuesday = min(
+            (s for s in bde_session_schedule()),
+            key=lambda s: s.starts_at,
+        )
+        tuesday_session = LiveSession(
+            id=uuid.uuid4(),
+            cohort_id=cohort.id,
+            title="Retired Tuesday session",
+            week_label="Week 1",
+            session_number=99,
+            session_type=tuesday.session_type,
+            starts_at=tuesday.starts_at + timedelta(days=1),
+            ends_at=tuesday.ends_at + timedelta(days=1),
+        )
+        db.add(tuesday_session)
+        db.commit()
+
+        summary = ensure_bde_classroom(db)
+        assert summary is not None
+        assert summary["total"] == 30
+
+        remaining = list(
+            db.scalars(select(LiveSession).where(LiveSession.cohort_id == cohort.id)).all()
+        )
+        assert len(remaining) == 30
+        assert all(s.title != "Retired Tuesday session" for s in remaining)
+
+        # A now-canonical schedule is left untouched.
+        assert ensure_bde_classroom(db) is None
+    finally:
         db.close()
 
 

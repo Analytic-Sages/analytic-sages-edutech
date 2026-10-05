@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarPlus, Loader2, Pencil, Trash2, XCircle } from "lucide-react";
+import { CalendarPlus, ExternalLink, Loader2, Pencil, Trash2, XCircle } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Badge } from "@/components/ui/badge";
@@ -336,6 +336,7 @@ export function AdminClassroomContent() {
                 <TableHead>Cohort</TableHead>
                 <TableHead>When</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Recording</TableHead>
                 <TableHead>Seats</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -358,6 +359,20 @@ export function AdminClassroomContent() {
                   </TableCell>
                   <TableCell>
                     <Badge className={phaseClass(row.phase)}>{row.phase}</Badge>
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {row.recording_url ? (
+                      <a
+                        href={row.recording_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-brand-orange hover:underline"
+                      >
+                        Recording <ExternalLink className="size-3" />
+                      </a>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{row.member_count}</TableCell>
                   <TableCell>

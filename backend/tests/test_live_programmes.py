@@ -174,6 +174,32 @@ def test_student_cannot_access_another_cohort():
     _cleanup()
 
 
+def test_admin_previews_cohorts_as_student_view():
+    _cleanup()
+    _seed()
+    admin = _make_user("live-test-admin", UserRole.ADMIN)
+    db = SessionLocal()
+    try:
+        cohort = db.scalar(select(Cohort).where(Cohort.slug == COHORT_SLUG))
+        cohort_id = str(cohort.id)
+    finally:
+        db.close()
+
+    mine = client.get("/api/v1/me/live", headers=_auth(admin))
+    assert mine.status_code == 200
+    rows = mine.json()
+    assert any(row["cohort_slug"] == COHORT_SLUG and row["is_preview"] is True for row in rows)
+    assert rows[0]["enrollment_status"] == "preview"
+
+    detail = client.get(f"/api/v1/cohorts/{cohort_id}", headers=_auth(admin))
+    assert detail.status_code == 200
+    body = detail.json()
+    assert body["is_preview"] is True
+    assert len(body["sessions"]) >= 1
+
+    _cleanup()
+
+
 def test_instructor_records_attendance_and_is_scoped():
     _cleanup()
     _seed()

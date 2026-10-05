@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Seed / refresh the Blockchain Data Engineering cohort and its full schedule.
 
-Creates the cohort plus the canonical 40-session plan (30 teaching sessions on
-Mon/Tue/Wed + 10 Friday office hours) used by the Live Classroom.
+Creates the cohort plus the canonical 30-session plan (20 teaching sessions on
+Mon/Wed + 10 Friday office hours) used by the Live Classroom.
 
 Usage (from backend/):
   python scripts/seed_blockchain_data_engineering.py

@@ -132,6 +132,10 @@ class LiveLearningService:
         if not member or member.role not in {CohortMemberRole.INSTRUCTOR, CohortMemberRole.TA}:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not an instructor for this cohort")
 
+    def _is_staff_preview(self, user: User) -> bool:
+        """Admins/ops can browse any cohort's student view as a read-only preview."""
+        return user.role in {UserRole.ADMIN, UserRole.OPERATIONS}
+
     # ---------- public / student ----------
 
     def list_programmes(self) -> list[ProgrammePublic]:
@@ -159,6 +163,9 @@ class LiveLearningService:
         )
 
     def my_live_enrollments(self, user: User) -> list[MyLiveEnrollmentPublic]:
+        if self._is_staff_preview(user):
+            return self._preview_enrollments(user)
+
         memberships = list(
             self.db.scalars(
                 select(CohortMember)
@@ -199,7 +206,51 @@ class LiveLearningService:
             )
         return results
 
+    def _preview_enrollments(self, user: User) -> list[MyLiveEnrollmentPublic]:
+        """All open/active cohorts for admin/ops, flagged as read-only previews."""
+        cohorts = list(
+            self.db.scalars(
+                select(Cohort)
+                .options(selectinload(Cohort.programme))
+                .where(Cohort.status.in_([CohortStatus.OPEN, CohortStatus.ACTIVE]))
+                .order_by(Cohort.starts_at.asc().nulls_last())
+            )
+            .unique()
+            .all()
+        )
+        results: list[MyLiveEnrollmentPublic] = []
+        for cohort in cohorts:
+            sessions = self._sessions(cohort.id)
+            next_session = self._next_session(sessions)
+            results.append(
+                MyLiveEnrollmentPublic(
+                    programme_id=cohort.programme.id if cohort.programme else None,
+                    programme_slug=cohort.programme.slug if cohort.programme else None,
+                    programme_title=cohort.programme.title if cohort.programme else None,
+                    cohort_id=cohort.id,
+                    cohort_name=cohort.name,
+                    cohort_slug=cohort.slug,
+                    enrollment_status="preview",
+                    starts_at=cohort.starts_at,
+                    ends_at=cohort.ends_at,
+                    timezone=cohort.timezone or "UTC",
+                    progress_percent=0,
+                    attendance_attended=0,
+                    attendance_total=len(sessions),
+                    next_session=self.classroom._to_public(
+                        next_session, member=None, staff=False, user=user
+                    )
+                    if next_session
+                    else None,
+                    is_preview=True,
+                )
+            )
+        return results
+
     def get_cohort_for_student(self, user: User, cohort_id: UUID) -> CohortStudentDetailPublic:
+        if self._is_staff_preview(user):
+            return self._preview_cohort(user, cohort_id)
+
         member = self._require_student_enrollment(user, cohort_id)
         cohort = self._get_cohort(cohort_id)
         sessions = self._sessions(cohort_id)
@@ -219,6 +270,28 @@ class LiveLearningService:
             progress_percent=self._progress_percent(user.id, cohort_id),
             attendance=attendance,
             sessions=[self.classroom._to_public(s, member=member, staff=False, user=user) for s in sessions],
+        )
+
+    def _preview_cohort(self, user: User, cohort_id: UUID) -> CohortStudentDetailPublic:
+        """Read-only student-view preview for admins/ops (no enrollment required)."""
+        cohort = self._get_cohort(cohort_id)
+        sessions = self._sessions(cohort_id)
+        return CohortStudentDetailPublic(
+            id=cohort.id,
+            name=cohort.name,
+            slug=cohort.slug,
+            description=cohort.description or "",
+            status=cohort.status.value,
+            starts_at=cohort.starts_at,
+            ends_at=cohort.ends_at,
+            timezone=cohort.timezone or "UTC",
+            capacity=cohort.capacity,
+            community_links=cohort.community_links or {},
+            programme=ProgrammePublic.model_validate(cohort.programme) if cohort.programme else None,
+            progress_percent=0,
+            attendance=AttendanceSummaryPublic(),
+            sessions=[self.classroom._to_public(s, member=None, staff=False, user=user) for s in sessions],
+            is_preview=True,
         )
 
     def my_attendance(self, user: User, cohort_id: UUID) -> list[AttendanceRecordPublic]:

@@ -75,7 +75,9 @@ export function ProgrammesContent() {
             {mine.map((programme) => (
               <Card key={programme.cohort_id} className="shadow-card">
                 <CardHeader className="pb-3">
-                  <Badge className="mb-2 w-fit capitalize">{programme.enrollment_status}</Badge>
+                  <Badge className="mb-2 w-fit capitalize" variant={programme.is_preview ? "outline" : "default"}>
+                    {programme.is_preview ? "Preview" : programme.enrollment_status}
+                  </Badge>
                   <CardTitle className="font-heading text-lg">
                     {programme.programme_title || programme.cohort_name}
                   </CardTitle>

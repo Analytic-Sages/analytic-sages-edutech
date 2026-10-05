@@ -221,3 +221,39 @@ def test_unassigned_instructor_is_denied():
     _cleanup()
 
     _cleanup()
+
+
+def test_admin_previews_cohort_assignments_without_enrollment():
+    _cleanup()
+    cohort_id_uuid, _ = _seed()
+    cohort_id = str(cohort_id_uuid)
+    instructor = _make_user("assign-test-instructor", UserRole.INSTRUCTOR)
+    admin = _make_user("assign-test-admin", UserRole.ADMIN)
+    db = SessionLocal()
+    try:
+        db.add(
+            CohortMember(
+                cohort_id=cohort_id_uuid, user_id=instructor.id, role=CohortMemberRole.INSTRUCTOR
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    created = client.post(
+        "/api/v1/instructor/assignments",
+        headers=_auth(instructor),
+        json={"cohort_id": cohort_id, "title": "Preview me", "status": "published"},
+    )
+    assert created.status_code == 201
+    assignment_id = created.json()["id"]
+
+    # Admin has no enrollment but can still read the student assignment view.
+    listed = client.get(f"/api/v1/cohorts/{cohort_id}/assignments", headers=_auth(admin))
+    assert listed.status_code == 200
+    assert listed.json()[0]["id"] == assignment_id
+
+    detail = client.get(f"/api/v1/assignments/{assignment_id}", headers=_auth(admin))
+    assert detail.status_code == 200
+    assert detail.json()["my_submission"] is None
+    _cleanup()

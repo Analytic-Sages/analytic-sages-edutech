@@ -17,27 +17,27 @@ from app.services.seed_bde_classroom import (
 )
 
 
-def test_schedule_has_30_teaching_sessions_and_10_office_hours():
+def test_schedule_has_20_teaching_sessions_and_10_office_hours():
     schedule = bde_session_schedule()
     counts = Counter(item.session_type for item in schedule)
-    assert counts[LiveSessionType.TEACHING] == TOTAL_TEACHING_SESSIONS == 30
+    assert counts[LiveSessionType.TEACHING] == TOTAL_TEACHING_SESSIONS == 20
     assert counts[LiveSessionType.OFFICE_HOUR] == TOTAL_WEEKS == 10
-    assert len(schedule) == 40
+    assert len(schedule) == 30
 
 
-def test_teaching_numbers_are_unique_one_to_thirty():
+def test_teaching_numbers_are_unique_one_to_twenty():
     teaching = [s for s in bde_session_schedule() if s.session_type is LiveSessionType.TEACHING]
-    assert sorted(s.session_number for s in teaching) == list(range(1, 31))
-    assert len({s.starts_at for s in teaching}) == 30
+    assert sorted(s.session_number for s in teaching) == list(range(1, 21))
+    assert len({s.starts_at for s in teaching}) == 20
 
 
-def test_teaching_days_are_monday_tuesday_wednesday():
+def test_teaching_days_are_monday_and_wednesday():
     teaching = [s for s in bde_session_schedule() if s.session_type is LiveSessionType.TEACHING]
     weekdays = {s.starts_at.astimezone(WAT).weekday() for s in teaching}
-    assert weekdays == {0, 1, 2}
+    assert weekdays == {0, 2}
     for week_index in range(TOTAL_WEEKS):
         chunk = teaching[week_index * SESSIONS_PER_WEEK : (week_index + 1) * SESSIONS_PER_WEEK]
-        assert [s.starts_at.astimezone(WAT).weekday() for s in chunk] == [0, 1, 2]
+        assert [s.starts_at.astimezone(WAT).weekday() for s in chunk] == [0, 2]
 
 
 def test_office_hours_are_fridays():

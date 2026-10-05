@@ -61,6 +61,10 @@ class AssignmentService:
         if not member or member.role != CohortMemberRole.STUDENT:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enrolled in this cohort")
 
+    def _is_preview_staff(self, user: User) -> bool:
+        """Admins/ops may read a cohort's student view (assignments, detail) read-only."""
+        return user.role in {UserRole.ADMIN, UserRole.OPERATIONS}
+
     def _submission_public(self, sub: AssignmentSubmission) -> SubmissionPublic:
         return SubmissionPublic(
             id=sub.id,
@@ -87,7 +91,8 @@ class AssignmentService:
     # ---------- student ----------
 
     def list_assignments(self, user: User, cohort_id: UUID) -> list[AssignmentPublic]:
-        self._require_student_enrollment(user, cohort_id)
+        if not self._is_preview_staff(user):
+            self._require_student_enrollment(user, cohort_id)
         rows = list(
             self.db.scalars(
                 select(Assignment)
@@ -102,7 +107,8 @@ class AssignmentService:
 
     def get_assignment(self, user: User, assignment_id: UUID) -> AssignmentDetailPublic:
         assignment = self._get_assignment(assignment_id)
-        self._require_student_enrollment(user, assignment.cohort_id)
+        if not self._is_preview_staff(user):
+            self._require_student_enrollment(user, assignment.cohort_id)
         sub = self.db.scalar(
             select(AssignmentSubmission).where(
                 AssignmentSubmission.assignment_id == assignment_id,

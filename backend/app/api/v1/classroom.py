@@ -154,8 +154,8 @@ def internal_sync_classroom_schedule(
 ) -> dict[str, int]:
     """Cron/ops hook: re-provision the canonical classroom schedule for every cohort.
 
-    Idempotent — it creates/updates the 40-session Blockchain Data Engineering plan
-    (30 teaching sessions Mon/Tue/Wed + 10 Friday office hours) and collapses any
+    Idempotent — it creates/updates the 30-session Blockchain Data Engineering plan
+    (20 teaching sessions Mon/Wed + 10 Friday office hours) and collapses any
     stale placeholder rows, so a deployment can guarantee the *complete* schedule
     exists without running a seed script by hand.
 

@@ -1814,6 +1814,7 @@ export type MyLiveEnrollment = {
   attendance_attended: number;
   attendance_total: number;
   next_session: LiveSessionPublic | null;
+  is_preview?: boolean;
 };
 
 export type CohortStudentDetail = {
@@ -1831,6 +1832,7 @@ export type CohortStudentDetail = {
   progress_percent: number;
   attendance: AttendanceSummary;
   sessions: LiveSessionPublic[];
+  is_preview?: boolean;
 };
 
 export type InstructorStudentRow = {
@@ -2004,6 +2006,16 @@ export function createInstructorAssignment(payload: AssignmentUpsertPayload) {
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export function updateInstructorAssignment(
+  assignmentId: string,
+  payload: AssignmentUpsertPayload,
+) {
+  return apiFetch<AssignmentPublic>(
+    `/api/v1/instructor/assignments/${encodeURIComponent(assignmentId)}`,
+    { method: "PATCH", body: JSON.stringify(payload) },
+  );
 }
 
 export function getAssignmentTracking(assignmentId: string) {

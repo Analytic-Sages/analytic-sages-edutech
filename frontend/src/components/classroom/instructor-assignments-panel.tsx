@@ -1,20 +1,63 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ExternalLink, Loader2 } from "lucide-react";
+import { ExternalLink, Loader2, Pencil, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   ApiError,
+  createInstructorAssignment,
   getAssignmentTracking,
   listInstructorAssignments,
   reviewSubmission,
+  updateInstructorAssignment,
   type AssignmentPublic,
   type AssignmentTracking,
+  type AssignmentUpsertPayload,
 } from "@/lib/api";
+
+const field = "h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm";
+
+function toLocalInput(iso: string | null): string {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
+    date.getHours()
+  )}:${pad(date.getMinutes())}`;
+}
+
+type FormState = {
+  title: string;
+  week_label: string;
+  due_date: string;
+  description: string;
+  instructions: string;
+  max_score: string;
+  status: string;
+};
+
+const EMPTY_FORM: FormState = {
+  title: "",
+  week_label: "",
+  due_date: "",
+  description: "",
+  instructions: "",
+  max_score: "100",
+  status: "draft",
+};
 
 export function InstructorAssignmentsPanel({ cohortId }: { cohortId: string }) {
   const [assignments, setAssignments] = useState<AssignmentPublic[]>([]);
@@ -25,6 +68,21 @@ export function InstructorAssignmentsPanel({ cohortId }: { cohortId: string }) {
   const [scores, setScores] = useState<Record<string, string>>({});
   const [feedback, setFeedback] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
+
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<AssignmentPublic | null>(null);
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [savingForm, setSavingForm] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  function reload() {
+    setError(null);
+    listInstructorAssignments(cohortId)
+      .then(setAssignments)
+      .catch((err) =>
+        setError(err instanceof ApiError ? err.detail : "Failed to load assignments"),
+      );
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -71,27 +129,99 @@ export function InstructorAssignmentsPanel({ cohortId }: { cohortId: string }) {
     }
   }
 
+  function openCreate() {
+    setEditing(null);
+    setForm(EMPTY_FORM);
+    setFormError(null);
+    setFormOpen(true);
+  }
+
+  function openEdit(assignment: AssignmentPublic) {
+    setEditing(assignment);
+    setForm({
+      title: assignment.title,
+      week_label: assignment.week_label,
+      due_date: toLocalInput(assignment.due_date),
+      description: assignment.description,
+      instructions: assignment.instructions ?? "",
+      max_score: String(assignment.max_score),
+      status: assignment.status,
+    });
+    setFormError(null);
+    setFormOpen(true);
+  }
+
+  async function submitForm() {
+    setSavingForm(true);
+    setFormError(null);
+    try {
+      const payload: AssignmentUpsertPayload = {
+        cohort_id: cohortId,
+        title: form.title.trim(),
+        week_label: form.week_label.trim(),
+        due_date: form.due_date ? new Date(form.due_date).toISOString() : null,
+        description: form.description,
+        instructions: form.instructions.trim() || null,
+        max_score: Number(form.max_score) || 100,
+        status: form.status,
+      };
+      if (!payload.title) throw new Error("Title is required.");
+      if (editing) {
+        await updateInstructorAssignment(editing.id, payload);
+      } else {
+        await createInstructorAssignment(payload);
+      }
+      setFormOpen(false);
+      reload();
+    } catch (err) {
+      setFormError(
+        err instanceof ApiError ? err.detail : err instanceof Error ? err.message : "Could not save assignment",
+      );
+    } finally {
+      setSavingForm(false);
+    }
+  }
+
   if (loading) {
     return <p className="flex items-center gap-2 py-4 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" /> Loading assignments…</p>;
   }
 
-  if (assignments.length === 0) {
-    return <p className="py-4 text-sm text-muted-foreground">No assignments for this cohort yet.</p>;
-
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        {assignments.map((assignment) => (
-          <Button
-            key={assignment.id}
-            size="sm"
-            variant={selectedId === assignment.id ? "default" : "outline"}
-            onClick={() => openTracking(assignment.id)}
-          >
-            {assignment.title}
-          </Button>
-        ))}
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground">
+          {assignments.length === 0
+            ? "No assignments for this cohort yet."
+            : `${assignments.length} assignment${assignments.length === 1 ? "" : "s"}`}
+        </p>
+        <Button size="sm" onClick={openCreate}>
+          <Plus className="size-4" /> Create assignment
+        </Button>
       </div>
+
+      {assignments.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {assignments.map((assignment) => (
+            <div key={assignment.id} className="flex items-center gap-1">
+              <Button
+                size="sm"
+                variant={selectedId === assignment.id ? "default" : "outline"}
+                onClick={() => openTracking(assignment.id)}
+              >
+                {assignment.title}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                title="Edit assignment"
+                onClick={() => openEdit(assignment)}
+              >
+                <Pencil className="size-3.5" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
@@ -168,8 +298,103 @@ export function InstructorAssignmentsPanel({ cohortId }: { cohortId: string }) {
           </div>
         </div>
       )}
+
+      <Dialog open={formOpen} onOpenChange={setFormOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editing ? "Edit assignment" : "Create assignment"}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <div className="grid gap-1.5">
+              <Label htmlFor="a-title">Title</Label>
+              <Input
+                id="a-title"
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                placeholder="e.g. Week 1 — Extraction pipeline"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="a-week">Week label</Label>
+                <Input
+                  id="a-week"
+                  value={form.week_label}
+                  onChange={(e) => setForm({ ...form, week_label: e.target.value })}
+                  placeholder="Week 1"
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="a-due">Due date</Label>
+                <Input
+                  id="a-due"
+                  type="datetime-local"
+                  value={form.due_date}
+                  onChange={(e) => setForm({ ...form, due_date: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="a-desc">Description</Label>
+              <Textarea
+                id="a-desc"
+                rows={2}
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                placeholder="What students need to build or deliver."
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="a-instr">Instructions</Label>
+              <Textarea
+                id="a-instr"
+                rows={3}
+                value={form.instructions}
+                onChange={(e) => setForm({ ...form, instructions: e.target.value })}
+                placeholder="Step-by-step instructions and submission requirements."
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1.5">
+                <Label htmlFor="a-max">Max score</Label>
+                <Input
+                  id="a-max"
+                  type="number"
+                  value={form.max_score}
+                  onChange={(e) => setForm({ ...form, max_score: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="a-status">Status</Label>
+                <select
+                  id="a-status"
+                  className={field}
+                  value={form.status}
+                  onChange={(e) => setForm({ ...form, status: e.target.value })}
+                >
+                  <option value="draft">Draft</option>
+                  <option value="published">Published</option>
+                  <option value="archived">Archived</option>
+                </select>
+              </div>
+            </div>
+            {formError && <p className="text-sm text-destructive">{formError}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFormOpen(false)} disabled={savingForm}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-brand-orange text-white hover:bg-brand-orange/90"
+              onClick={submitForm}
+              disabled={savingForm}
+            >
+              {savingForm ? <Loader2 className="size-4 animate-spin" /> : null}
+              {editing ? "Save changes" : "Create assignment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-
-  }

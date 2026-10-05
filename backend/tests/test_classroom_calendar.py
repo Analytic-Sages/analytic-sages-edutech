@@ -109,7 +109,7 @@ def test_enrolled_student_feed_has_events_and_reminders():
     try:
         _join_bde(student)
         expected = _expected_count(student)
-        assert expected >= 40
+        assert expected >= 30
 
         response = client.get("/api/v1/classroom/calendar.ics", headers=_auth(student))
         assert response.status_code == 200
@@ -146,7 +146,7 @@ def test_staff_feed_sees_at_least_as_much_as_a_student():
         staff_events = client.get(
             "/api/v1/classroom/calendar.ics", headers=_auth(admin)
         ).text.count("BEGIN:VEVENT")
-        assert staff_events >= student_events >= 40
+        assert staff_events >= student_events >= 30
     finally:
         _cleanup_user(student)
         _cleanup_user(admin)

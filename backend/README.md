@@ -198,7 +198,7 @@ Once set, uploads go straight to Supabase Storage and return a permanent `https:
 | `GET/POST /api/v1/admin/classroom/sessions` | Admin: list / create sessions |
 | `PATCH/DELETE /api/v1/admin/classroom/sessions/{id}` | Admin: edit / delete a session |
 | `POST /api/v1/admin/classroom/sessions/{id}/cancel` | Admin: cancel a session |
-| `POST /api/v1/internal/classroom/sync-schedule` | Ops: re-provision the canonical 40-session schedule (token `CLASSROOM_SYNC_TOKEN` → `OPPORTUNITY_SYNC_TOKEN`) |
+| `POST /api/v1/internal/classroom/sync-schedule` | Ops: re-provision the canonical 30-session schedule (token `CLASSROOM_SYNC_TOKEN` → `OPPORTUNITY_SYNC_TOKEN`) |
 
 Admin staff can create and manage live sessions from **Admin → Live sessions**
 (`/admin/classroom`) without a developer: pick a cohort, set title, week label,
@@ -211,7 +211,7 @@ schedule for the selected cohort.
 **Complete schedule is guaranteed.** Deploys only run `alembic upgrade head`, never
 the seed scripts, so a cohort left on the earlier 2-session placeholder would show an
 incomplete plan. On startup the API calls `ensure_bde_classroom`, which re-provisions
-the canonical 40-session plan whenever it is missing or short (a complete,
+the canonical 30-session plan whenever it is missing or short (a complete,
 hand-managed schedule is never rewritten). The same repair is available on demand via
 `POST /api/v1/internal/classroom/sync-schedule`, or by hand with
 `python scripts/seed_blockchain_data_engineering.py` (add `--reset` to wipe first).
@@ -226,8 +226,9 @@ alembic upgrade head   # includes 003_classroom
 ### Blockchain Data Engineering schedule
 
 `scripts/seed_blockchain_data_engineering.py` seeds the BDE cohort **and** its full
-schedule: **40 sessions** = 30 teaching sessions (Mon/Tue/Wed, 18:00–20:00 WAT) plus a
-weekly Friday office hour (18:00–19:00 WAT) across 10 weeks, starting Mon 5 Oct 2026.
+schedule: **30 sessions** = 20 teaching sessions (Mon/Wed, 18:00–20:00 WAT, with the
+full 30-topic curriculum folded into two meetings per week) plus a weekly Friday
+office hour (18:00–19:00 WAT) across 10 weeks, starting Mon 5 Oct 2026.
 It is idempotent (keyed on `session_type` + `session_number`) and safe to re-run; pass
 `--reset` to wipe and rebuild. Titles/objectives mirror the website curriculum
 (`frontend/src/lib/blockchain-data-engineering-program.ts`).

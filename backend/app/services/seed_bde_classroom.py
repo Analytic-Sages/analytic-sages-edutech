@@ -1,9 +1,12 @@
 """Canonical Blockchain Data Engineering cohort schedule.
 
-The programme runs 10 weeks as 30 teaching sessions (Mon/Tue/Wed) plus a weekly
-Friday office hour. This module is the single source of truth the seed script and
-the classroom use, mirroring the marketing curriculum in
-``frontend/src/lib/blockchain-data-engineering-program.ts`` (5 modules, 30 sessions).
+The programme runs 10 weeks as 20 teaching sessions (Mon/Wed) plus a weekly Friday
+office hour. The full 30-topic curriculum is folded into two teaching meetings per
+week (the former Tuesday topic is merged into the Monday/Wednesday sessions). This
+module is the single source of truth the seed script and the classroom use, mirroring
+the marketing curriculum in
+``frontend/src/lib/blockchain-data-engineering-program.ts`` (5 modules, 30 topics across
+20 meetings).
 
 Only the *dates* are computed here; titles, objectives and week projects are data.
 """
@@ -15,7 +18,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.classroom import (
@@ -49,10 +52,10 @@ OFFICE_HOUR_START_HOUR = 18
 OFFICE_HOUR_DURATION_HOURS = 1
 
 TOTAL_WEEKS = 10
-TEACHING_WEEKDAYS = (0, 1, 2)  # Monday, Tuesday, Wednesday
+TEACHING_WEEKDAYS = (0, 2)  # Monday, Wednesday
 OFFICE_HOUR_WEEKDAY = 4  # Friday
-SESSIONS_PER_WEEK = 3
-TOTAL_TEACHING_SESSIONS = TOTAL_WEEKS * SESSIONS_PER_WEEK  # 30
+SESSIONS_PER_WEEK = 2
+TOTAL_TEACHING_SESSIONS = TOTAL_WEEKS * SESSIONS_PER_WEEK  # 20
 
 
 @dataclass(frozen=True)
@@ -76,12 +79,9 @@ OFFICE_HOUR_OBJECTIVES = [
     "Bring questions from the week's build work.",
     "Live debugging, code review and architecture Q&A.",
 ]
-_SESSION_1 = "Programme orientation & systems thinking"
-_SESSION_2 = "Python & SQL for data engineers"
-_SESSION_3 = "Docker fundamentals for data work"
-
 # Weekly plan mirroring the website curriculum: title, objectives, week project,
-# and the three session (title, summary) pairs. Keeps classroom + marketing in sync.
+# and two session (title, summary) pairs. Each week's Tuesday topic is merged into
+# the Monday/Wednesday sessions so all 30 topics survive across 20 meetings.
 _CURRICULUM: tuple[dict, ...] = (
     {
         "week": 1,
@@ -92,9 +92,14 @@ _CURRICULUM: tuple[dict, ...] = (
         ],
         "project": None,
         "sessions": [
-            (_SESSION_1, "Map the full path from chain data to product and set expectations."),
-            (_SESSION_2, "Practical language foundations used throughout the cohort."),
-            (_SESSION_3, "Containerise a simple service and understand why reproducibility matters."),
+            (
+                "Programme orientation & systems thinking · Python & SQL for data engineers",
+                "Map the full path from chain data to product and set expectations. Practical language foundations used throughout the cohort.",
+            ),
+            (
+                "Docker fundamentals for data work",
+                "Containerise a simple service and understand why reproducibility matters.",
+            ),
         ],
     },
     {
@@ -106,9 +111,14 @@ _CURRICULUM: tuple[dict, ...] = (
         ],
         "project": "Raw extraction service for a chosen contract or token set.",
         "sessions": [
-            ("Web3.py & RPC access patterns", "Connect, request and handle blockchain node responses."),
-            ("Transactions, receipts and event logs", "Understand the data shapes you will extract and store."),
-            ("Building your first extraction job", "Ship a working job that pulls and stores raw onchain data."),
+            (
+                "Web3.py & RPC access patterns · Transactions, receipts and event logs",
+                "Connect, request and handle blockchain node responses. Understand the data shapes you will extract and store.",
+            ),
+            (
+                "Building your first extraction job",
+                "Ship a working job that pulls and stores raw onchain data.",
+            ),
         ],
     },
     {
@@ -120,9 +130,14 @@ _CURRICULUM: tuple[dict, ...] = (
         ],
         "project": None,
         "sessions": [
-            ("Pipeline architecture for onchain data", "Break work into dependable stages instead of one-off scripts."),
-            ("Docker Compose for data services", "Coordinate application and database containers locally."),
-            ("Validation, idempotency and load", "Make ingestion safer to re-run and easier to debug."),
+            (
+                "Pipeline architecture for onchain data · Docker Compose for data services",
+                "Break work into dependable stages instead of one-off scripts. Coordinate application and database containers locally.",
+            ),
+            (
+                "Validation, idempotency and load",
+                "Make ingestion safer to re-run and easier to debug.",
+            ),
         ],
     },
     {
@@ -134,9 +149,14 @@ _CURRICULUM: tuple[dict, ...] = (
         ],
         "project": "Structured warehouse schema for extracted blockchain activity.",
         "sessions": [
-            ("Warehouse thinking for blockchain data", "Move from dumping JSON to designing durable tables."),
-            ("Schema design for transfers & events", "Normalize addresses, tokens and transfer facts."),
-            ("Indexing and query performance basics", "Keep analytical queries usable as volume grows."),
+            (
+                "Warehouse thinking for blockchain data · Schema design for transfers & events",
+                "Move from dumping JSON to designing durable tables. Normalize addresses, tokens and transfer facts.",
+            ),
+            (
+                "Indexing and query performance basics",
+                "Keep analytical queries usable as volume grows.",
+            ),
         ],
     },
     {
@@ -148,9 +168,14 @@ _CURRICULUM: tuple[dict, ...] = (
         ],
         "project": None,
         "sessions": [
-            ("dbt project structure", "Sources, models and the path from raw to marts."),
-            ("Staging models for blockchain tables", "Clean and standardize fields before business logic."),
-            ("Testing and documenting models", "Make transformations trustworthy and shareable."),
+            (
+                "dbt project structure · Staging models for blockchain tables",
+                "Sources, models and the path from raw to marts. Clean and standardize fields before business logic.",
+            ),
+            (
+                "Testing and documenting models",
+                "Make transformations trustworthy and shareable.",
+            ),
         ],
     },
     {
@@ -162,9 +187,14 @@ _CURRICULUM: tuple[dict, ...] = (
         ],
         "project": "Analytics-ready protocol dataset from your warehouse.",
         "sessions": [
-            ("Normalization patterns for onchain data", "Reduce duplication and inconsistency across entities."),
-            ("Protocol analytics datasets", "Shape tables that analysts and apps can actually use."),
-            ("Review: transformation quality", "Critique models, tests and documentation as a cohort."),
+            (
+                "Normalization patterns for onchain data · Protocol analytics datasets",
+                "Reduce duplication and inconsistency across entities. Shape tables that analysts and apps can actually use.",
+            ),
+            (
+                "Review: transformation quality",
+                "Critique models, tests and documentation as a cohort.",
+            ),
         ],
     },
     {
@@ -176,9 +206,14 @@ _CURRICULUM: tuple[dict, ...] = (
         ],
         "project": None,
         "sessions": [
-            ("Why orchestration matters", "From manual scripts to dependable scheduled systems."),
-            ("Prefect for practical workflows", "Compose flows that match your existing pipeline stages."),
-            ("Apache Airflow DAGs", "Model dependencies and schedules with industry-standard tooling."),
+            (
+                "Why orchestration matters · Prefect for practical workflows",
+                "From manual scripts to dependable scheduled systems. Compose flows that match your existing pipeline stages.",
+            ),
+            (
+                "Apache Airflow DAGs",
+                "Model dependencies and schedules with industry-standard tooling.",
+            ),
         ],
     },
     {
@@ -190,9 +225,14 @@ _CURRICULUM: tuple[dict, ...] = (
         ],
         "project": "Data API over your analytics-ready tables.",
         "sessions": [
-            ("Batch vs streaming for onchain systems", "Choose the right pattern for latency and reliability."),
-            ("Apache Kafka fundamentals", "Topics, producers, consumers and where they fit your stack."),
-            ("Building blockchain data APIs with FastAPI", "Turn infrastructure into a service applications can call."),
+            (
+                "Batch vs streaming for onchain systems · Apache Kafka fundamentals",
+                "Choose the right pattern for latency and reliability. Topics, producers, consumers and where they fit your stack.",
+            ),
+            (
+                "Building blockchain data APIs with FastAPI",
+                "Turn infrastructure into a service applications can call.",
+            ),
         ],
     },
     {
@@ -204,9 +244,14 @@ _CURRICULUM: tuple[dict, ...] = (
         ],
         "project": "Deployed service (pipeline worker, API, or both).",
         "sessions": [
-            ("Cloud options for data products", "Compare AWS, GCP, Railway and Render for cohort projects."),
-            ("Deploying containerised services", "Ship a working service with environment configuration."),
-            ("Observability & operational basics", "Logs, health checks and what to watch after deploy."),
+            (
+                "Cloud options for data products · Deploying containerised services",
+                "Compare AWS, GCP, Railway and Render for cohort projects. Ship a working service with environment configuration.",
+            ),
+            (
+                "Observability & operational basics",
+                "Logs, health checks and what to watch after deploy.",
+            ),
         ],
     },
     {
@@ -218,9 +263,14 @@ _CURRICULUM: tuple[dict, ...] = (
         ],
         "project": "End-to-end Blockchain Data Engineering capstone.",
         "sessions": [
-            ("Capstone architecture clinic", "Pressure-test designs before the final build push."),
-            ("Build & integration lab", "Connect remaining pieces and resolve production issues."),
-            ("Demo day & portfolio packaging", "Present what you built and how the system fits together."),
+            (
+                "Capstone architecture clinic · Build & integration lab",
+                "Pressure-test designs before the final build push. Connect remaining pieces and resolve production issues.",
+            ),
+            (
+                "Demo day & portfolio packaging",
+                "Present what you built and how the system fits together.",
+            ),
         ],
     },
 )
@@ -234,7 +284,7 @@ def _local_window(day: date, start_hour: int, duration_hours: int) -> tuple[date
 
 
 def bde_session_schedule(start: date = PROGRAM_START_DATE) -> list[ScheduledSession]:
-    """Build the full 40-row schedule: 30 teaching sessions + 10 Friday office hours.
+    """Build the full 30-row schedule: 20 teaching sessions + 10 Friday office hours.
 
     ``start`` must be the Monday of week 1 (defaults to 5 Oct 2026).
     """
@@ -248,13 +298,15 @@ def bde_session_schedule(start: date = PROGRAM_START_DATE) -> list[ScheduledSess
         objectives = [str(o) for o in week["objectives"]]
         project = week["project"]
 
-        for day_offset, (title, summary) in zip(TEACHING_WEEKDAYS, week["sessions"], strict=True):
+        for teaching_index, (day_offset, (title, summary)) in enumerate(
+            zip(TEACHING_WEEKDAYS, week["sessions"], strict=True)
+        ):
             starts_at, ends_at = _local_window(
                 week_start + timedelta(days=day_offset),
                 TEACHING_START_HOUR,
                 TEACHING_DURATION_HOURS,
             )
-            session_number = week_index * SESSIONS_PER_WEEK + day_offset + 1
+            session_number = week_index * SESSIONS_PER_WEEK + teaching_index + 1
             sessions.append(
                 ScheduledSession(
                     session_type=LiveSessionType.TEACHING,
@@ -302,18 +354,31 @@ def ensure_bde_classroom(db: Session) -> dict[str, int] | None:
     plan is missing or short. Returns the seed summary when it ran, else ``None``
     (so a complete, hand-managed schedule is never rewritten).
     """
-    expected = len(bde_session_schedule())
+    desired = bde_session_schedule()
+    expected = len(desired)
+    desired_keys = {_session_key(s.session_type, s.session_number) for s in desired}
+    desired_teaching_weekdays = set(TEACHING_WEEKDAYS)
+
     cohort = db.scalar(select(Cohort).where(Cohort.slug == COHORT_SLUG))
     if cohort is not None:
-        existing = int(
-            db.scalar(
-                select(func.count())
-                .select_from(LiveSession)
-                .where(LiveSession.cohort_id == cohort.id)
-            )
-            or 0
+        rows = list(
+            db.scalars(select(LiveSession).where(LiveSession.cohort_id == cohort.id)).all()
         )
-        if existing >= expected:
+        existing_keys = {_session_key(r.session_type, r.session_number) for r in rows}
+        teaching_weekdays = {
+            r.starts_at.astimezone(WAT).weekday()
+            for r in rows
+            if r.session_type == LiveSessionType.TEACHING and r.starts_at is not None
+        }
+        # Up to date only when the plan is complete, every canonical slot exists, and
+        # teaching still lands on the current weekdays (Mon/Wed). A cohort left on the
+        # retired Mon/Tue/Wed layout is re-provisioned so the course actually updates.
+        up_to_date = (
+            len(rows) >= expected
+            and desired_keys <= existing_keys
+            and teaching_weekdays <= desired_teaching_weekdays
+        )
+        if up_to_date:
             return None
     return seed_bde_classroom(db)
 
