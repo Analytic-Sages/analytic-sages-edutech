@@ -324,6 +324,8 @@ def require_event_registrant_manager(
         )
     return current_user
 require_catalog_ops = require_roles(UserRole.ADMIN, UserRole.OPERATIONS)
+# Live classroom management (start/end sessions, set recordings).
+require_classroom_ops = require_roles(UserRole.ADMIN, UserRole.OPERATIONS)
 # Course authoring: staff who can build courses/modules/lessons without a developer.
 require_course_author = require_roles(UserRole.ADMIN, UserRole.OPERATIONS, UserRole.INSTRUCTOR)
 require_opportunity_ops = require_roles(

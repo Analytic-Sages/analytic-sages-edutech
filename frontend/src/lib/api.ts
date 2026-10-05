@@ -2351,6 +2351,60 @@ export function getAdminUsers(limit = 200) {
   return apiFetch<AdminUserRow[]>(`/api/v1/admin/users?limit=${limit}`);
 }
 
+export type AdminProfile = AdminUserRow & {
+  discord_username?: string | null;
+  telegram_username?: string | null;
+  github_url?: string | null;
+  x_url?: string | null;
+  linkedin_url?: string | null;
+  portfolio_url?: string | null;
+  portfolio_public?: boolean;
+};
+
+export type AdminCourseEnrollment = {
+  course_id: string;
+  course_title: string;
+  course_slug: string;
+  status: string;
+  enrolled_at: string;
+  completed_at: string | null;
+};
+
+export type AdminCohortEnrollment = {
+  cohort_id: string;
+  cohort_name: string;
+  cohort_slug: string;
+  role: string;
+  enrollment_status: string;
+  certificate_eligible: boolean;
+  joined_at: string;
+};
+
+export type AdminBillingAccountSummary = {
+  account_id: string;
+  plan_name: string | null;
+  plan_type: string | null;
+  currency: string | null;
+  amount_paid: string;
+  amount_outstanding: string;
+  billing_status: string;
+  access_blocked: boolean;
+  next_due_date: string | null;
+  next_due_amount: string | null;
+};
+
+export type AdminUserDetail = {
+  profile: AdminProfile;
+  courses: AdminCourseEnrollment[];
+  cohorts: AdminCohortEnrollment[];
+  billing_accounts: AdminBillingAccountSummary[];
+  payments: AdminPaymentRow[];
+};
+
+export function getAdminUserDetail(userId: string) {
+  return apiFetch<AdminUserDetail>(`/api/v1/admin/users/${encodeURIComponent(userId)}`);
+}
+
 export function removeAdminStaffAccess(userId: string) {
   return apiFetch<AdminUserRow>(`/api/v1/admin/users/${encodeURIComponent(userId)}/remove-staff-access`, {
     method: "POST",
@@ -2408,6 +2462,10 @@ export type AdminLiveSessionRow = {
   objectives: string[];
   resources: AdminLiveSessionResource[];
   assignment_summary: string | null;
+  description?: string | null;
+  timezone?: string;
+  meeting_url?: string | null;
+  instructor_name?: string | null;
   starts_at: string;
   ends_at: string;
   status: "scheduled" | "live" | "ended" | "cancelled";
@@ -2427,6 +2485,11 @@ export type AdminLiveSessionInput = {
   objectives?: string[];
   resources?: AdminLiveSessionResource[];
   assignment_summary?: string | null;
+  description?: string | null;
+  timezone?: string;
+  meeting_url?: string | null;
+  status?: string;
+  recording_url?: string | null;
   starts_at: string;
   ends_at: string;
 };

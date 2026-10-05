@@ -354,3 +354,14 @@ def test_installments_board_ignores_settled_obligations(students_env):
         }
     finally:
         db.close()
+
+
+def test_admin_user_detail_endpoint():
+    admin = _make_user("admin-students", UserRole.ADMIN)
+    student = _make_user("students-test")
+
+    resp = client.get(f"/api/v1/admin/users/{student.id}", headers=_auth(admin))
+    assert resp.status_code == 200
+    assert resp.json()["profile"]["email"] == student.email
+
+    assert client.get(f"/api/v1/admin/users/{student.id}", headers=_auth(student)).status_code == 403

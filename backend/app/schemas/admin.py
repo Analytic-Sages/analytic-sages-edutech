@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
@@ -161,3 +162,53 @@ class InviteInstructorResponse(BaseModel):
     resent: bool
     promoted: bool = False
     message: str
+
+
+class AdminProfileRow(AdminUserRow):
+    discord_username: str | None = None
+    telegram_username: str | None = None
+    github_url: str | None = None
+    x_url: str | None = None
+    linkedin_url: str | None = None
+    portfolio_url: str | None = None
+    portfolio_public: bool = False
+
+
+class AdminCourseEnrollmentRow(BaseModel):
+    course_id: UUID
+    course_title: str
+    course_slug: str
+    status: str
+    enrolled_at: datetime
+    completed_at: datetime | None = None
+
+
+class AdminCohortEnrollmentRow(BaseModel):
+    cohort_id: UUID
+    cohort_name: str
+    cohort_slug: str
+    role: str
+    enrollment_status: str
+    certificate_eligible: bool = False
+    joined_at: datetime
+
+
+class AdminBillingAccountSummary(BaseModel):
+    account_id: UUID
+    plan_name: str | None = None
+    plan_type: str | None = None
+    currency: str | None = None
+    amount_paid: Decimal
+    amount_outstanding: Decimal
+    billing_status: str
+    access_blocked: bool = False
+    next_due_date: datetime | None = None
+    next_due_amount: Decimal | None = None
+
+
+class AdminUserDetail(BaseModel):
+    profile: AdminProfileRow
+    courses: list[AdminCourseEnrollmentRow] = Field(default_factory=list)
+    cohorts: list[AdminCohortEnrollmentRow] = Field(default_factory=list)
+    billing_accounts: list[AdminBillingAccountSummary] = Field(default_factory=list)
+    payments: list[AdminPaymentRow] = Field(default_factory=list)

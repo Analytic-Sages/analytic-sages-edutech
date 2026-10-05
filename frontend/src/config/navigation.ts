@@ -51,6 +51,7 @@ export const adminNav: NavItem[] = [
   { title: "Dashboard", href: "/admin", icon: "dashboard" },
   { title: "Featured cohort", href: "/admin/cohort", icon: "classroom" },
   { title: "Live sessions", href: "/admin/classroom", icon: "classroom" },
+  { title: "Assignments", href: "/admin/assignments", icon: "courses" },
   { title: "Users", href: "/admin/users", icon: "users" },
   { title: "Students", href: "/admin/students", icon: "users" },
   { title: "Payments", href: "/admin/payments", icon: "payments" },
@@ -69,6 +70,7 @@ export const adminNav: NavItem[] = [
 export const operationsNav: NavItem[] = [
   { title: "Events", href: "/admin/events", icon: "events" },
   { title: "Courses", href: "/admin/courses", icon: "courses" },
+  { title: "Live sessions", href: "/admin/classroom", icon: "classroom" },
   { title: "Opportunities", href: "/admin/opportunities", icon: "opportunities" },
   { title: "Insights", href: "/admin/insights", icon: "insights" },
 ];

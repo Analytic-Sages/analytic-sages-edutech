@@ -5,12 +5,14 @@ from uuid import UUID
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.core.admin import FEATURED_COHORT_SLUG
+from app.core.billing import ObligationStatus
 from app.core.payments import EnrollmentStatus, PaymentStatus
 from app.core.roles import UserRole
 from app.models.article import Article, ArticleStatus
+from app.models.billing import StudentBillingAccount
 from app.models.classroom import Cohort, CohortMember, CohortMemberRole, CohortStatus
 from app.models.course import Course
 from app.models.enrollment import Enrollment
@@ -22,15 +24,20 @@ from app.models.quiz import Quiz, QuizAttempt
 from app.models.user import User
 from app.schemas.admin import (
     AdminAnalytics,
+    AdminBillingAccountSummary,
     AdminCohortDetail,
+    AdminCohortEnrollmentRow,
     AdminCohortMemberRow,
     AdminCountPoint,
+    AdminCourseEnrollmentRow,
     AdminFeaturedCohort,
     AdminNamedCount,
     AdminOverview,
     AdminPaymentRow,
+    AdminProfileRow,
     AdminRecentLearner,
     AdminRevenueByCurrency,
+    AdminUserDetail,
     AdminUserRow,
 )
 
@@ -166,6 +173,122 @@ class AdminService:
             payments=self._payment_rows(payments),
         )
 
+    def user_detail(self, user_id: UUID) -> AdminUserDetail:
+        user = self.db.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+        featured = self._featured_cohort()
+        member_ids = self._member_user_ids(featured.id) if featured else set()
+        profile = AdminProfileRow(
+            id=user.id,
+            email=user.email,
+            full_name=user.full_name,
+            role=user.role.value,
+            email_verified=user.email_verified,
+            is_active=user.is_active,
+            phone_number=user.phone_number,
+            phone_country_code=user.phone_country_code,
+            country_of_residence=user.country_of_residence,
+            in_featured_cohort=user.id in member_ids,
+            created_at=user.created_at,
+            discord_username=user.discord_username,
+            telegram_username=user.telegram_username,
+            github_url=user.github_url,
+            x_url=user.x_url,
+            linkedin_url=user.linkedin_url,
+            portfolio_url=user.portfolio_url,
+            portfolio_public=user.portfolio_public,
+        )
+
+        enrollments = list(
+            self.db.scalars(
+                select(Enrollment)
+                .options(joinedload(Enrollment.course))
+                .where(Enrollment.user_id == user.id)
+                .order_by(Enrollment.enrolled_at.desc())
+            ).all()
+        )
+        courses = [
+            AdminCourseEnrollmentRow(
+                course_id=enrollment.course_id,
+                course_title=enrollment.course.title if enrollment.course else "",
+                course_slug=enrollment.course.slug if enrollment.course else "",
+                status=enrollment.status.value,
+                enrolled_at=enrollment.enrolled_at,
+                completed_at=enrollment.completed_at,
+            )
+            for enrollment in enrollments
+        ]
+
+        memberships = list(
+            self.db.scalars(
+                select(CohortMember)
+                .options(joinedload(CohortMember.cohort))
+                .where(CohortMember.user_id == user.id)
+                .order_by(CohortMember.joined_at.desc())
+            ).all()
+        )
+        cohorts = [
+            AdminCohortEnrollmentRow(
+                cohort_id=member.cohort_id,
+                cohort_name=member.cohort.name if member.cohort else "",
+                cohort_slug=member.cohort.slug if member.cohort else "",
+                role=member.role.value,
+                enrollment_status=member.enrollment_status.value,
+                certificate_eligible=member.certificate_eligible,
+                joined_at=member.joined_at,
+            )
+            for member in memberships
+        ]
+
+        accounts = list(
+            self.db.scalars(
+                select(StudentBillingAccount)
+                .options(
+                    selectinload(StudentBillingAccount.obligations),
+                    selectinload(StudentBillingAccount.tuition_plan),
+                )
+                .where(StudentBillingAccount.student_id == user.id)
+                .order_by(StudentBillingAccount.created_at.desc())
+            ).all()
+        )
+        billing = []
+        for account in accounts:
+            open_obligations = sorted(
+                [o for o in account.obligations if o.status in {
+                    ObligationStatus.OPEN,
+                    ObligationStatus.PAST_DUE,
+                    ObligationStatus.PROCESSING,
+                    ObligationStatus.UPCOMING,
+                }],
+                key=lambda o: o.sequence_number,
+            )
+            next_obligation = open_obligations[0] if open_obligations else None
+            billing.append(
+                AdminBillingAccountSummary(
+                    account_id=account.id,
+                    plan_name=account.tuition_plan.name if account.tuition_plan else None,
+                    plan_type=account.tuition_plan.plan_type.value if account.tuition_plan else None,
+                    currency=account.currency,
+                    amount_paid=account.amount_paid,
+                    amount_outstanding=account.amount_outstanding,
+                    billing_status=account.billing_status.value,
+                    access_blocked=account.access_blocked,
+                    next_due_date=next_obligation.due_date if next_obligation else None,
+                    next_due_amount=next_obligation.amount_due if next_obligation else None,
+                )
+            )
+
+        payments = self._list_payments(limit=50, user_id=user.id)
+        return AdminUserDetail(
+            profile=profile,
+            courses=courses,
+            cohorts=cohorts,
+            billing_accounts=billing,
+            payments=self._payment_rows(payments),
+        )
+
     def add_instructor_to_featured_cohort(self, user: User) -> None:
         cohort = self._featured_cohort()
         if not cohort:
@@ -244,7 +367,9 @@ class AdminService:
             ).all()
         )
 
-    def _list_payments(self, *, limit: int, cohort_id: UUID | None = None) -> list[Payment]:
+    def _list_payments(
+        self, *, limit: int, cohort_id: UUID | None = None, user_id: UUID | None = None
+    ) -> list[Payment]:
         stmt = (
             select(Payment)
             .options(
@@ -257,6 +382,8 @@ class AdminService:
         )
         if cohort_id:
             stmt = stmt.where(Payment.cohort_id == cohort_id)
+        if user_id:
+            stmt = stmt.where(Payment.user_id == user_id)
         return list(self.db.scalars(stmt).unique().all())
 
     def _user_rows(self, users: list[User], member_ids: set[UUID]) -> list[AdminUserRow]:

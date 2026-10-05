@@ -16,6 +16,7 @@ from app.api.deps import (
     get_storage_service,
     require_admin,
     require_catalog_ops,
+    require_classroom_ops,
     require_course_author,
 )
 from app.models.user import User
@@ -24,6 +25,7 @@ from app.schemas.admin import (
     AdminCohortDetail,
     AdminOverview,
     AdminPaymentRow,
+    AdminUserDetail,
     AdminUserRow,
     InviteInstructorRequest,
     InviteInstructorResponse,
@@ -138,6 +140,15 @@ def admin_users(
     return admin.list_users(limit=limit)
 
 
+@router.get("/users/{user_id}", response_model=AdminUserDetail)
+def admin_user_detail(
+    user_id: UUID,
+    _: User = Depends(require_admin),
+    admin: AdminService = Depends(get_admin_service),
+) -> AdminUserDetail:
+    return admin.user_detail(user_id)
+
+
 @router.post("/users/{user_id}/remove-staff-access", response_model=AdminUserRow)
 def remove_staff_access(
     user_id: UUID,
@@ -214,7 +225,7 @@ def admin_cohort(
 
 @router.get("/classroom/cohorts", response_model=list[AdminCohortOption])
 def admin_classroom_cohorts(
-    _: User = Depends(require_admin),
+    _: User = Depends(require_classroom_ops),
     classroom: ClassroomAdminService = Depends(get_classroom_admin_service),
 ) -> list[AdminCohortOption]:
     return classroom.list_cohorts()
@@ -222,7 +233,7 @@ def admin_classroom_cohorts(
 
 @router.get("/classroom/sessions", response_model=list[AdminLiveSessionRow])
 def admin_classroom_sessions(
-    _: User = Depends(require_admin),
+    _: User = Depends(require_classroom_ops),
     classroom: ClassroomAdminService = Depends(get_classroom_admin_service),
     cohort_id: UUID | None = None,
     limit: int = Query(default=500, ge=1, le=1000),
@@ -233,7 +244,7 @@ def admin_classroom_sessions(
 @router.post("/classroom/sessions", response_model=AdminLiveSessionRow, status_code=201)
 def admin_create_classroom_session(
     payload: AdminLiveSessionCreate,
-    _: User = Depends(require_admin),
+    _: User = Depends(require_classroom_ops),
     classroom: ClassroomAdminService = Depends(get_classroom_admin_service),
 ) -> AdminLiveSessionRow:
     return classroom.create_session(payload)
@@ -243,7 +254,7 @@ def admin_create_classroom_session(
 def admin_update_classroom_session(
     session_id: UUID,
     payload: AdminLiveSessionUpdate,
-    _: User = Depends(require_admin),
+    _: User = Depends(require_classroom_ops),
     classroom: ClassroomAdminService = Depends(get_classroom_admin_service),
 ) -> AdminLiveSessionRow:
     return classroom.update_session(session_id, payload)
@@ -252,7 +263,7 @@ def admin_update_classroom_session(
 @router.post("/classroom/sessions/{session_id}/cancel", response_model=AdminLiveSessionRow)
 def admin_cancel_classroom_session(
     session_id: UUID,
-    _: User = Depends(require_admin),
+    _: User = Depends(require_classroom_ops),
     classroom: ClassroomAdminService = Depends(get_classroom_admin_service),
 ) -> AdminLiveSessionRow:
     return classroom.cancel_session(session_id)
@@ -261,7 +272,7 @@ def admin_cancel_classroom_session(
 @router.delete("/classroom/sessions/{session_id}", status_code=204)
 def admin_delete_classroom_session(
     session_id: UUID,
-    _: User = Depends(require_admin),
+    _: User = Depends(require_classroom_ops),
     classroom: ClassroomAdminService = Depends(get_classroom_admin_service),
 ) -> None:
     classroom.delete_session(session_id)

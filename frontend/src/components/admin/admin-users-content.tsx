@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, Fragment } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
@@ -378,17 +379,17 @@ export function AdminUsersContent() {
                   <Fragment key={user.id}>
                     <TableRow>
                       <TableCell>
-                        <div className="flex items-center gap-3">
+                        <Link href={`/admin/users/${user.id}`} className="flex items-center gap-3 hover:underline">
                           <Avatar className="size-8">
                             <AvatarFallback className="bg-brand-navy text-xs text-white">
                               {initialsFor(user.full_name, user.email)}
                             </AvatarFallback>
                           </Avatar>
-                          <div>
-                            <p className="font-medium">{user.full_name || "-"}</p>
-                            <p className="text-xs text-muted-foreground">{user.email}</p>
-                          </div>
-                        </div>
+                          <span>
+                            <span className="block font-medium">{user.full_name || "-"}</span>
+                            <span className="block text-xs text-muted-foreground">{user.email}</span>
+                          </span>
+                        </Link>
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-sm">{user.phone_number || "-"}</TableCell>
                       <TableCell>{user.country_of_residence || "-"}</TableCell>

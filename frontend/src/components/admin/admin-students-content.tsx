@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Download, Loader2, Lock, LockOpen, Pencil } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -347,8 +348,10 @@ export function AdminStudentsContent() {
                     {rows.map((row) => (
                 <TableRow key={row.user_id}>
                   <TableCell>
-                    <p className="font-medium">{row.full_name || "-"}</p>
-                    <p className="text-xs text-muted-foreground">{row.email}</p>
+                    <Link href={`/admin/users/${row.user_id}`} className="hover:underline">
+                      <p className="font-medium">{row.full_name || "-"}</p>
+                      <p className="text-xs text-muted-foreground">{row.email}</p>
+                    </Link>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {[...row.cohorts, ...row.courses].slice(0, 2).join(", ") || "-"}

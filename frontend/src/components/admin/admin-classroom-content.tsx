@@ -47,6 +47,9 @@ type FormState = {
   session_type: "teaching" | "office_hour";
   objectives: string;
   assignment_summary: string;
+  status: string;
+  recording_url: string;
+  meeting_url: string;
   starts_at: string;
   ends_at: string;
 };
@@ -80,6 +83,9 @@ function defaultForm(cohortId: string): FormState {
     session_type: "teaching",
     objectives: "",
     assignment_summary: "",
+    status: "scheduled",
+    recording_url: "",
+    meeting_url: "",
     starts_at: toLocalInput(start.toISOString()),
     ends_at: toLocalInput(end.toISOString()),
   };
@@ -176,6 +182,9 @@ export function AdminClassroomContent() {
       session_type: row.session_type,
       objectives: row.objectives.join("\n"),
       assignment_summary: row.assignment_summary ?? "",
+      status: row.status,
+      recording_url: row.recording_url ?? "",
+      meeting_url: row.meeting_url ?? "",
       starts_at: toLocalInput(row.starts_at),
       ends_at: toLocalInput(row.ends_at),
     });
@@ -208,9 +217,14 @@ export function AdminClassroomContent() {
         .map((line) => line.trim())
         .filter(Boolean),
       assignment_summary: form.assignment_summary.trim() || null,
+      meeting_url: form.meeting_url.trim() || null,
       starts_at: fromLocalInput(form.starts_at),
       ends_at: fromLocalInput(form.ends_at),
     };
+    if (editing) {
+      payload.status = form.status;
+      payload.recording_url = form.recording_url.trim() || null;
+    }
     setSaving(true);
     try {
       if (editing) {
@@ -451,6 +465,44 @@ export function AdminClassroomContent() {
                 </select>
               </div>
             </div>
+            {editing && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="s-status">Status</Label>
+                  <select
+                    id="s-status"
+                    className={field}
+                    value={form.status}
+                    onChange={(e) => setForm({ ...form, status: e.target.value })}
+                  >
+                    <option value="scheduled">Scheduled</option>
+                    <option value="live">Live</option>
+                    <option value="ended">Ended</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="s-meeting">Meeting URL</Label>
+                  <Input
+                    id="s-meeting"
+                    value={form.meeting_url}
+                    onChange={(e) => setForm({ ...form, meeting_url: e.target.value })}
+                    placeholder="https://meet.google.com/…"
+                  />
+                </div>
+              </div>
+            )}
+            {editing && (
+              <div className="grid gap-1.5">
+                <Label htmlFor="s-recording">Recording URL</Label>
+                <Input
+                  id="s-recording"
+                  value={form.recording_url}
+                  onChange={(e) => setForm({ ...form, recording_url: e.target.value })}
+                  placeholder="https://…"
+                />
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
                 <Label htmlFor="s-start">Starts</Label>
