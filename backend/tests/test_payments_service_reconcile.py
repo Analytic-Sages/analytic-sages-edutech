@@ -172,3 +172,54 @@ def test_get_payment_for_user_runs_auto_reconcile():
     result = service.get_payment_for_user(user=user, order_id=payment.order_id)
     assert result.order_id == payment.order_id
     service._reconcile_nowpayments_payment.assert_called_once_with(payment, payment_id=None)
+
+
+def test_reconcile_stale_sweep_skips_without_api_key():
+    service = _service(settings=_settings(nowpayments_api_key=None))
+    assert service.reconcile_stale_nowpayments() == {
+        "scanned": 0,
+        "confirmed": 0,
+        "updated": 0,
+        "failed": 0,
+    }
+
+
+def test_reconcile_stale_sweep_confirms_and_updates():
+    a = _payment(order_id="ord_a", status=PaymentStatus.PENDING)
+    b = _payment(order_id="ord_b", status=PaymentStatus.CONFIRMING)
+    db = MagicMock()
+    db.scalars.return_value.all.return_value = [a, b]
+    service = _service(db=db, settings=_settings(nowpayments_api_key="live-key"))
+
+    def fake(payment, *, payment_id):
+        assert payment_id is None
+        payment.status = (
+            PaymentStatus.CONFIRMED if payment.order_id == "ord_a" else PaymentStatus.EXPIRED
+        )
+        return payment
+
+    service._reconcile_nowpayments_payment = MagicMock(side_effect=fake)  # type: ignore[method-assign]
+    summary = service.reconcile_stale_nowpayments(older_than_seconds=60, limit=10)
+    assert summary["scanned"] == 2
+    assert summary["confirmed"] == 1
+    assert summary["updated"] == 1
+    assert summary["failed"] == 0
+
+
+def test_reconcile_stale_sweep_ignores_404_but_counts_other_failures():
+    a = _payment(order_id="ord_a")
+    b = _payment(order_id="ord_b")
+    db = MagicMock()
+    db.scalars.return_value.all.return_value = [a, b]
+    service = _service(db=db, settings=_settings(nowpayments_api_key="live-key"))
+
+    def fake(payment, *, payment_id):
+        if payment.order_id == "ord_a":
+            raise HTTPException(status_code=404, detail="customer never sent funds")
+        raise HTTPException(status_code=502, detail="provider down")
+
+    service._reconcile_nowpayments_payment = MagicMock(side_effect=fake)  # type: ignore[method-assign]
+    summary = service.reconcile_stale_nowpayments()
+    assert summary["scanned"] == 2
+    assert summary["failed"] == 1
+    assert summary["confirmed"] == 0

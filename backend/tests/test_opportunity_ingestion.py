@@ -4,7 +4,7 @@ import uuid
 from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from app.core.config import get_settings
 from app.core.roles import UserRole
@@ -19,6 +19,7 @@ from app.models.opportunity import (
 )
 from app.models.user import User
 from app.services.opportunity_mission import is_off_mission_title
+from app.services.opportunity_normalize import canonicalize_application_url
 from app.services.opportunity_sources.base import RawOpportunity
 from app.services.opportunity_sources.ashby import parse_jobs as parse_ashby_jobs
 from app.services.opportunity_sources.greenhouse import parse_jobs
@@ -92,6 +93,42 @@ def _seed() -> None:
     db = SessionLocal()
     try:
         seed_opportunity_taxonomy(db)
+        db.commit()
+    finally:
+        db.close()
+
+
+def _cleanup_fixture_opportunities(urls: tuple[str, ...]) -> None:
+    """Delete any opportunity (from any source) sitting on the given fixture URLs.
+
+    Ingestion dedupes by canonical application URL across *all* sources, so a row
+    left behind by an earlier aborted run would otherwise make a fixture land as
+    ``duplicate`` instead of a fresh draft — which silently breaks the expected
+    ``created`` counts. Removing them keeps these ingest tests re-runnable and
+    independent of accumulated database state.
+    """
+    db = SessionLocal()
+    try:
+        for url in urls:
+            canonical = canonicalize_application_url(url)
+            matches = list(
+                db.scalars(
+                    select(Opportunity).where(
+                        or_(
+                            Opportunity.application_url == url,
+                            Opportunity.canonical_application_url == canonical,
+                        )
+                    )
+                ).all()
+            )
+            for opportunity in matches:
+                for ingestion in db.scalars(
+                    select(OpportunityIngestion).where(
+                        OpportunityIngestion.opportunity_id == opportunity.id
+                    )
+                ).all():
+                    db.delete(ingestion)
+                db.delete(opportunity)
         db.commit()
     finally:
         db.close()
@@ -265,6 +302,13 @@ def test_ethglobal_parser_keeps_upcoming_hackathons_only():
 
 def test_ethglobal_ingest_lands_as_draft_hackathon():
     _seed()
+    fixture_urls = (
+        "https://ethglobal.com/events/tokyo2026",
+        "https://ethglobal.com/events/ethonline2026",
+        "https://ethglobal.com/events/cannes",
+    )
+    # Heal any leftovers from an earlier aborted run before asserting created counts.
+    _cleanup_fixture_opportunities(fixture_urls)
     source_name = f"ETHG {uuid.uuid4().hex[:8]}"
     admin_email = f"admin-ethg-{uuid.uuid4()}@example.com"
     admin = _make_user(admin_email, UserRole.ADMIN)
@@ -300,6 +344,7 @@ def test_ethglobal_ingest_lands_as_draft_hackathon():
         assert match["application_url"] == "https://ethglobal.com/events/tokyo2026"
         assert match["is_manual"] is False
     finally:
+        _cleanup_fixture_opportunities(fixture_urls)
         _cleanup_source(source_name)
         _cleanup_user(admin_email)
 

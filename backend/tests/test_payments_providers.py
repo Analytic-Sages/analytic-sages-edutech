@@ -481,3 +481,43 @@ def test_live_paystack_webhook_bad_signature():
             payload={"event": "charge.success", "data": {"reference": "ord-x"}},
         )
     assert exc.value.status_code == 401
+
+
+def test_find_payment_by_invoice_matches_record_without_order_id():
+    """Invoice payments can come back without our order_id — match on invoice_id."""
+    settings = _settings(nowpayments_api_key="live-key")
+    provider = get_payment_provider(PaymentProviderName.NOWPAYMENTS, settings)
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "data": [
+            {"payment_id": 111, "invoice_id": 999, "payment_status": "finished"},
+            {"payment_id": 222, "invoice_id": 555, "payment_status": "finished"},
+        ]
+    }
+    mock_client = MagicMock()
+    mock_client.__enter__.return_value = mock_client
+    mock_client.get.return_value = mock_response
+
+    with patch("app.payments.nowpayments_provider.httpx.Client", return_value=mock_client):
+        record = provider.find_payment_by_invoice("999")
+        assert record is not None
+        assert record["payment_id"] == 111
+        # The order_id scan does not match these records, proving invoice fallback matters.
+        assert provider.find_payment_for_order("999") is None
+
+
+def test_scan_payments_errors_when_list_endpoint_fails():
+    settings = _settings(nowpayments_api_key="live-key")
+    provider = get_payment_provider(PaymentProviderName.NOWPAYMENTS, settings)
+
+    mock_response = MagicMock()
+    mock_response.status_code = 500
+    mock_response.text = "server error"
+    mock_client = MagicMock()
+    mock_client.__enter__.return_value = mock_client
+    mock_client.get.return_value = mock_response
+
+    with patch("app.payments.nowpayments_provider.httpx.Client", return_value=mock_client):
+        assert provider.find_payment_for_order("ord_missing") is None

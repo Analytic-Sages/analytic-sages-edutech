@@ -331,6 +331,26 @@ and/or set `BILLING_REMINDERS_TOKEN` + `PUBLIC_API_URL` so the scheduled
 `.github/workflows/billing-reminders.yml` job hits the internal endpoint daily. An
 obligation is reminded once, then re-nagged every 3 days while it stays overdue.
 
+## Tests
+
+Run from `backend/` with Postgres up (`docker compose up -d` at the repo root):
+
+```bash
+./.venv/bin/python -m pytest -q
+```
+
+- **Hermetic by default.** `tests/conftest.py` disables opportunity AI extraction, so the suite
+  never calls OpenAI/Gemini or fetches remote pages — results don't depend on developer keys
+  or third-party sites being reachable.
+- **Opportunity ingest fixtures are URL-deduped.** Ingestion dedupes by canonical application
+  URL across *all* sources, so the ingest tests clear any opportunity sitting on their fixture
+  URLs first (`_cleanup_fixture_opportunities`). Without that, leftover rows from an earlier
+  aborted run make the fixtures land as `duplicate` and the expected `created` counts fail.
+- **Fail fast when the DB is down.** The engine sets `connect_timeout`
+  (`DATABASE_CONNECT_TIMEOUT_SECONDS`, default 10). `psycopg2` has no default timeout, so
+  without it an unreachable database blocks `pytest` forever instead of erroring.
+- Run one suite at a time — the tests share one database, and two concurrent runs interfere.
+
 ## Not implemented yet (later phases)
 
 - Attendance webhooks, assignments gradebook, recording → Cloudflare Stream pipeline

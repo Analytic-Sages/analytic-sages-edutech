@@ -20,6 +20,9 @@ class Settings(BaseSettings):
 
     database_url: PostgresDsn
     redis_url: RedisDsn = RedisDsn("redis://localhost:6379/0")
+    # Seconds to wait for the Postgres TCP/startup handshake before giving up.
+    # Without this psycopg2 blocks indefinitely when the database is unreachable.
+    database_connect_timeout_seconds: int = 10
 
     secret_key: str = Field(min_length=32)
     frontend_url: str = "http://localhost:3000"

@@ -584,3 +584,84 @@ def test_plan_switch_blocked_after_payment(billing_env):
     finally:
         db.close()
 
+
+def test_billing_account_public_exposes_plan_progress_and_next_due():
+    """Admin board derives paid-in-full vs installment and the next deadline here."""
+    from app.schemas.billing import (
+        BillingAccountPublic,
+        ObligationPublic,
+        TuitionPlanPublic,
+    )
+
+    now = datetime.now(UTC)
+    plan = TuitionPlanPublic(
+        id=uuid.uuid4(),
+        course_id=None,
+        cohort_id=uuid.uuid4(),
+        name="Pay in 2 Installments",
+        description=None,
+        plan_type=TuitionPlanType.INSTALLMENT,
+        base_currency="USD",
+        base_amount=Decimal("220.00"),
+        number_of_installments=2,
+        active=True,
+        sort_order=0,
+        schedules=[],
+    )
+    obligations = [
+        ObligationPublic(
+            id=uuid.uuid4(),
+            sequence_number=1,
+            description="Installment 1",
+            amount_due=Decimal("110.00"),
+            currency="USD",
+            due_date=now,
+            status=ObligationStatus.PAID,
+            paid_amount=Decimal("110.00"),
+            paid_at=now,
+        ),
+        ObligationPublic(
+            id=uuid.uuid4(),
+            sequence_number=2,
+            description="Installment 2",
+            amount_due=Decimal("110.00"),
+            currency="USD",
+            due_date=now + timedelta(days=14),
+            status=ObligationStatus.OPEN,
+            paid_amount=Decimal("0.00"),
+            paid_at=None,
+        ),
+    ]
+    account = BillingAccountPublic(
+        id=uuid.uuid4(),
+        student_id=uuid.uuid4(),
+        course_id=None,
+        cohort_id=plan.cohort_id,
+        tuition_plan_id=plan.id,
+        currency="USD",
+        total_amount=Decimal("220.00"),
+        discount_amount=Decimal("0.00"),
+        scholarship_amount=Decimal("0.00"),
+        final_amount_due=Decimal("220.00"),
+        amount_paid=Decimal("110.00"),
+        amount_outstanding=Decimal("110.00"),
+        billing_status=BillingStatus.CURRENT,
+        created_at=now,
+        obligations=obligations,
+        tuition_plan=plan,
+    )
+    assert account.plan_name == "Pay in 2 Installments"
+    assert account.plan_type == TuitionPlanType.INSTALLMENT
+    assert account.installments_total == 2
+    assert account.installments_paid == 1
+    assert account.installments_remaining == 1
+    assert account.is_paid_in_full is False
+    assert account.next_due_status == ObligationStatus.OPEN
+    assert money(account.next_due_amount) == Decimal("110.00")
+
+    # Serialized (what the API returns to the admin board) includes the computed keys.
+    dumped = account.model_dump(mode="json")
+    assert dumped["installments_paid"] == 1
+    assert dumped["plan_name"] == "Pay in 2 Installments"
+    assert dumped["next_due_date"] is not None
+

@@ -239,8 +239,9 @@ export function AdminBillingContent() {
                 <TableRow>
                   <TableHead>Status</TableHead>
                   <TableHead>Plan</TableHead>
+                  <TableHead>Progress</TableHead>
                   <TableHead>Outstanding</TableHead>
-                  <TableHead>Paid</TableHead>
+                  <TableHead>Next due</TableHead>
                   <TableHead>Created</TableHead>
                 </TableRow>
               </TableHeader>
@@ -255,11 +256,29 @@ export function AdminBillingContent() {
                       <Badge variant="outline">{row.billing_status}</Badge>
                     </TableCell>
                     <TableCell>{planLabel(row)}</TableCell>
+                    <TableCell className="whitespace-nowrap text-xs">
+                      {row.installments_total
+                        ? `${row.installments_paid ?? 0}/${row.installments_total} paid`
+                        : "-"}
+                    </TableCell>
                     <TableCell>
                       {formatPrice(Number(row.amount_outstanding), row.currency)}
                     </TableCell>
-                    <TableCell>
-                      {formatPrice(Number(row.amount_paid), row.currency)}
+                    <TableCell className="whitespace-nowrap text-xs">
+                      {row.is_paid_in_full ? (
+                        <span className="font-medium text-success">Paid in full</span>
+                      ) : row.next_due_date ? (
+                        <>
+                          <span>{formatAdminDate(row.next_due_date)}</span>
+                          {row.next_due_amount ? (
+                            <span className="block text-muted-foreground">
+                              {formatPrice(Number(row.next_due_amount), row.currency)}
+                            </span>
+                          ) : null}
+                        </>
+                      ) : (
+                        "-"
+                      )}
                     </TableCell>
                     <TableCell>{formatAdminDate(row.created_at)}</TableCell>
                   </TableRow>
@@ -280,6 +299,43 @@ export function AdminBillingContent() {
                   Outstanding{" "}
                   {formatPrice(Number(selected.amount_outstanding), selected.currency)}
                 </p>
+                <div className="rounded-md border bg-muted/30 p-3 text-sm">
+                  <p>
+                    <span className="text-muted-foreground">Plan:</span>{" "}
+                    <span className="font-medium">{planLabel(selected)}</span>
+                    {selected.plan_type ? (
+                      <span className="text-muted-foreground"> ({selected.plan_type})</span>
+                    ) : null}
+                  </p>
+                  {selected.installments_total ? (
+                    <p className="mt-1">
+                      <span className="text-muted-foreground">Installments:</span>{" "}
+                      {selected.installments_paid ?? 0}/{selected.installments_total} paid ·{" "}
+                      {selected.installments_remaining ?? 0} remaining
+                    </p>
+                  ) : null}
+                  <p className="mt-1">
+                    <span className="text-muted-foreground">Next payment:</span>{" "}
+                    {selected.is_paid_in_full ? (
+                      <span className="font-medium text-success">Paid in full</span>
+                    ) : selected.next_due_date ? (
+                      <>
+                        {formatAdminDate(selected.next_due_date)}
+                        {selected.next_due_amount ? (
+                          <>
+                            {" "}
+                            · {formatPrice(Number(selected.next_due_amount), selected.currency)}
+                          </>
+                        ) : null}
+                        {selected.next_due_status ? (
+                          <span className="text-muted-foreground"> ({selected.next_due_status})</span>
+                        ) : null}
+                      </>
+                    ) : (
+                      "-"
+                    )}
+                  </p>
+                </div>
                 <ul className="space-y-2 text-sm">
                   {selected.obligations.map((o) => (
                     <li key={o.id} className="rounded-md border p-3">

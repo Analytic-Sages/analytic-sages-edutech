@@ -13,7 +13,15 @@ from app.services.opportunity_sources.dorahacks import parse_listing as parse_do
 from app.services.opportunity_sources.encode import parse_listing as parse_encode
 from app.services.opportunity_sources.superteam import parse_listing as parse_superteam
 from app.services.opportunity_sources.web3_filter import is_web3_text
-from tests.test_opportunity_ingestion import _auth, _cleanup_source, _cleanup_user, _make_user, _seed, client
+from tests.test_opportunity_ingestion import (
+    _auth,
+    _cleanup_fixture_opportunities,
+    _cleanup_source,
+    _cleanup_user,
+    _make_user,
+    _seed,
+    client,
+)
 
 COLOSSEUM_PAYLOAD = {
     "type": "data",
@@ -260,6 +268,9 @@ def test_superteam_parser_splits_hackathon_bounty_and_grant():
 
 def test_colosseum_ingest_lands_as_draft_hackathon():
     _seed()
+    fixture_urls = ("https://colosseum.com/eternal",)
+    # Heal any leftovers from an earlier aborted run before asserting created counts.
+    _cleanup_fixture_opportunities(fixture_urls)
     source_name = f"Col {uuid.uuid4().hex[:8]}"
     admin_email = f"admin-col-{uuid.uuid4()}@example.com"
     admin = _make_user(admin_email, UserRole.ADMIN)
@@ -295,6 +306,7 @@ def test_colosseum_ingest_lands_as_draft_hackathon():
         assert match["opportunity_type"] == "hackathon"
         assert match["application_url"] == "https://colosseum.com/eternal"
     finally:
+        _cleanup_fixture_opportunities(fixture_urls)
         _cleanup_source(source_name)
         _cleanup_user(admin_email)
 
