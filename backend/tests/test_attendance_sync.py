@@ -31,7 +31,7 @@ from app.models.classroom import (
     SessionRecording,
 )
 from app.models.user import User
-from app.services.attendance import AttendanceSyncService
+from app.services.attendance import AttendanceSyncService, select_class_session
 from app.services.realtimekit import RealtimeKitError, RealtimeKitService
 
 client = TestClient(app)
@@ -50,6 +50,7 @@ def _install_provider(
     *,
     provider_session,
     participants=None,
+    sessions=None,
     sessions_error=None,
     participants_error=None,
     fail_times=1,
@@ -57,18 +58,20 @@ def _install_provider(
     """Patch the RealtimeKit client so no network call is made."""
     state = {"calls": 0}
 
-    def fake_find(self, meeting_id):  # noqa: ANN001
+    def fake_list(self, meeting_id, max_pages=10):  # noqa: ANN001
         state["calls"] += 1
         if sessions_error is not None and state["calls"] <= fail_times:
             raise sessions_error
-        return provider_session
+        if sessions is not None:
+            return list(sessions)
+        return [provider_session] if provider_session else []
 
     def fake_participants(self, session_id, include_peer_events=True, max_pages=20):  # noqa: ANN001
         if participants_error is not None:
             raise participants_error
         return list(participants or [])
 
-    monkeypatch.setattr(RealtimeKitService, "find_session_for_meeting", fake_find)
+    monkeypatch.setattr(RealtimeKitService, "list_meeting_sessions", fake_list)
     monkeypatch.setattr(RealtimeKitService, "list_all_session_participants", fake_participants)
 
 
@@ -739,4 +742,81 @@ def test_realtimekit_client_retries_transient_failures(monkeypatch):
     result = service.list_sessions(associated_id="m1")
     assert attempts["count"] == 3
     assert result["sessions"] == [{"id": "s1"}]
-# ---------- db fixtures ----------
+
+
+def test_class_session_is_the_scheduled_room_not_the_newest():
+    class_start = datetime(2026, 10, 5, 17, 0, tzinfo=UTC)
+    class_end = datetime(2026, 10, 5, 19, 0, tzinfo=UTC)
+    orientation = {
+        "id": "3335c1f7-7c9b-4f6e-9a4a-700b9a3384fe",
+        "started_at": "2026-10-05T16:56:14Z",
+        "ended_at": "2026-10-05T18:22:55Z",
+    }
+    later = {
+        "id": "7eaa3a06-a246-4561-b37d-8e81dd922cb8",
+        "started_at": "2026-10-06T12:00:00Z",
+        "ended_at": "2026-10-06T12:20:00Z",
+    }
+    chosen = select_class_session([later, orientation], class_start, class_end)
+    assert chosen is not None
+    assert chosen["id"] == orientation["id"]
+    assert select_class_session([later], class_start, class_end) is None
+
+
+def test_sync_uses_orientation_session_not_a_later_room(monkeypatch):
+    _, session_id, student_a, _ = _seed()
+    starts, ends = _session_times(session_id)
+    later = {
+        "id": "later-session",
+        "status": "ENDED",
+        "started_at": (starts + timedelta(days=1)).isoformat(),
+        "ended_at": (starts + timedelta(days=1, hours=1)).isoformat(),
+    }
+    orientation = {
+        "id": "3335c1f7-7c9b-4f6e-9a4a-700b9a3384fe",
+        "status": "ENDED",
+        "started_at": (starts - timedelta(minutes=4)).isoformat(),
+        "ended_at": ends.isoformat(),
+    }
+    _install_provider(
+        monkeypatch,
+        provider_session=None,
+        sessions=[later, orientation],
+        participants=[
+            _participant("p-joshua", user_id=student_a.id, name="Joshua Nwachukwu", joined=starts, left=ends)
+        ],
+    )
+    result = _sync(session_id)
+    assert result.provider_session_id == orientation["id"]
+    assert result.participants == 1
+    assert _attendance_for(session_id, student_a.id).status == AttendanceStatus.ATTENDED
+    _cleanup()
+
+
+def test_inflated_duration_is_capped_to_the_room(monkeypatch):
+    _, session_id, student_a, _ = _seed()
+    starts, ends = _session_times(session_id)
+    room = {
+        "id": "orientation-session",
+        "status": "ENDED",
+        "started_at": starts.isoformat(),
+        "ended_at": ends.isoformat(),
+    }
+    _install_provider(
+        monkeypatch,
+        provider_session=room,
+        participants=[
+            _participant(
+                "p-samuel",
+                user_id=student_a.id,
+                name="Samuel Nkansah",
+                joined=starts + timedelta(minutes=3),
+                duration=(5 * 60) + 20,
+            )
+        ],
+    )
+    assert _sync(session_id).status == "ok"
+    row = _attendance_for(session_id, student_a.id)
+    assert row.total_attendance_seconds == int((ends - (starts + timedelta(minutes=3))).total_seconds())
+    assert row.first_joined_at is not None
+    _cleanup()

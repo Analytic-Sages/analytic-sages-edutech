@@ -399,7 +399,7 @@ class RealtimeKitService:
 
     def find_session_for_meeting(self, meeting_id: str) -> dict[str, Any] | None:
         """The most recent provider session recorded against a meeting id."""
-        sessions = self.list_sessions(associated_id=str(meeting_id))["sessions"]
+        sessions = self.list_meeting_sessions(meeting_id)
         if not sessions:
             return None
         sessions = sorted(
@@ -408,6 +408,21 @@ class RealtimeKitService:
             reverse=True,
         )
         return sessions[0]
+
+    def list_meeting_sessions(self, meeting_id: str, *, max_pages: int = 10) -> list[dict[str, Any]]:
+        """Every RealtimeKit session for a meeting, oldest pages included."""
+        if not meeting_id or not self.configured:
+            return []
+        collected: list[dict[str, Any]] = []
+        page = 1
+        while page <= max_pages:
+            payload = self.list_sessions(associated_id=str(meeting_id), page_no=page, per_page=100)
+            items = payload["sessions"]
+            collected.extend(items)
+            if len(items) < 100:
+                break
+            page += 1
+        return collected
 
     def list_session_participants(
         self,

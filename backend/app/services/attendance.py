@@ -92,6 +92,80 @@ def _duration_to_seconds(raw: dict) -> int:
         return 0
 
 
+def select_class_session(
+    sessions: list[dict],
+    class_start: datetime | None,
+    class_end: datetime | None,
+) -> dict | None:
+    """Pick the RealtimeKit session that belongs to this class.
+
+    A meeting can be opened again later. The newest session is not this class.
+    Prefer the room that overlaps the scheduled time. A session on another day
+    is not a match.
+    """
+    if not sessions or class_start is None:
+        return None
+    start = _ensure_utc(class_start)
+    end = _ensure_utc(class_end) if class_end is not None else start + timedelta(hours=2)
+    if end <= start:
+        end = start + timedelta(hours=2)
+    window_start = start - timedelta(hours=6)
+    window_end = end + timedelta(hours=6)
+
+    ranked: list[tuple[float, float, dict]] = []
+    for item in sessions:
+        began = _parse_dt(item.get("started_at") or item.get("startedAt") or item.get("created_at") or item.get("createdAt"))
+        if began is None:
+            continue
+        finished = _parse_dt(item.get("ended_at") or item.get("endedAt")) or began
+        if began > window_end or finished < window_start:
+            continue
+        overlap_end = min(finished, end)
+        overlap_start = max(began, start)
+        overlap = (overlap_end - overlap_start).total_seconds()
+        overlap = overlap if overlap > 0 else 0.0
+        distance = abs((began - start).total_seconds())
+        ranked.append((overlap, -distance, item))
+    if not ranked:
+        return None
+    ranked.sort(key=lambda row: (row[0], row[1]), reverse=True)
+    return ranked[0][2]
+
+
+def _clip_to_room(
+    intervals: list[tuple[datetime | None, datetime | None, str | None]],
+    room_end: datetime | None,
+) -> list[tuple[datetime | None, datetime | None, str | None]]:
+    """Close an open stay when the room ended, so a missing leave is not a multi-hour stay."""
+    if room_end is None:
+        return intervals
+    clipped: list[tuple[datetime | None, datetime | None, str | None]] = []
+    for began, finished, event_id in intervals:
+        if began is not None and finished is None and room_end > began:
+            finished = room_end
+        clipped.append((began, finished, event_id))
+    return clipped
+
+
+def _cap_presence(
+    total_seconds: int,
+    joined_at: datetime | None,
+    left_at: datetime | None,
+    room_start: datetime | None,
+    room_end: datetime | None,
+) -> int:
+    """Ignore a reported duration that is longer than the room itself."""
+    if total_seconds <= 0 or room_start is None or room_end is None or room_end <= room_start:
+        return total_seconds
+    room_seconds = _delta_seconds(room_start, room_end)
+    if total_seconds <= room_seconds + 120:
+        return total_seconds
+    if joined_at is not None and room_end > joined_at:
+        stay_end = room_end if left_at is None or left_at > room_end else left_at
+        return min(total_seconds, _delta_seconds(joined_at, stay_end))
+    return min(total_seconds, room_seconds)
+
+
 def _display_name(raw: dict) -> str | None:
     for key in ("display_name", "displayName", "name"):
         value = raw.get(key)
@@ -380,6 +454,7 @@ class AttendanceSyncService:
         raw: dict,
         rules: tuple[int, float, int],
         finalized: bool,
+        provider_session_bounds: dict | None = None,
     ) -> tuple[AttendanceParticipant, bool] | None:
         min_seconds, min_percent, late_grace = rules
         participant_id = str(raw.get("id") or raw.get("participant_id") or "").strip()
@@ -416,12 +491,27 @@ class AttendanceSyncService:
 
         joined_at = _parse_dt(raw.get("joined_at") or raw.get("joinedAt"))
         left_at = _parse_dt(raw.get("left_at") or raw.get("leftAt"))
-        intervals = self._build_intervals(raw)
+        room_end = _parse_dt(
+            (provider_session_bounds or {}).get("ended_at")
+            or (provider_session_bounds or {}).get("endedAt")
+        )
+        room_start = _parse_dt(
+            (provider_session_bounds or {}).get("started_at")
+            or (provider_session_bounds or {}).get("startedAt")
+        )
+        intervals = _clip_to_room(self._build_intervals(raw), room_end)
         if intervals and intervals[-1][1] is None and left_at:
             intervals[-1] = (intervals[-1][0], left_at, intervals[-1][2])
+        for index, (began, finished, event_id) in enumerate(intervals):
+            if began is not None and (joined_at is None or began < joined_at):
+                joined_at = began
+            if finished is not None and (left_at is None or finished > left_at):
+                left_at = finished
+            intervals[index] = (began, finished, event_id)
         total_seconds = self._total_from_intervals(intervals)
         if total_seconds <= 0:
             total_seconds = _duration_to_seconds(raw) or _delta_seconds(joined_at, left_at)
+        total_seconds = _cap_presence(total_seconds, joined_at, left_at, room_start, room_end)
         if total_seconds > 0 and not intervals and joined_at and left_at:
             intervals = [(joined_at, left_at, None)]
 
@@ -475,15 +565,20 @@ class AttendanceSyncService:
             )
 
         try:
-            provider_session = self.realtimekit.find_session_for_meeting(meeting_id)
+            provider_sessions = self.realtimekit.list_meeting_sessions(meeting_id)
         except RealtimeKitError as exc:
             logger.warning("Attendance sync: session lookup failed for %s: %s", session.id, exc)
             return SessionAttendanceSyncRow(session_id=session.id, status="error", note=str(exc))
 
+        provider_session = select_class_session(
+            provider_sessions, session.starts_at, session.ends_at
+        )
         if not provider_session:
-            # The class may not have started, or the provider has not published it yet.
+            # The class may not have started, or no room overlaps this scheduled time.
             return SessionAttendanceSyncRow(
-                session_id=session.id, status="pending", note="provider session not found yet"
+                session_id=session.id,
+                status="pending",
+                note="no RealtimeKit session overlaps this class",
             )
 
         provider_session_id = str(provider_session.get("id") or "")
@@ -501,7 +596,9 @@ class AttendanceSyncService:
         matched = unmatched = written = 0
         matched_user_ids: set = set()
         for raw in participants:
-            result = self._upsert_participant(session, provider_session_id, raw, rules, finalized)
+            result = self._upsert_participant(
+                session, provider_session_id, raw, rules, finalized, provider_session
+            )
             if result is None:
                 continue
             record, wrote = result
