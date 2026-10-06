@@ -62,6 +62,7 @@ export const adminNav: NavItem[] = [
   { title: "Dashboard", href: "/admin", icon: "dashboard" },
   { title: "Featured cohort", href: "/admin/cohort", icon: "classroom" },
   { title: "Live sessions", href: "/admin/classroom", icon: "classroom" },
+  { title: "Attendance", href: "/admin/attendance", icon: "classroom" },
   { title: "Assignments", href: "/admin/assignments", icon: "courses" },
   { title: "Instructor access", href: "/admin/instructor-access", icon: "users" },
   { title: "Users", href: "/admin/users", icon: "users" },
@@ -75,6 +76,7 @@ export const adminNav: NavItem[] = [
   { title: "Referrals", href: "/admin/referrals", icon: "referrals" },
   { title: "Insights", href: "/admin/insights", icon: "insights" },
   { title: "Certificates", href: "/admin/certificates", icon: "certificates" },
+  { title: "Reports", href: "/admin/reports", icon: "analytics" },
   { title: "Analytics", href: "/admin/analytics", icon: "analytics" },
   { title: "Settings", href: "/admin/settings", icon: "settings" },
 ];

@@ -491,7 +491,10 @@ function EndedState({ session }: { session: LiveSessionPublic }) {
           Watch recording
         </a>
       ) : (
-        <p className="mt-4 text-sm text-muted-foreground">Recording processing…</p>
+        <p className="mt-4 max-w-md text-sm text-muted-foreground">
+          The recording is being processed and will appear here automatically once it&apos;s ready.
+          Recordings are usually available shortly after class ends — check back soon.
+        </p>
       )}
       {session.assignment_summary && (
         <p className="mt-6 max-w-lg text-sm text-foreground/80">{session.assignment_summary}</p>

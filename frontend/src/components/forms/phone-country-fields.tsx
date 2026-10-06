@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import PhoneInput, {
   getCountries,
   getCountryCallingCode,
@@ -84,6 +85,8 @@ export function CountrySelectField({
 }: CountrySelectFieldProps) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
 
   const options = useMemo(() => {
     return getCountries()
@@ -108,11 +111,36 @@ export function CountrySelectField({
 
   const selected = options.find((opt) => opt.code === value);
 
+  // Keep the popover anchored to the trigger as it moves (scroll/resize).
+  useLayoutEffect(() => {
+    if (!open || !triggerRef.current) return;
+    const update = () => {
+      if (triggerRef.current) setRect(triggerRef.current.getBoundingClientRect());
+    };
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   return (
-    <div className={cn("relative space-y-2", className)}>
+    <div className={cn("space-y-2", className)}>
       <Label htmlFor={id}>{label}</Label>
       {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
       <button
+        ref={triggerRef}
         id={id}
         type="button"
         className={cn(
@@ -129,44 +157,59 @@ export function CountrySelectField({
         </span>
         <span className="text-muted-foreground">{open ? "▴" : "▾"}</span>
       </button>
-      {open ? (
-        <div className="absolute z-40 mt-1 w-full rounded-lg border bg-popover p-2 shadow-lg">
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search countries"
-            className="mb-2 h-9"
-            autoFocus
-          />
-          <ul className="max-h-48 overflow-y-auto" role="listbox">
-            {filtered.map((opt) => (
-              <li key={opt.code}>
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={opt.code === value}
-                  className={cn(
-                    "w-full rounded-md px-2 py-2 text-left text-sm hover:bg-muted",
-                    opt.code === value && "bg-muted font-medium"
-                  )}
-                  onClick={() => {
-                    onChange(opt.code);
-                    setQuery("");
-                    setOpen(false);
-                  }}
-                >
-                  {opt.name}{" "}
-                  <span className="text-muted-foreground">({opt.code})</span>
-                </button>
-              </li>
-            ))}
-            {filtered.length === 0 ? (
-              <li className="px-2 py-3 text-sm text-muted-foreground">No countries found</li>
-            ) : null}
-          </ul>
-        </div>
-      ) : null}
       {error ? <p className="text-xs text-destructive">{error}</p> : null}
+
+      {open && typeof document !== "undefined" && rect
+        ? createPortal(
+            <>
+              <div
+                className="fixed inset-0 z-[59]"
+                onClick={() => setOpen(false)}
+                aria-hidden
+              />
+              <div
+                className="fixed z-[60] rounded-lg border bg-popover p-2 shadow-lg"
+                style={{ top: rect.bottom + 4, left: rect.left, width: rect.width }}
+                role="listbox"
+              >
+                <Input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search countries"
+                  className="mb-2 h-9"
+                  autoFocus
+                />
+                <ul className="max-h-48 overflow-y-auto">
+                  {filtered.map((opt) => (
+                    <li key={opt.code}>
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={opt.code === value}
+                        className={cn(
+                          "w-full rounded-md px-2 py-2 text-left text-sm hover:bg-muted",
+                          opt.code === value && "bg-muted font-medium"
+                        )}
+                        onClick={() => {
+                          onChange(opt.code);
+                          setQuery("");
+                          setOpen(false);
+                        }}
+                      >
+                        {opt.name}{" "}
+                        <span className="text-muted-foreground">({opt.code})</span>
+                      </button>
+                    </li>
+                  ))}
+                  {filtered.length === 0 ? (
+                    <li className="px-2 py-3 text-sm text-muted-foreground">No countries found</li>
+                  ) : null}
+                </ul>
+              </div>
+            </>,
+            document.body
+          )
+        : null}
     </div>
   );
 }

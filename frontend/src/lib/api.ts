@@ -2141,6 +2141,19 @@ export type AtRiskStudentRow = {
   at_risk: boolean;
 };
 
+export type GradebookRow = {
+  user_id: string;
+  full_name: string | null;
+  email: string;
+  attendance_present: number;
+  attendance_total: number;
+  assignments_submitted: number;
+  assignments_total: number;
+  avg_score: number | null;
+  projects_completed: number;
+  at_risk: boolean;
+};
+
 export type CohortReport = {
   cohort_id: string;
   cohort_name: string;
@@ -2150,6 +2163,7 @@ export type CohortReport = {
   projects_completed: number;
   at_risk_count: number;
   at_risk: AtRiskStudentRow[];
+  gradebook: GradebookRow[];
 };
 
 export function getMyProjects(cohortId: string) {
@@ -2604,6 +2618,27 @@ export function cancelAdminClassroomSession(sessionId: string) {
 export function deleteAdminClassroomSession(sessionId: string) {
   return apiFetch<void>(`/api/v1/admin/classroom/sessions/${encodeURIComponent(sessionId)}`, {
     method: "DELETE",
+  });
+}
+
+export type AdminRecordingSyncResult = {
+  total: number;
+  updated: number;
+  skipped: number;
+  failed: number;
+};
+
+export function syncAdminClassroomRecording(sessionId: string) {
+  return apiFetch<AdminLiveSessionRow>(
+    `/api/v1/admin/classroom/sessions/${encodeURIComponent(sessionId)}/sync-recording`,
+    { method: "POST" }
+  );
+}
+
+export function syncAdminClassroomRecordings(cohortId?: string) {
+  const suffix = cohortId ? `?cohort_id=${encodeURIComponent(cohortId)}` : "";
+  return apiFetch<AdminRecordingSyncResult>(`/api/v1/admin/classroom/sync-recordings${suffix}`, {
+    method: "POST",
   });
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarPlus, ExternalLink, Loader2, Pencil, Trash2, XCircle } from "lucide-react";
+import { CalendarPlus, CloudDownload, ExternalLink, Loader2, Pencil, Trash2, XCircle } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +32,8 @@ import {
   deleteAdminClassroomSession,
   getAdminClassroomCohorts,
   getAdminClassroomSessions,
+  syncAdminClassroomRecording,
+  syncAdminClassroomRecordings,
   updateAdminClassroomSession,
   type AdminCohortOption,
   type AdminLiveSessionInput,
@@ -105,6 +107,7 @@ export function AdminClassroomContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<AdminLiveSessionRow | null>(null);
@@ -270,6 +273,45 @@ export function AdminClassroomContent() {
     }
   }
 
+  async function handleSyncRecording(row: AdminLiveSessionRow) {
+    setBusyId(row.id);
+    setError(null);
+    try {
+      const updated = await syncAdminClassroomRecording(row.id);
+      if (updated.recording_url) {
+        setSessions((prev) =>
+          prev.map((s) => (s.id === row.id ? { ...s, recording_url: updated.recording_url } : s))
+        );
+      } else {
+        setError(
+          "No recording is available yet. RealtimeKit keeps recordings after they finish uploading — try again in a few minutes.",
+        );
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.detail : "Could not sync the recording");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleSyncAll() {
+    setSyncing(true);
+    setError(null);
+    try {
+      const result = await syncAdminClassroomRecordings(cohortFilter || undefined);
+      await reloadSessions();
+      setError(
+        `Recording sync complete — ${result.updated} new recording${
+          result.updated === 1 ? "" : "s"
+        } linked (${result.skipped} without a recording yet).`,
+      );
+    } catch (err) {
+      setError(err instanceof ApiError ? err.detail : "Could not sync recordings");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   const field = "h-9 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm";
 
   return (
@@ -303,6 +345,10 @@ export function AdminClassroomContent() {
         >
           <CalendarPlus className="size-4" />
           Create session
+        </Button>
+        <Button variant="outline" onClick={handleSyncAll} disabled={syncing}>
+          {syncing ? <Loader2 className="size-4 animate-spin" /> : <CloudDownload className="size-4" />}
+          {syncing ? "Syncing…" : "Sync recordings"}
         </Button>
         <span className="text-xs text-muted-foreground">
           Showing {filtered.length}{" "}
@@ -362,16 +408,40 @@ export function AdminClassroomContent() {
                   </TableCell>
                   <TableCell className="text-sm">
                     {row.recording_url ? (
-                      <a
-                        href={row.recording_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-brand-orange hover:underline"
-                      >
-                        Recording <ExternalLink className="size-3" />
-                      </a>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={row.recording_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-brand-orange hover:underline"
+                        >
+                          Recording <ExternalLink className="size-3" />
+                        </a>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={busyId === row.id}
+                          onClick={() => handleSyncRecording(row)}
+                          title="Re-check recording"
+                        >
+                          <CloudDownload className="size-3.5" />
+                        </Button>
+                      </div>
                     ) : (
-                      <span className="text-muted-foreground">—</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={busyId === row.id}
+                        onClick={() => handleSyncRecording(row)}
+                        title="Pull recording from RealtimeKit"
+                      >
+                        {busyId === row.id ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <CloudDownload className="size-4" />
+                        )}
+                        <span className="ml-1 text-xs">Sync</span>
+                      </Button>
                     )}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{row.member_count}</TableCell>

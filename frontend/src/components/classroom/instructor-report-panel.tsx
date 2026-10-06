@@ -4,6 +4,14 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { ApiError, getCohortReport, type CohortReport } from "@/lib/api";
 
 export function InstructorReportPanel({ cohortId }: { cohortId: string }) {
@@ -72,6 +80,60 @@ export function InstructorReportPanel({ cohortId }: { cohortId: string }) {
                 </li>
               ))}
             </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="mt-6 shadow-card">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Gradebook</CardTitle>
+            <Badge variant="outline">{report.gradebook.length} students</Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {report.gradebook.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No students enrolled yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Attendance</TableHead>
+                    <TableHead>Assignments</TableHead>
+                    <TableHead>Avg score</TableHead>
+                    <TableHead>Projects done</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {report.gradebook.map((row) => (
+                    <TableRow key={row.user_id}>
+                      <TableCell>
+                        <p className="font-medium">{row.full_name || "-"}</p>
+                        <p className="text-xs text-muted-foreground">{row.email}</p>
+                      </TableCell>
+                      <TableCell>
+                        {row.attendance_present}/{row.attendance_total}
+                      </TableCell>
+                      <TableCell>
+                        {row.assignments_submitted}/{row.assignments_total}
+                      </TableCell>
+                      <TableCell>{row.avg_score != null ? `${row.avg_score}%` : "—"}</TableCell>
+                      <TableCell>{row.projects_completed}</TableCell>
+                      <TableCell>
+                        {row.at_risk ? (
+                          <Badge className="bg-destructive/15 text-destructive">At risk</Badge>
+                        ) : (
+                          <Badge variant="outline">On track</Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
