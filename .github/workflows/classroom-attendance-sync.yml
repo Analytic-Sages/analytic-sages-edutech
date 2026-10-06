@@ -33,14 +33,14 @@ jobs:
 
           # Attendance and recordings are independent operations — sync each, and
           # never let one failure abort the other.
-          curl -fsS -X POST \\
-            -H "Content-Type: application/json" \\
-            -H "X-Classroom-Sync-Token: ${token}" \\
-            "${PUBLIC_API_URL%/}/api/v1/internal/classroom/sync-attendance" \\
+          curl -fsS -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-Classroom-Sync-Token: ${token}" \
+            "${PUBLIC_API_URL%/}/api/v1/internal/classroom/sync-attendance" \
             || echo "::warning::attendance sync failed"
 
-          curl -fsS -X POST \\
-            -H "Content-Type: application/json" \\
-            -H "X-Classroom-Sync-Token: ${token}" \\
-            "${PUBLIC_API_URL%/}/api/v1/internal/classroom/sync-recordings" \\
+          curl -fsS -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-Classroom-Sync-Token: ${token}" \
+            "${PUBLIC_API_URL%/}/api/v1/internal/classroom/sync-recordings" \
             || echo "::warning::recording sync failed"
