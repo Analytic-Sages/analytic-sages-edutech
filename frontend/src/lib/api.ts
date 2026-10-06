@@ -2659,6 +2659,50 @@ export function syncAdminClassroomRecording(sessionId: string) {
   );
 }
 
+export type RecordingImportCandidate = {
+  session_id: string;
+  cohort_id: string;
+  cohort_name: string;
+  title: string;
+  week_label: string;
+  starts_at: string;
+  match: "meeting" | "title" | string;
+  has_recording: boolean;
+};
+
+export type RecordingImportPreview = {
+  recording_id: string;
+  title: string | null;
+  status: string | null;
+  started_at: string | null;
+  duration_seconds: number | null;
+  meeting_id: string | null;
+  provider_session_id: string | null;
+  has_download_url: boolean;
+  download_url_expires_at: string | null;
+  already_linked_session_id: string | null;
+  candidates: RecordingImportCandidate[];
+  ambiguous: boolean;
+  note: string | null;
+};
+
+export function previewAdminRecordingImport(recordingId: string) {
+  const params = new URLSearchParams({ recording_id: recordingId });
+  return apiFetch<RecordingImportPreview>(
+    `/api/v1/admin/classroom/recordings/import-preview?${params.toString()}`
+  );
+}
+
+export function importAdminClassroomRecording(
+  sessionId: string,
+  payload: { recording_id: string; download_url?: string | null; reason?: string | null }
+) {
+  return apiFetch<AdminLiveSessionRow>(
+    `/api/v1/admin/classroom/sessions/${encodeURIComponent(sessionId)}/import-recording`,
+    { method: "POST", body: JSON.stringify(payload) }
+  );
+}
+
 export function syncAdminClassroomRecordings(cohortId?: string) {
   const suffix = cohortId ? `?cohort_id=${encodeURIComponent(cohortId)}` : "";
   return apiFetch<AdminRecordingSyncResult>(`/api/v1/admin/classroom/sync-recordings${suffix}`, {

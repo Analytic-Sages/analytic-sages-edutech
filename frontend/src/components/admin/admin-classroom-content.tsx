@@ -32,12 +32,15 @@ import {
   deleteAdminClassroomSession,
   getAdminClassroomCohorts,
   getAdminClassroomSessions,
+  importAdminClassroomRecording,
+  previewAdminRecordingImport,
   syncAdminClassroomRecording,
   syncAdminClassroomRecordings,
   updateAdminClassroomSession,
   type AdminCohortOption,
   type AdminLiveSessionInput,
   type AdminLiveSessionRow,
+  type RecordingImportPreview,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -114,6 +117,12 @@ export function AdminClassroomContent() {
   const [form, setForm] = useState<FormState>(defaultForm(""));
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [importRecordingId, setImportRecordingId] = useState("");
+  const [importPreview, setImportPreview] = useState<RecordingImportPreview | null>(null);
+  const [importDownloadUrl, setImportDownloadUrl] = useState("");
+  const [importReason, setImportReason] = useState("");
+  const [importBusy, setImportBusy] = useState(false);
+  const [importMessage, setImportMessage] = useState<string | null>(null);
 
   const refreshCohorts = useCallback(async () => {
     try {
@@ -168,10 +177,19 @@ export function AdminClassroomContent() {
     );
   }, [sessions, cohortFilter]);
 
+  function resetImport() {
+    setImportRecordingId("");
+    setImportPreview(null);
+    setImportDownloadUrl("");
+    setImportReason("");
+    setImportMessage(null);
+  }
+
   function openCreate() {
     setEditing(null);
     setForm(defaultForm(cohortFilter || cohorts[0]?.id || ""));
     setFormError(null);
+    resetImport();
     setDialogOpen(true);
   }
 
@@ -192,7 +210,54 @@ export function AdminClassroomContent() {
       ends_at: toLocalInput(row.ends_at),
     });
     setFormError(null);
+    resetImport();
     setDialogOpen(true);
+  }
+
+  const importVerified =
+    Boolean(editing) &&
+    importPreview !== null &&
+    !importPreview.ambiguous &&
+    importPreview.candidates.length === 1 &&
+    importPreview.candidates[0]?.session_id === editing?.id;
+  const importManual = Boolean(importDownloadUrl.trim() && importReason.trim());
+  const canImport = Boolean(importRecordingId.trim()) && (importVerified || importManual);
+
+  async function handlePreviewImport() {
+    if (!importRecordingId.trim()) {
+      setImportMessage("Enter a RealtimeKit recording ID.");
+      return;
+    }
+    setImportBusy(true);
+    setImportMessage(null);
+    setImportPreview(null);
+    try {
+      setImportPreview(await previewAdminRecordingImport(importRecordingId.trim()));
+    } catch (err) {
+      setImportMessage(err instanceof ApiError ? err.detail : "Could not preview this recording.");
+    } finally {
+      setImportBusy(false);
+    }
+  }
+
+  async function handleImportRecording() {
+    if (!editing || !canImport) return;
+    setImportBusy(true);
+    setImportMessage(null);
+    try {
+      const updated = await importAdminClassroomRecording(editing.id, {
+        recording_id: importRecordingId.trim(),
+        download_url: importDownloadUrl.trim() || null,
+        reason: importReason.trim() || null,
+      });
+      setSessions((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
+      setEditing(updated);
+      setImportMessage("Recording imported. Students can watch it once Cloudflare Stream finishes.");
+    } catch (err) {
+      setImportMessage(err instanceof ApiError ? err.detail : "Could not import this recording.");
+    } finally {
+      setImportBusy(false);
+    }
   }
 
   async function submit() {
@@ -575,6 +640,81 @@ export function AdminClassroomContent() {
                   onChange={(e) => setForm({ ...form, recording_url: e.target.value })}
                   placeholder="https://…"
                 />
+              </div>
+            )}
+            {editing && (
+              <div className="grid gap-3 rounded-lg border p-3">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="s-rtk-recording">Existing RealtimeKit recording ID</Label>
+                  <Input
+                    id="s-rtk-recording"
+                    value={importRecordingId}
+                    onChange={(e) => {
+                      setImportRecordingId(e.target.value);
+                      setImportPreview(null);
+                    }}
+                    placeholder="fff4d97c-b29d-4a88-8fb6-0d46e13ee11c"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={importBusy || !importRecordingId.trim()}
+                    onClick={handlePreviewImport}
+                  >
+                    {importBusy ? <Loader2 className="size-4 animate-spin" /> : null}
+                    Preview
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="bg-brand-navy text-white hover:bg-brand-navy/90"
+                    disabled={importBusy || !canImport}
+                    onClick={handleImportRecording}
+                  >
+                    Import onto this session
+                  </Button>
+                </div>
+                {importPreview && (
+                  <div className="space-y-1 text-sm text-muted-foreground">
+                    <p>
+                      {importPreview.title || "Untitled"} · {importPreview.status || "unknown status"}
+                      {importPreview.meeting_id ? ` · meeting ${importPreview.meeting_id}` : ""}
+                    </p>
+                    <p>
+                      {importPreview.candidates.length === 0
+                        ? "No verified session match."
+                        : importPreview.candidates
+                            .map((candidate) => `${candidate.title} (${candidate.match})`)
+                            .join(", ")}
+                    </p>
+                    {importPreview.note && <p>{importPreview.note}</p>}
+                    {importVerified && (
+                      <p className="text-success">This session is the single verified match.</p>
+                    )}
+                  </div>
+                )}
+                <div className="grid gap-1.5">
+                  <Label htmlFor="s-import-url">Manual download URL</Label>
+                  <Input
+                    id="s-import-url"
+                    value={importDownloadUrl}
+                    onChange={(e) => setImportDownloadUrl(e.target.value)}
+                    placeholder="Only if RealtimeKit metadata is missing or ambiguous"
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="s-import-reason">Recovery reason</Label>
+                  <Input
+                    id="s-import-reason"
+                    value={importReason}
+                    onChange={(e) => setImportReason(e.target.value)}
+                    placeholder="Required with a manual download URL"
+                  />
+                </div>
+                {importMessage && <p className="text-sm text-muted-foreground">{importMessage}</p>}
               </div>
             )}
             <div className="grid grid-cols-2 gap-3">

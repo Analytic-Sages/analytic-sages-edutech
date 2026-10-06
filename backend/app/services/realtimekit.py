@@ -89,11 +89,12 @@ class RealtimeKitService:
             raise RealtimeKitError(f"Unexpected create_meeting response: {data}")
         return str(meeting_id)
 
-    def _recordings_url(self) -> str:
-        return (
+    def _recordings_url(self, recording_id: str | None = None) -> str:
+        base = (
             f"{self.API_BASE}/accounts/{self.settings.cloudflare_account_id}"
             f"/realtime/kit/{self.settings.realtimekit_app_id}/recordings"
         )
+        return f"{base}/{recording_id}" if recording_id else base
 
     def list_recordings(self, *, meeting_id: str) -> list[dict[str, Any]]:
         """Return recordings for a meeting (empty when not configured/no recordings).
@@ -101,34 +102,142 @@ class RealtimeKitService:
         RealtimeKit keeps composite recordings for ~7 days; each item carries a
         ``status`` and, once UPLOADED, a ``downloadUrl`` (or ``download_url``).
         """
-        if not self.configured or not meeting_id or str(meeting_id).startswith("mock-"):
+        if not meeting_id or str(meeting_id).startswith("mock-"):
             return []
+        return self.list_app_recordings(meeting_id=meeting_id)
 
+    def list_app_recordings(
+        self,
+        *,
+        meeting_id: str | None = None,
+        search: str | None = None,
+        status: str | list[str] | None = None,
+        expired: bool | None = None,
+        page_no: int = 1,
+        per_page: int = 200,
+    ) -> list[dict[str, Any]]:
+        """List the app's recordings, optionally filtered (empty in mock mode).
+
+        Documented query params: ``meeting_id``, ``search`` (meeting id or title),
+        ``status`` (array), ``expired``, ``page_no``, ``per_page``.
+        """
+        if not self.configured:
+            return []
+        params: dict[str, Any] = {"page_no": page_no, "per_page": per_page}
+        if meeting_id:
+            params["meeting_id"] = str(meeting_id)
+        if search:
+            params["search"] = search
+        if status:
+            params["status"] = status
+        if expired is not None:
+            params["expired"] = "true" if expired else "false"
         try:
-            with httpx.Client(timeout=30.0) as client:
-                response = client.get(
-                    self._recordings_url(),
-                    headers=self._headers(),
-                    params={"meeting_id": meeting_id},
-                )
-                if response.status_code >= 400:
-                    logger.error(
-                        "RealtimeKit list_recordings failed: %s %s",
-                        response.status_code,
-                        response.text,
-                    )
-                    return []
-                data = response.json()
-        except httpx.HTTPError:
-            logger.exception("RealtimeKit list_recordings failed")
+            data = self._get_json(self._recordings_url(), params=params)
+        except RealtimeKitError:
+            logger.exception("RealtimeKit list_app_recordings failed")
             return []
+        return self._recording_items(data)
 
+    @staticmethod
+    def _recording_items(data: dict[str, Any]) -> list[dict[str, Any]]:
         body = data.get("data") if isinstance(data.get("data"), (list, dict)) else data
         if isinstance(body, dict):
             items = body.get("recordings") or body.get("items") or []
         else:
             items = body
         return [item for item in items if isinstance(item, dict)]
+
+    def get_recording(self, recording_id: str) -> dict[str, Any] | None:
+        """Fetch details of a single recording by its RealtimeKit recording id.
+
+        ``GET …/recordings/{recording_id}`` — returns the recording's ``session_id``
+        (provider session), ``download_url`` (temporary), status and timings. Returns
+        ``None`` when the recording does not exist (404).
+        """
+        if not self.configured or not recording_id:
+            return None
+        try:
+            data = self._get_json(self._recordings_url(recording_id))
+        except RealtimeKitError as exc:
+            if exc.status_code == 404:
+                return None
+            raise
+        body = data.get("data") if isinstance(data.get("data"), dict) else data
+        return body if isinstance(body, dict) else None
+
+    def find_recording_in_list(
+        self, recording_id: str, *, max_pages: int = 25
+    ) -> dict[str, Any] | None:
+        """Locate a recording in the app's recordings list.
+
+        The list (unlike the single-recording GET) includes the nested ``meeting``
+        object and a title, which are needed to match a recording to an LMS session.
+        """
+        if not self.configured or not recording_id:
+            return None
+        page = 1
+        while page <= max_pages:
+            items = self.list_app_recordings(page_no=page)
+            for item in items:
+                item_id = item.get("id") or item.get("recordingId") or item.get("recording_id")
+                if str(item_id or "") == str(recording_id):
+                    return item
+            if len(items) < 200:
+                break
+            page += 1
+        return None
+
+    def recording_meeting_id(self, recording: dict[str, Any]) -> str | None:
+        """Resolve a recording's meeting id using only verified fields.
+
+        Order: the nested ``meeting.id`` from the recordings list, then any direct
+        ``meeting_id``, else resolve the recording's provider ``session_id`` through
+        the Sessions API to its ``associated_id`` (the meeting id). The recording id
+        is never treated as a meeting id.
+        """
+        meeting = recording.get("meeting")
+        if isinstance(meeting, dict):
+            meeting_id = meeting.get("id") or meeting.get("meetingId")
+            if meeting_id:
+                return str(meeting_id)
+        direct = recording.get("meeting_id") or recording.get("meetingId")
+        if direct:
+            return str(direct)
+        session_id = recording.get("session_id") or recording.get("sessionId")
+        if not session_id:
+            return None
+        try:
+            sessions = self.list_sessions(per_page=100)["sessions"]
+        except RealtimeKitError:
+            return None
+        for session in sessions:
+            if str(session.get("id")) == str(session_id):
+                associated = session.get("associated_id") or session.get("associatedId")
+                return str(associated) if associated else None
+        return None
+
+    @staticmethod
+    def recording_title(recording: dict[str, Any]) -> str | None:
+        meeting = recording.get("meeting")
+        if isinstance(meeting, dict) and meeting.get("title"):
+            return str(meeting["title"])
+        title = (
+            recording.get("title")
+            or recording.get("output_file_name")
+            or recording.get("outputFileName")
+        )
+        return str(title) if title else None
+
+    @staticmethod
+    def recording_download_url(recording: dict[str, Any]) -> str | None:
+        url = (
+            recording.get("download_url")
+            or recording.get("downloadUrl")
+            or recording.get("audio_download_url")
+            or recording.get("audioDownloadUrl")
+        )
+        return str(url) if url else None
 
     def latest_download_url(self, *, meeting_id: str) -> str | None:
         """Newest UPLOADED recording's download URL for a meeting, if any."""
@@ -141,7 +250,7 @@ class RealtimeKitService:
         # Prefer the most recently created recording.
         ready.sort(key=lambda item: str(item.get("createdAt") or item.get("created_at") or ""), reverse=True)
         for item in ready:
-            url = item.get("downloadUrl") or item.get("download_url")
+            url = self.recording_download_url(item)
             if url:
                 return str(url)
         return None

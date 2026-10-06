@@ -233,22 +233,28 @@ class ClassroomService:
         if member is not None and member.role == CohortMemberRole.STUDENT:
             blocked_reason = self._payment_standing_block(user, session)
 
-        # Permanent recording state. `recording_watch_url` is our access-gated API
-        # path students hit to obtain a signed playback URL — never the raw provider URL.
+        # A ready Cloudflare Stream copy wins over any leftover temporary URL so
+        # students hit the enrollment-gated playback endpoint after that link expires.
         recording = (recordings or {}).get(session.id) if recordings is not None else self._recording_for(session.id)
-        if session.recording_url:
+        stream_ready = recording is not None and recording.status == RecordingStatus.READY
+        if stream_ready:
             recording_status = "ready"
-            recording_watch_url = session.recording_url
-        elif recording is not None:
-            recording_status = recording.status.value
             recording_watch_url = (
                 f"/api/v1/cohorts/{session.cohort_id}/sessions/{session.id}/recording"
-                if recording.status == RecordingStatus.READY
-                else None
             )
+            public_recording_url = None
+        elif session.recording_url:
+            recording_status = "ready"
+            recording_watch_url = session.recording_url
+            public_recording_url = session.recording_url
+        elif recording is not None:
+            recording_status = recording.status.value
+            recording_watch_url = None
+            public_recording_url = None
         else:
             recording_status = "none"
             recording_watch_url = None
+            public_recording_url = None
 
         return LiveSessionPublic(
             id=session.id,
@@ -273,7 +279,7 @@ class ClassroomService:
             ends_at=session.ends_at,
             status=session.status.value,
             phase=phase,  # type: ignore[arg-type]
-            recording_url=session.recording_url,
+            recording_url=public_recording_url,
             recording_status=recording_status,  # type: ignore[arg-type]
             recording_watch_url=recording_watch_url,
             can_join=self._can_join(phase) and (member is not None or staff) and blocked_reason is None,

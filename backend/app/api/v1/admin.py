@@ -50,6 +50,8 @@ from app.schemas.classroom_admin import (
     AdminLiveSessionRow,
     AdminLiveSessionUpdate,
     AdminRecordingSyncResult,
+    RecordingImportPreview,
+    RecordingImportRequest,
 )
 from app.schemas.lms_admin import (
     AdminCourseDetail,
@@ -308,6 +310,37 @@ def admin_sync_classroom_recordings(
 ) -> AdminRecordingSyncResult:
     """Bulk-pull recording URLs for every ended session (optionally one cohort)."""
     return classroom.sync_recordings(cohort_id=cohort_id)
+
+
+@router.get("/classroom/recordings/import-preview", response_model=RecordingImportPreview)
+def admin_recording_import_preview(
+    _: User = Depends(require_classroom_ops),
+    classroom: ClassroomAdminService = Depends(get_classroom_admin_service),
+    recording_id: str = Query(min_length=3, max_length=120),
+) -> RecordingImportPreview:
+    """Verified metadata + candidate sessions for an existing RealtimeKit recording.
+
+    Returns the recording's title/date/meeting id (resolved, never guessed) and the
+    LMS sessions that plausibly match, so an admin can confirm before importing.
+    """
+    return classroom.preview_recording_import(recording_id)
+
+
+@router.post(
+    "/classroom/sessions/{session_id}/import-recording",
+    response_model=AdminLiveSessionRow,
+)
+def admin_import_classroom_recording(
+    session_id: UUID,
+    payload: RecordingImportRequest,
+    _: User = Depends(require_classroom_ops),
+    classroom: ClassroomAdminService = Depends(get_classroom_admin_service),
+) -> AdminLiveSessionRow:
+    """Attach an existing RealtimeKit recording to this session and persist it.
+
+    Idempotent (never creates duplicate records) and enrollment playback is unchanged.
+    """
+    return classroom.import_recording(session_id, payload)
 
 
 @router.post(

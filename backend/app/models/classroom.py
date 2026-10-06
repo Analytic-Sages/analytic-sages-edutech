@@ -205,7 +205,12 @@ class SessionRecording(Base):
     """
 
     __tablename__ = "session_recordings"
-    __table_args__ = (UniqueConstraint("session_id", name="uq_session_recordings_session"),)
+    __table_args__ = (
+        UniqueConstraint("session_id", name="uq_session_recordings_session"),
+        UniqueConstraint(
+            "realtimekit_recording_id", name="uq_session_recordings_realtimekit_recording"
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     session_id: Mapped[uuid.UUID] = mapped_column(
@@ -217,6 +222,9 @@ class SessionRecording(Base):
     provider: Mapped[str] = mapped_column(String(40), nullable=False, default="cloudflare_stream")
     # Provider-side id (e.g. Cloudflare Stream video uid). Not a URL.
     provider_recording_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # RealtimeKit's own recording id — a different identifier from the meeting id.
+    # Kept so an imported historical recording can be traced and never double-linked.
+    realtimekit_recording_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
     status: Mapped[RecordingStatus] = mapped_column(
         pg_enum(RecordingStatus, name="recording_status"),
         nullable=False,

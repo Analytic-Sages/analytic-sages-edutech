@@ -18,6 +18,7 @@ from app.models.classroom import (
     LiveSession,
     LiveSessionStatus,
     LiveSessionType,
+    RecordingStatus,
 )
 from app.schemas.classroom_admin import (
     AdminCohortOption,
@@ -25,6 +26,8 @@ from app.schemas.classroom_admin import (
     AdminLiveSessionRow,
     AdminLiveSessionUpdate,
     AdminRecordingSyncResult,
+    RecordingImportPreview,
+    RecordingImportRequest,
 )
 from app.schemas.attendance import (
     AttendanceParticipantPublic,
@@ -86,7 +89,9 @@ class ClassroomAdminService:
     def _row(self, session: LiveSession) -> AdminLiveSessionRow:
         cohort = self.db.get(Cohort, session.cohort_id)
         recording = self.recordings._get_recording(session.id)
-        if session.recording_url:
+        if recording is not None and recording.status == RecordingStatus.READY:
+            recording_status = "ready"
+        elif session.recording_url:
             recording_status = "ready"
         elif recording is not None:
             recording_status = recording.status.value
@@ -282,6 +287,26 @@ class ClassroomAdminService:
         """Persist recordings for sessions (optionally one cohort)."""
         summary = self.recordings.sync_all(cohort_id=cohort_id)
         return AdminRecordingSyncResult(**summary)
+
+    def preview_recording_import(self, recording_id: str) -> RecordingImportPreview:
+        """Verified metadata + candidate sessions for an existing recording."""
+        return self.recordings.recording_import_preview(recording_id)
+
+    def import_recording(
+        self, session_id: UUID, payload: RecordingImportRequest
+    ) -> AdminLiveSessionRow:
+        """Attach an existing RealtimeKit recording to a specific historical session."""
+        session = self.db.get(LiveSession, session_id)
+        if not session:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+        self.recordings.import_recording(
+            session,
+            recording_id=payload.recording_id,
+            download_url=payload.download_url,
+            reason=payload.reason,
+        )
+        self.db.refresh(session)
+        return self._row(session)
 
     # ---------- attendance (RealtimeKit reconciliation) ----------
 

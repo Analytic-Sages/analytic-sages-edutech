@@ -61,6 +61,53 @@ class AdminRecordingSyncResult(BaseModel):
     failed: int = 0
 
 
+class RecordingCandidateSession(BaseModel):
+    """A historical LMS session that may match an existing RealtimeKit recording."""
+
+    session_id: UUID
+    cohort_id: UUID
+    cohort_name: str
+    title: str
+    week_label: str = ""
+    starts_at: datetime
+    match: str  # "meeting" | "title" | "date"
+    has_recording: bool = False
+
+
+class RecordingImportPreview(BaseModel):
+    """Verified metadata for an existing RealtimeKit recording + candidate sessions.
+
+    Returned before any change so an admin can confirm the correct session instead
+    of the platform guessing.
+    """
+
+    recording_id: str
+    title: str | None = None
+    status: str | None = None
+    started_at: datetime | None = None
+    duration_seconds: int | None = None
+    meeting_id: str | None = None
+    provider_session_id: str | None = None
+    has_download_url: bool = False
+    download_url_expires_at: datetime | None = None
+    already_linked_session_id: UUID | None = None
+    candidates: list[RecordingCandidateSession] = Field(default_factory=list)
+    ambiguous: bool = False
+    note: str | None = None
+
+
+class RecordingImportRequest(BaseModel):
+    """Attach an existing RealtimeKit recording to a specific LMS session.
+
+    ``download_url`` is an optional manual fallback for recovery when the recording
+    API cannot be reached; it is fetched-copied immediately and never persisted.
+    """
+
+    recording_id: str = Field(min_length=3, max_length=120)
+    download_url: str | None = Field(default=None, max_length=2048)
+    reason: str | None = Field(default=None, max_length=500)
+
+
 class AdminLiveSessionRow(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
