@@ -14,13 +14,30 @@ import {
   ApiError,
   getAccessToken,
   getMyAssignments,
+  getMyAttendance,
   getMyCohort,
   getMyLiveEnrollments,
   getProgramme,
   type AssignmentPublic,
+  type AttendanceRecord,
   type CohortStudentDetail,
   type ProgrammeDetailPublic,
 } from "@/lib/api";
+
+const ATTENDANCE_LABEL: Record<string, { label: string; className: string }> = {
+  attended: { label: "Present", className: "bg-success/10 text-success" },
+  late: { label: "Late", className: "bg-warning/15 text-warning" },
+  absent: { label: "Absent", className: "bg-destructive/15 text-destructive" },
+  needs_review: { label: "Pending review", className: "bg-muted text-muted-foreground" },
+};
+
+function formatAttended(seconds: number | null | undefined): string | null {
+  if (!seconds || seconds <= 0) return null;
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.round((seconds % 3600) / 60);
+  if (hours > 0) return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+  return `${minutes}m`;
+}
 
 function formatWhen(iso: string | null) {
   if (!iso) return "—";
@@ -40,6 +57,7 @@ function formatWhen(iso: string | null) {
 export function ProgrammeDetailContent({ slug }: { slug: string }) {
   const [cohort, setCohort] = useState<CohortStudentDetail | null>(null);
   const [assignments, setAssignments] = useState<AssignmentPublic[]>([]);
+  const [myAttendance, setMyAttendance] = useState<AttendanceRecord[]>([]);
   const [programme, setProgramme] = useState<ProgrammeDetailPublic | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,13 +74,15 @@ export function ProgrammeDetailContent({ slug }: { slug: string }) {
             (item) => item.programme_slug === slug || item.cohort_slug === slug,
           );
           if (match) {
-            const [detail, cohortAssignments] = await Promise.all([
+            const [detail, cohortAssignments, attendanceRows] = await Promise.all([
               getMyCohort(match.cohort_id),
               getMyAssignments(match.cohort_id).catch(() => [] as AssignmentPublic[]),
+              getMyAttendance(match.cohort_id).catch(() => [] as AttendanceRecord[]),
             ]);
             if (!cancelled) {
               setCohort(detail);
               setAssignments(cohortAssignments);
+              setMyAttendance(attendanceRows);
             }
             return;
           }
@@ -103,6 +123,7 @@ export function ProgrammeDetailContent({ slug }: { slug: string }) {
 
   if (cohort) {
     const attendance = cohort.attendance;
+    const attendanceBySession = new Map(myAttendance.map((row) => [row.session_id, row]));
     return (
       <div>
         <PageHeader title={cohort.programme?.title || cohort.name} description={cohort.name} />
@@ -210,6 +231,26 @@ export function ProgrammeDetailContent({ slug }: { slug: string }) {
                       <CalendarDays className="size-3.5" />
                       {formatWhen(session.starts_at)}
                     </p>
+                    {(() => {
+                      const mine = attendanceBySession.get(session.id);
+                      if (!mine) return null;
+                      const meta = ATTENDANCE_LABEL[mine.status] ?? {
+                        label: mine.status,
+                        className: "bg-muted text-muted-foreground",
+                      };
+                      const attended = formatAttended(mine.total_attendance_seconds);
+                      return (
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <Badge className={meta.className}>{meta.label}</Badge>
+                          {attended && (
+                            <span className="text-xs text-muted-foreground">
+                              Attended {attended}
+                              {mine.source === "realtimekit" ? " · auto-imported" : ""}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-2">
                     {session.access_blocked ? (

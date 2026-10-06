@@ -46,6 +46,7 @@ from app.services.opportunity_discovery import OpportunityDiscoveryService
 from app.services.storage import StorageService
 from app.services.waitlist import WaitlistService
 from app.services.recordings import RecordingsService
+from app.services.attendance import AttendanceSyncService
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -245,6 +246,13 @@ def get_recordings_service(
     settings: Settings = Depends(get_settings),
 ) -> RecordingsService:
     return RecordingsService(db, settings)
+
+
+def get_attendance_sync_service(
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> AttendanceSyncService:
+    return AttendanceSyncService(db, settings)
 
 
 def get_current_user(

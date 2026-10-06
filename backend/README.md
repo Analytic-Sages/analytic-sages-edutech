@@ -203,6 +203,11 @@ Once set, uploads go straight to Supabase Storage and return a permanent `https:
 | `GET /api/v1/cohorts/{id}/sessions/{sid}/recording` | Access-gated playback (enrolled student / staff) → signed URL for the permanent recording |
 | `POST /api/v1/internal/classroom/sync-schedule` | Ops: re-provision the canonical 30-session schedule (token `CLASSROOM_SYNC_TOKEN` → `OPPORTUNITY_SYNC_TOKEN`) |
 | `POST /api/v1/internal/classroom/sync-recordings` | Ops/cron: persist all ended-session recordings before RealtimeKit expires them (~7 days) |
+| `POST /api/v1/admin/classroom/sessions/{id}/sync-attendance` | Admin/ops: reconcile one session's RealtimeKit attendance |
+| `POST /api/v1/admin/classroom/sync-attendance` | Admin/ops: bulk-reconcile attendance (`?cohort_id=`) |
+| `GET /api/v1/admin/classroom/sessions/{id}/attendance` | Admin/ops: expected vs matched/unmatched participants + sync state |
+| `POST /api/v1/admin/attendance-participants/{id}/resolve` | Admin/ops: match an unmatched participant to a student (manual override) |
+| `POST /api/v1/internal/classroom/sync-attendance` | Ops/cron: reconcile all sessions' attendance (token `CLASSROOM_SYNC_TOKEN` → `OPPORTUNITY_SYNC_TOKEN`) |
 
 **Recordings are permanent.** RealtimeKit only ever exposes a *temporary* download URL
 (≈7-day R2 link), so that URL is never stored as the recording. Instead the sync flow
@@ -213,6 +218,68 @@ checks enrollment then mints a short-lived **signed** playback URL (set
 `CLOUDFLARE_STREAM_SIGNING_KEY_ID` + `CLOUDFLARE_STREAM_SIGNING_KEY_PEM`; otherwise it
 returns the enrollment-gated embed URL). Run the internal sync soon after each class so
 the recording is handed off before the temporary URL expires.
+
+#### RealtimeKit attendance
+
+Attendance is reconciled from Cloudflare RealtimeKit's **Sessions API** — not from
+display names. On join, the classroom passes the LMS user id as the participant's
+`custom_participant_id`; the sync reads every participant for the provider session and
+matches that id back to an enrolled student. Unmatched participants are stored (raw
+payload preserved) and flagged **needs review** rather than guessed at.
+
+How it works:
+
+- `AttendanceSyncService.sync_session` finds the provider session for a meeting
+  (`GET …/sessions?associated_id={meeting_id}`), pages through its participants
+  (`GET …/sessions/{id}/participants?include_peer_events=true`), rebuilds each
+  participant's **presence intervals** from peer events (so reconnects sum correctly),
+  computes non-overlapping attended seconds, and writes the authoritative
+  `attendance` row.
+- Status is derived from configurable rules: a participant is **Present** when their
+  attended time meets both the minimum seconds *and* the minimum percentage of the
+  scheduled session, and they joined within the late grace; otherwise **Late**, or
+  **Absent** with no presence. Rules default to
+  `ATTENDANCE_DEFAULT_MIN_SECONDS=600`, `ATTENDANCE_DEFAULT_MIN_PERCENT=30`,
+  `ATTENDANCE_LATE_GRACE_MINUTES=10` and can be overridden per cohort in
+  `cohorts.enrollment_settings["attendance"] = {"min_seconds":…, "min_percent":…, "late_grace_minutes":…}`.
+- A session that is **still running** never marks anyone absent (`sync_status=pending`).
+- A **manual override** (an instructor/staff edit, or an admin resolving an unmatched
+  participant) is never overwritten by a later sync; it records who/when/why
+  (`manual_override`, `overridden_by`, `override_reason`).
+- Repeated syncs are **idempotent** (unique keys + interval rebuild) and safe to retry.
+- Attendance sync and recording sync are **independent** operations — each retries and
+  falls back on its own.
+
+Enabling / scheduling:
+
+```bash
+# run after classes, or on a cron (token-protected). Both are idempotent.
+curl -X POST "$PUBLIC_API_URL/api/v1/internal/classroom/sync-attendance" \
+  -H "X-Classroom-Sync-Token: $CLASSROOM_SYNC_TOKEN"
+```
+
+Or turn on the in-process background sweep with `ATTENDANCE_SYNC_ENABLED=true`
+(and optionally `ATTENDANCE_SYNC_INTERVAL_SECONDS`, default 1800). Admins/ops can also
+sync a single session from **Admin → Attendance → Sync attendance**, review
+matched/unmatched participants with join/last-leave times and durations, and match an
+unmatched participant to a student.
+
+Troubleshooting:
+
+- **Everything is `pending`** → the provider has no session for the meeting id yet
+  (class not started, or nobody joined so no meeting was created).
+- **`error`** → the RealtimeKit API call failed (transient 5xx/429 are retried with
+  backoff); re-run the sync.
+- **Unmatched participants** → the participant joined without our
+  `custom_participant_id` (e.g. a guest link). Match them in the admin panel.
+- **Provider `duration`** is in **minutes** (float) — the service converts it to
+  seconds. When peer events exist they take precedence over the summary duration.
+
+Run the attendance tests (mocked provider — no Cloudflare account needed):
+
+```bash
+pytest tests/test_attendance_sync.py -q
+```
 
 Admin staff can create and manage live sessions from **Admin → Live sessions**
 (`/admin/classroom`) without a developer: pick a cohort, set title, week label,
@@ -368,6 +435,6 @@ Run from `backend/` with Postgres up (`docker compose up -d` at the repo root):
 
 ## Not implemented yet (later phases)
 
-- Attendance webhooks, assignments gradebook, recording → Cloudflare Stream pipeline
+- Assignments gradebook, attendance review workflow beyond unmatched-participant matching
 - Certificates (Certifier.io), AI lecture assets, assignments, notifications, search, AI tutor, analytics, portfolio
 - Production email provider integration

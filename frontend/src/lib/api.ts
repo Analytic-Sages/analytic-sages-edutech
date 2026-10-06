@@ -1868,9 +1868,15 @@ export type AttendanceRecord = {
   session_id: string;
   session_title: string;
   starts_at: string;
-  status: "attended" | "late" | "absent";
+  status: "attended" | "late" | "absent" | "needs_review";
   recorded_at: string;
   note: string | null;
+  /** Non-overlapping attended time (RealtimeKit-synced rows only). */
+  total_attendance_seconds?: number | null;
+  first_joined_at?: string | null;
+  last_left_at?: string | null;
+  /** "realtimekit" when imported from the provider, otherwise "manual". */
+  source?: string;
 };
 
 export type MyLiveEnrollment = {
@@ -2658,6 +2664,107 @@ export function syncAdminClassroomRecordings(cohortId?: string) {
   return apiFetch<AdminRecordingSyncResult>(`/api/v1/admin/classroom/sync-recordings${suffix}`, {
     method: "POST",
   });
+}
+
+export type AttendanceIntervalRow = {
+  joined_at: string | null;
+  left_at: string | null;
+  duration_seconds: number;
+  source: string;
+};
+
+export type AttendanceParticipantRow = {
+  id: string;
+  provider: string;
+  provider_session_id: string | null;
+  provider_participant_id: string;
+  custom_participant_id: string | null;
+  display_name: string | null;
+  user_id: string | null;
+  user_name: string | null;
+  user_email: string | null;
+  matched: boolean;
+  first_joined_at: string | null;
+  last_left_at: string | null;
+  total_attendance_seconds: number;
+  status: string | null;
+  sync_status: string;
+  last_synced_at: string | null;
+  intervals: AttendanceIntervalRow[];
+};
+
+export type ExpectedStudentRow = {
+  user_id: string;
+  full_name: string | null;
+  email: string;
+  has_attendance: boolean;
+  status: string | null;
+  total_attendance_seconds: number;
+  manual_override: boolean;
+};
+
+export type SessionAttendanceDetail = {
+  session_id: string;
+  session_title: string;
+  session_started_at: string | null;
+  session_ended_at: string | null;
+  sync_status: string;
+  last_synced_at: string | null;
+  matched_count: number;
+  unmatched_count: number;
+  expected_students: ExpectedStudentRow[];
+  participants: AttendanceParticipantRow[];
+};
+
+export type SessionAttendanceSyncRow = {
+  session_id: string;
+  status: string;
+  provider_session_id: string | null;
+  participants: number;
+  matched: number;
+  unmatched: number;
+  attendance_written: number;
+  last_synced_at: string | null;
+  note: string | null;
+};
+
+export type AttendanceSyncResult = {
+  total: number;
+  updated: number;
+  skipped: number;
+  failed: number;
+  pending: number;
+  needs_review: number;
+};
+
+export function syncAdminClassroomAttendance(sessionId: string) {
+  return apiFetch<SessionAttendanceSyncRow>(
+    `/api/v1/admin/classroom/sessions/${encodeURIComponent(sessionId)}/sync-attendance`,
+    { method: "POST" }
+  );
+}
+
+export function syncAdminClassroomAttendances(cohortId?: string) {
+  const suffix = cohortId ? `?cohort_id=${encodeURIComponent(cohortId)}` : "";
+  return apiFetch<AttendanceSyncResult>(`/api/v1/admin/classroom/sync-attendance${suffix}`, {
+    method: "POST",
+  });
+}
+
+export function getAdminSessionAttendance(sessionId: string) {
+  return apiFetch<SessionAttendanceDetail>(
+    `/api/v1/admin/classroom/sessions/${encodeURIComponent(sessionId)}/attendance`
+  );
+}
+
+export function resolveAdminAttendanceParticipant(
+  participantId: string,
+  payload: { user_id?: string | null; status?: string | null; reason?: string | null }
+) {
+  return apiFetch<AttendanceParticipantRow>(
+    `/api/v1/admin/attendance-participants/${encodeURIComponent(participantId)}/resolve`,
+    { method: "POST", body: JSON.stringify(payload) }
+  );
 }
 
 export type AdminStudentRow = {

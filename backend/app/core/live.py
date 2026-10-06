@@ -21,6 +21,21 @@ class AttendanceStatus(str, Enum):
     ATTENDED = "attended"
     LATE = "late"
     ABSENT = "absent"
+    # Imported from a provider (e.g. RealtimeKit) but not confidently matched to an
+    # enrolled student — an instructor must resolve it before it counts.
+    NEEDS_REVIEW = "needs_review"
+
+
+class AttendanceSyncStatus(str, Enum):
+    """State of the provider↔LMS attendance reconciliation for a session/row."""
+
+    OK = "ok"
+    # The session is still running (or the provider has not published data yet).
+    PENDING = "pending"
+    # Imported, but something needs a human: unmatched participant(s).
+    NEEDS_REVIEW = "needs_review"
+    # The provider call failed; safe to retry.
+    ERROR = "error"
 
 
 class AssignmentStatus(str, Enum):

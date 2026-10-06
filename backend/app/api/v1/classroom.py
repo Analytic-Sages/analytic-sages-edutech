@@ -26,6 +26,7 @@ from app.schemas.classroom import (
     PublicCohortCard,
 )
 from app.services.classroom import ClassroomService
+from app.services.attendance import AttendanceSyncService
 from app.services.recordings import RecordingsService
 from app.services.seed_bde_classroom import seed_bde_classroom
 
@@ -194,3 +195,26 @@ def internal_sync_classroom_recordings(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid classroom sync token"
         )
     return RecordingsService(db, settings).sync_all()
+
+
+@internal_router.post("/internal/classroom/sync-attendance")
+def internal_sync_classroom_attendance(
+    settings: Settings = Depends(get_settings),
+    db: Session = Depends(get_db),
+    x_classroom_sync_token: str | None = Header(default=None),
+) -> dict[str, int]:
+    """Cron/ops hook: reconcile RealtimeKit attendance into LMS records.
+
+    Independent of the recording sync (each retries on its own). Idempotent, so it
+    is safe to run repeatedly after classes and while a session is still finishing.
+    Token-protected (CLASSROOM_SYNC_TOKEN, falling back to OPPORTUNITY_SYNC_TOKEN).
+    """
+    expected = (settings.classroom_sync_token or settings.opportunity_sync_token or "").strip()
+    if not expected:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    provided = (x_classroom_sync_token or "").strip()
+    if len(provided) != len(expected) or not hmac.compare_digest(provided, expected):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid classroom sync token"
+        )
+    return AttendanceSyncService(db, settings).sync_all().model_dump()

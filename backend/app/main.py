@@ -18,6 +18,7 @@ from app.services.seed_events import seed_featured_event
 from app.services.seed_insights import seed_insights_articles
 from app.services.seed_opportunities import seed_opportunity_taxonomy
 from app.services.seed_self_paced import seed_dune_course
+from app.services.attendance import AttendanceSyncService
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +99,43 @@ async def _billing_reminders_loop(stop: asyncio.Event) -> None:
             await asyncio.wait_for(stop.wait(), timeout=interval)
 
 
+def _run_attendance_sync_sweep() -> None:
+    """Sync worker: reconcile RealtimeKit attendance for recent sessions.
+
+    Independent of the recording sweep so each can retry on its own.
+    """
+    settings = get_settings()
+    if not settings.attendance_sync_enabled:
+        return
+    db = SessionLocal()
+    try:
+        AttendanceSyncService(db, settings).sync_all()
+    except Exception:
+        logger.exception("Attendance sync sweep failed")
+    finally:
+        db.close()
+
+
+async def _attendance_sync_loop(stop: asyncio.Event) -> None:
+    """Background reconciliation of RealtimeKit attendance (off unless enabled)."""
+    settings = get_settings()
+    if not settings.attendance_sync_enabled:
+        return
+    interval = max(300, settings.attendance_sync_interval_seconds)
+
+    # Let boot traffic and migrations settle before the first sweep.
+    with suppress(asyncio.TimeoutError):
+        await asyncio.wait_for(stop.wait(), timeout=60)
+
+    while not stop.is_set():
+        try:
+            await asyncio.to_thread(_run_attendance_sync_sweep)
+        except Exception:
+            logger.exception("Attendance sync loop iteration failed")
+        with suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(stop.wait(), timeout=interval)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     db = SessionLocal()
@@ -130,16 +168,20 @@ async def lifespan(_app: FastAPI):
     stop = asyncio.Event()
     reconcile_task = asyncio.create_task(_payments_reconcile_loop(stop))
     reminders_task = asyncio.create_task(_billing_reminders_loop(stop))
+    attendance_task = asyncio.create_task(_attendance_sync_loop(stop))
     try:
         yield
     finally:
         stop.set()
         reconcile_task.cancel()
         reminders_task.cancel()
+        attendance_task.cancel()
         with suppress(asyncio.CancelledError):
             await reconcile_task
         with suppress(asyncio.CancelledError):
             await reminders_task
+        with suppress(asyncio.CancelledError):
+            await attendance_task
 
 
 def create_app() -> FastAPI:

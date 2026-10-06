@@ -1,6 +1,6 @@
 from app.models.article import Article, ArticleContributor, AuthorProfile
 from app.models.assignment import Assignment, AssignmentSubmission
-from app.models.attendance import Attendance
+from app.models.attendance import Attendance, AttendanceInterval, AttendanceParticipant
 from app.models.notification import Notification
 from app.models.billing import (
     BillingAuditEvent,
@@ -114,6 +114,8 @@ __all__ = [
     "ReferralAuditEvent",
     "Programme",
     "Attendance",
+    "AttendanceParticipant",
+    "AttendanceInterval",
     "Assignment",
     "AssignmentSubmission",
     "Project",

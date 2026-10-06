@@ -37,6 +37,13 @@ from app.schemas.admin_students import (
     InstallmentReminderRequest,
     ReminderResult,
 )
+from app.schemas.attendance import (
+    AttendanceParticipantPublic,
+    AttendanceResolveRequest,
+    AttendanceSyncResult,
+    SessionAttendanceDetail,
+    SessionAttendanceSyncRow,
+)
 from app.schemas.classroom_admin import (
     AdminCohortOption,
     AdminLiveSessionCreate,
@@ -301,6 +308,56 @@ def admin_sync_classroom_recordings(
 ) -> AdminRecordingSyncResult:
     """Bulk-pull recording URLs for every ended session (optionally one cohort)."""
     return classroom.sync_recordings(cohort_id=cohort_id)
+
+
+@router.post(
+    "/classroom/sessions/{session_id}/sync-attendance",
+    response_model=SessionAttendanceSyncRow,
+)
+def admin_sync_classroom_attendance(
+    session_id: UUID,
+    _: User = Depends(require_classroom_ops),
+    classroom: ClassroomAdminService = Depends(get_classroom_admin_service),
+) -> SessionAttendanceSyncRow:
+    """Reconcile one session's RealtimeKit attendance (idempotent, retry-safe)."""
+    return classroom.sync_attendance(session_id)
+
+
+@router.post("/classroom/sync-attendance", response_model=AttendanceSyncResult)
+def admin_sync_classroom_attendances(
+    _: User = Depends(require_classroom_ops),
+    classroom: ClassroomAdminService = Depends(get_classroom_admin_service),
+    cohort_id: UUID | None = None,
+) -> AttendanceSyncResult:
+    """Bulk-reconcile RealtimeKit attendance for sessions (optionally one cohort)."""
+    return classroom.sync_attendances(cohort_id=cohort_id)
+
+
+@router.get(
+    "/classroom/sessions/{session_id}/attendance",
+    response_model=SessionAttendanceDetail,
+)
+def admin_classroom_session_attendance(
+    session_id: UUID,
+    _: User = Depends(require_classroom_ops),
+    classroom: ClassroomAdminService = Depends(get_classroom_admin_service),
+) -> SessionAttendanceDetail:
+    """Expected vs matched/unmatched participants with join/duration + sync state."""
+    return classroom.session_attendance(session_id)
+
+
+@router.post(
+    "/attendance-participants/{participant_id}/resolve",
+    response_model=AttendanceParticipantPublic,
+)
+def admin_resolve_attendance_participant(
+    participant_id: UUID,
+    payload: AttendanceResolveRequest,
+    current_user: User = Depends(require_classroom_ops),
+    classroom: ClassroomAdminService = Depends(get_classroom_admin_service),
+) -> AttendanceParticipantPublic:
+    """Attach an unmatched RealtimeKit participant to a student (manual override)."""
+    return classroom.resolve_attendance_participant(participant_id, payload, actor=current_user)
 
 
 @router.get("/students", response_model=AdminStudentList)

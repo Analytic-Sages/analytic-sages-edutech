@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any
 
 import httpx
@@ -215,3 +216,144 @@ class RealtimeKitService:
         if not token:
             raise RealtimeKitError(f"Unexpected add_participant response: {data}")
         return body
+
+    # ---------- attendance: sessions + participants ----------
+    #
+    # RealtimeKit exposes post-session attendance through the Sessions API:
+    #   GET /accounts/{acct}/realtime/kit/{app}/sessions
+    #   GET /accounts/{acct}/realtime/kit/{app}/sessions/{session_id}/participants
+    # Each participant carries id, custom_participant_id, display_name, duration,
+    # joined_at, left_at and (optionally) peer_events for reconnects.
+
+    def _sessions_url(self, suffix: str = "") -> str:
+        base = (
+            f"{self.API_BASE}/accounts/{self.settings.cloudflare_account_id}"
+            f"/realtime/kit/{self.settings.realtimekit_app_id}/sessions"
+        )
+        return f"{base}{suffix}"
+
+    def _get_json(
+        self, url: str, *, params: dict[str, Any] | None = None, attempts: int = 3
+    ) -> dict[str, Any]:
+        """GET JSON with bounded retry/backoff on transient failures.
+
+        Retries timeouts/connection errors and 5xx/429; fails fast on other 4xx.
+        """
+        last_error: Exception | None = None
+        for attempt in range(1, attempts + 1):
+            try:
+                with httpx.Client(timeout=30.0) as client:
+                    response = client.get(url, headers=self._headers(), params=params)
+            except httpx.HTTPError as exc:
+                last_error = exc
+                logger.warning(
+                    "RealtimeKit GET %s failed (attempt %s/%s): %s", url, attempt, attempts, exc
+                )
+            else:
+                if response.status_code in {429, 500, 502, 503, 504}:
+                    last_error = RealtimeKitError(
+                        f"RealtimeKit returned {response.status_code}", status_code=response.status_code
+                    )
+                    logger.warning(
+                        "RealtimeKit GET %s returned %s (attempt %s/%s)",
+                        url,
+                        response.status_code,
+                        attempt,
+                        attempts,
+                    )
+                elif response.status_code >= 400:
+                    raise RealtimeKitError(
+                        f"RealtimeKit GET failed ({response.status_code}): {response.text[:200]}",
+                        status_code=response.status_code,
+                    )
+                else:
+                    return response.json()
+            if attempt < attempts:
+                time.sleep(0.5 * attempt)
+        raise RealtimeKitError("RealtimeKit GET failed after retries") from last_error
+
+    def list_sessions(
+        self, *, associated_id: str | None = None, page_no: int = 1, per_page: int = 50
+    ) -> dict[str, Any]:
+        """Return ``{"sessions": [...], "paging": {...}}`` (empty in mock mode)."""
+        if not self.configured:
+            return {"sessions": [], "paging": {}}
+        params: dict[str, Any] = {"page_no": page_no, "per_page": per_page}
+        if associated_id:
+            params["associated_id"] = str(associated_id)
+        data = self._get_json(self._sessions_url(), params=params)
+        body = data.get("data") if isinstance(data.get("data"), dict) else data
+        return {
+            "sessions": list(body.get("sessions") or []),
+            "paging": dict(body.get("paging") or data.get("paging") or {}),
+        }
+
+    def find_session_for_meeting(self, meeting_id: str) -> dict[str, Any] | None:
+        """The most recent provider session recorded against a meeting id."""
+        sessions = self.list_sessions(associated_id=str(meeting_id))["sessions"]
+        if not sessions:
+            return None
+        sessions = sorted(
+            sessions,
+            key=lambda s: str(s.get("started_at") or s.get("created_at") or ""),
+            reverse=True,
+        )
+        return sessions[0]
+
+    def list_session_participants(
+        self,
+        session_id: str,
+        *,
+        page_no: int = 1,
+        per_page: int = 200,
+        include_peer_events: bool = True,
+    ) -> dict[str, Any]:
+        """Return ``{"participants": [...], "paging": {...}}`` (empty in mock mode)."""
+        if not self.configured:
+            return {"participants": [], "paging": {}}
+        params: dict[str, Any] = {"page_no": page_no, "per_page": per_page}
+        if include_peer_events:
+            params["include_peer_events"] = "true"
+        data = self._get_json(self._sessions_url(f"/{session_id}/participants"), params=params)
+        body = data.get("data") if isinstance(data.get("data"), dict) else data
+        return {
+            "participants": list(body.get("participants") or []),
+            "paging": dict(body.get("paging") or {}),
+        }
+
+    def list_all_session_participants(
+        self, session_id: str, *, include_peer_events: bool = True, max_pages: int = 20
+    ) -> list[dict[str, Any]]:
+        """Page through every participant in a session."""
+        per_page = 200
+        collected: list[dict[str, Any]] = []
+        page = 1
+        while page <= max_pages:
+            result = self.list_session_participants(
+                session_id, page_no=page, per_page=per_page, include_peer_events=include_peer_events
+            )
+            participants = result["participants"]
+            collected.extend(participants)
+            if not participants:
+                break
+            total = (result.get("paging") or {}).get("total_count")
+            if total is not None and len(collected) >= int(total):
+                break
+            if total is None and len(participants) < per_page:
+                break
+            page += 1
+        return collected
+
+    def get_session_participant(
+        self, session_id: str, participant_id: str, *, include_peer_events: bool = True
+    ) -> dict[str, Any] | None:
+        """Single participant details (with optional peer events) or None."""
+        if not self.configured:
+            return None
+        params = {"include_peer_events": "true"} if include_peer_events else None
+        data = self._get_json(
+            self._sessions_url(f"/{session_id}/participants/{participant_id}"), params=params
+        )
+        body = data.get("data") if isinstance(data.get("data"), dict) else data
+        participant = body.get("participant")
+        return participant if isinstance(participant, dict) else None

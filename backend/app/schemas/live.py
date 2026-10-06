@@ -61,6 +61,11 @@ class AttendanceRecordPublic(BaseModel):
     status: str
     recorded_at: datetime
     note: str | None = None
+    # Provider-imported attendance detail (present only for RealtimeKit-synced rows).
+    total_attendance_seconds: int | None = None
+    first_joined_at: datetime | None = None
+    last_left_at: datetime | None = None
+    source: str = "manual"
 
 
 class MyLiveEnrollmentPublic(BaseModel):

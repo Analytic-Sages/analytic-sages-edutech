@@ -92,6 +92,19 @@ class Settings(BaseSettings):
     # Cloudflare account.
     realtimekit_record_on_start: bool = True
 
+    # RealtimeKit attendance sync — post-session reconciliation of participant
+    # join/leave intervals into the LMS attendance records. Off by default so
+    # nothing changes until enabled; the internal endpoint + admin action still work.
+    attendance_sync_enabled: bool = False
+    attendance_sync_interval_seconds: int = 1800
+    # Default attendance rules (per-cohort overrides live in
+    # cohorts.enrollment_settings["attendance"]). A student is Present when their
+    # non-overlapping attended time meets BOTH the minimum seconds and the minimum
+    # percentage of the scheduled session length.
+    attendance_default_min_seconds: int = 600
+    attendance_default_min_percent: float = 30.0
+    attendance_late_grace_minutes: int = 10
+
     # Local article image uploads (dev / API disk). Not Postgres.
     # Falls back to this when Supabase Storage is not configured — not durable across deploys.
     storage_dir: str = "var/uploads"

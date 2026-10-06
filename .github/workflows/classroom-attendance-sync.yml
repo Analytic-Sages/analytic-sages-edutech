@@ -1,0 +1,46 @@
+# Post-class sync for live cohorts: reconcile RealtimeKit attendance and hand
+# recordings off to permanent storage. Both endpoints are idempotent and retry-safe,
+# and they are independent (one failing never blocks the other). Requires
+# PUBLIC_API_URL plus CLASSROOM_SYNC_TOKEN (or OPPORTUNITY_SYNC_TOKEN) repository
+# secrets. Without those secrets the job exits 0 and skips the API calls.
+#
+# RealtimeKit recordings expire (~7 days), so a frequent cadence matters: this runs
+# every 30 minutes so a recording is copied to Cloudflare Stream soon after a class.
+
+name: Classroom attendance + recordings sync
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/30 * * * *"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync attendance and recordings
+        env:
+          PUBLIC_API_URL: ${{ secrets.PUBLIC_API_URL }}
+          CLASSROOM_SYNC_TOKEN: ${{ secrets.CLASSROOM_SYNC_TOKEN }}
+          OPPORTUNITY_SYNC_TOKEN: ${{ secrets.OPPORTUNITY_SYNC_TOKEN }}
+        run: |
+          set -euo pipefail
+          token="${CLASSROOM_SYNC_TOKEN:-${OPPORTUNITY_SYNC_TOKEN:-}}"
+          if [ -z "${PUBLIC_API_URL:-}" ] || [ -z "$token" ]; then
+            echo "Secrets PUBLIC_API_URL / CLASSROOM_SYNC_TOKEN not set; skipping."
+            exit 0
+          fi
+
+          # Attendance and recordings are independent operations — sync each, and
+          # never let one failure abort the other.
+          curl -fsS -X POST \\
+            -H "Content-Type: application/json" \\
+            -H "X-Classroom-Sync-Token: ${token}" \\
+            "${PUBLIC_API_URL%/}/api/v1/internal/classroom/sync-attendance" \\
+            || echo "::warning::attendance sync failed"
+
+          curl -fsS -X POST \\
+            -H "Content-Type: application/json" \\
+            -H "X-Classroom-Sync-Token: ${token}" \\
+            "${PUBLIC_API_URL%/}/api/v1/internal/classroom/sync-recordings" \\
+            || echo "::warning::recording sync failed"

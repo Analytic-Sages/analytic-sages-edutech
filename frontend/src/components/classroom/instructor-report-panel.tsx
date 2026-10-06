@@ -46,6 +46,9 @@ export function InstructorReportPanel({ cohortId }: { cohortId: string }) {
 
   if (!report) return null;
 
+  const gradebook = report.gradebook ?? [];
+  const atRisk = report.at_risk ?? [];
+
   return (
     <div>
       <div className="mb-4 grid gap-3 sm:grid-cols-4">
@@ -59,15 +62,15 @@ export function InstructorReportPanel({ cohortId }: { cohortId: string }) {
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">At-risk students</CardTitle>
-            <Badge variant="outline">{report.at_risk_count}</Badge>
+            <Badge variant="outline">{report.at_risk_count ?? atRisk.length}</Badge>
           </div>
         </CardHeader>
         <CardContent>
-          {report.at_risk.length === 0 ? (
+          {atRisk.length === 0 ? (
             <p className="text-sm text-muted-foreground">No students flagged.</p>
           ) : (
             <ul className="space-y-2">
-              {report.at_risk.map((row) => (
+              {atRisk.map((row) => (
                 <li key={row.user_id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 text-sm">
                   <div>
                     <p className="font-medium">{row.full_name || row.email}</p>
@@ -88,11 +91,11 @@ export function InstructorReportPanel({ cohortId }: { cohortId: string }) {
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">Gradebook</CardTitle>
-            <Badge variant="outline">{report.gradebook.length} students</Badge>
+            <Badge variant="outline">{gradebook.length} students</Badge>
           </div>
         </CardHeader>
         <CardContent>
-          {report.gradebook.length === 0 ? (
+          {gradebook.length === 0 ? (
             <p className="text-sm text-muted-foreground">No students enrolled yet.</p>
           ) : (
             <div className="overflow-x-auto">
@@ -108,7 +111,7 @@ export function InstructorReportPanel({ cohortId }: { cohortId: string }) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {report.gradebook.map((row) => (
+                  {gradebook.map((row) => (
                     <TableRow key={row.user_id}>
                       <TableCell>
                         <p className="font-medium">{row.full_name || "-"}</p>

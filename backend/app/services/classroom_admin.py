@@ -26,6 +26,15 @@ from app.schemas.classroom_admin import (
     AdminLiveSessionUpdate,
     AdminRecordingSyncResult,
 )
+from app.schemas.attendance import (
+    AttendanceParticipantPublic,
+    AttendanceResolveRequest,
+    AttendanceSyncResult,
+    SessionAttendanceDetail,
+    SessionAttendanceSyncRow,
+)
+from app.models.user import User
+from app.services.attendance import AttendanceSyncService
 from app.services.classroom import ClassroomService
 from app.services.recordings import RecordingsService
 
@@ -35,6 +44,7 @@ class ClassroomAdminService:
         self.db = db
         self.classroom = classroom
         self.recordings = RecordingsService(db, classroom.settings)
+        self.attendance = AttendanceSyncService(db, classroom.settings)
 
     def list_cohorts(self) -> list[AdminCohortOption]:
         cohorts = list(
@@ -272,3 +282,32 @@ class ClassroomAdminService:
         """Persist recordings for sessions (optionally one cohort)."""
         summary = self.recordings.sync_all(cohort_id=cohort_id)
         return AdminRecordingSyncResult(**summary)
+
+    # ---------- attendance (RealtimeKit reconciliation) ----------
+
+    def sync_attendance(self, session_id: UUID) -> SessionAttendanceSyncRow:
+        """Reconcile one session's attendance from RealtimeKit."""
+        session = self.db.get(LiveSession, session_id)
+        if not session:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+        return self.attendance.sync_session(session)
+
+    def sync_attendances(self, *, cohort_id: UUID | None = None) -> AttendanceSyncResult:
+        """Reconcile attendance for sessions (optionally one cohort)."""
+        return self.attendance.sync_all(cohort_id=cohort_id)
+
+    def session_attendance(self, session_id: UUID) -> SessionAttendanceDetail:
+        """Expected vs matched/unmatched participants for a session."""
+        return self.attendance.session_detail(session_id)
+
+    def resolve_attendance_participant(
+        self, participant_id: UUID, payload: AttendanceResolveRequest, actor: User | None = None
+    ) -> AttendanceParticipantPublic:
+        """Attach an unmatched participant to a student (manual override)."""
+        return self.attendance.resolve_participant(
+            participant_id,
+            user_id=payload.user_id,
+            status_value=payload.status,
+            reason=payload.reason,
+            actor=actor,
+        )

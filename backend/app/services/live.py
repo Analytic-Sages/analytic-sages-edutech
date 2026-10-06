@@ -326,6 +326,10 @@ class LiveLearningService:
                 status=row.status.value,
                 recorded_at=row.recorded_at,
                 note=row.note,
+                total_attendance_seconds=row.total_attendance_seconds,
+                first_joined_at=row.first_joined_at,
+                last_left_at=row.last_left_at,
+                source="realtimekit" if row.provider else "manual",
             )
             for row in rows
         ]
@@ -423,6 +427,10 @@ class LiveLearningService:
                 status=row.status.value,
                 recorded_at=row.recorded_at,
                 note=row.note,
+                total_attendance_seconds=row.total_attendance_seconds,
+                first_joined_at=row.first_joined_at,
+                last_left_at=row.last_left_at,
+                source="realtimekit" if row.provider else "manual",
             )
             for row in rows
         ]

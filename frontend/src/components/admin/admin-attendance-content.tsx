@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Loader2, Save } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
+import { AdminSessionAttendancePanel } from "@/components/admin/admin-session-attendance-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -85,6 +86,10 @@ export function AdminAttendanceContent() {
   }, [selectedId]);
 
   const cohort = useMemo(() => cohorts.find((c) => c.id === selectedId), [cohorts, selectedId]);
+  const selectedSession = useMemo(
+    () => sessions.find((s) => s.id === sessionId),
+    [sessions, sessionId]
+  );
 
   async function saveAttendance() {
     if (!selectedId || !sessionId) return;
@@ -157,9 +162,10 @@ export function AdminAttendanceContent() {
       )}
 
       <p className="mb-4 rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-        Attendance here is the official cohort record, marked by staff (or a TA) per session.
-        RealtimeKit keeps its own participant analytics for meetings, but this sheet is what appears
-        on the student&apos;s classroom and the cohort report.
+        Attendance is the official cohort record. It is imported automatically from Cloudflare
+        RealtimeKit after each class and can also be marked by staff (or a TA) per session — a staff
+        entry always wins over the imported value. This sheet is what appears on the
+        student&apos;s classroom and the cohort report.
       </p>
 
       {sessions.length > 0 && (
@@ -188,6 +194,14 @@ export function AdminAttendanceContent() {
             </Button>
           </CardContent>
         </Card>
+      )}
+
+      {sessionId && (
+        <AdminSessionAttendancePanel
+          key={sessionId}
+          sessionId={sessionId}
+          sessionTitle={selectedSession?.title || "Session"}
+        />
       )}
 
       {students.length === 0 ? (
