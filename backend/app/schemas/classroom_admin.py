@@ -52,6 +52,15 @@ class AdminLiveSessionUpdate(BaseModel):
     recording_url: str | None = None
 
 
+class AdminRecordingSyncResult(BaseModel):
+    """Summary of a bulk recording sync across a cohort (or all cohorts)."""
+
+    total: int = 0
+    updated: int = 0
+    skipped: int = 0
+    failed: int = 0
+
+
 class AdminLiveSessionRow(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -75,6 +84,7 @@ class AdminLiveSessionRow(BaseModel):
     status: str
     phase: str
     recording_url: str | None = None
+    recording_status: str = "none"
     member_count: int = 0
     created_at: datetime
     updated_at: datetime

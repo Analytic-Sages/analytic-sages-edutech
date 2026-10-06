@@ -87,6 +87,10 @@ class Settings(BaseSettings):
     realtimekit_app_id: str | None = None
     realtimekit_host_preset: str = "group_call_host"
     realtimekit_participant_preset: str = "group_call_participant"
+    # Ask RealtimeKit to record the meeting as soon as it starts, so ended sessions
+    # can sync their recording URL automatically. Requires recording enabled on the
+    # Cloudflare account.
+    realtimekit_record_on_start: bool = True
 
     # Local article image uploads (dev / API disk). Not Postgres.
     # Falls back to this when Supabase Storage is not configured — not durable across deploys.
@@ -104,6 +108,10 @@ class Settings(BaseSettings):
     # from the Stream dashboard, used to build playback/embed/thumbnail URLs.
     cloudflare_stream_customer_code: str | None = None
     cloudflare_stream_default_max_duration_seconds: int = 21600  # 6h ceiling for uploads
+    # Optional Stream signing key (id + RSA private key PEM) for private playback.
+    # When set, recordings use requireSignedURLs and the API mints short-lived tokens.
+    cloudflare_stream_signing_key_id: str | None = None
+    cloudflare_stream_signing_key_pem: str | None = None
 
     # Certifier.io certificates. Leave CERTIFIER_API_KEY empty for mock/log-only mode.
     certifier_api_key: str | None = None
@@ -222,6 +230,13 @@ class Settings(BaseSettings):
             self.cloudflare_account_id
             and self.cloudflare_api_token
             and self.cloudflare_stream_customer_code
+        )
+
+    @property
+    def cloudflare_stream_signing_configured(self) -> bool:
+        """Signed (private) playback is available when a signing key is configured."""
+        return bool(
+            self.cloudflare_stream_signing_key_id and self.cloudflare_stream_signing_key_pem
         )
 
     @property

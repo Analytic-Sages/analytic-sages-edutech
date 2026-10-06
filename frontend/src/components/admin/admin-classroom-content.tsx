@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarPlus, CloudDownload, ExternalLink, Loader2, Pencil, Trash2, XCircle } from "lucide-react";
+import { CalendarPlus, CloudDownload, Loader2, Pencil, Trash2, XCircle } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Badge } from "@/components/ui/badge";
@@ -407,33 +407,22 @@ export function AdminClassroomContent() {
                     <Badge className={phaseClass(row.phase)}>{row.phase}</Badge>
                   </TableCell>
                   <TableCell className="text-sm">
-                    {row.recording_url ? (
-                      <div className="flex items-center gap-2">
-                        <a
-                          href={row.recording_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-brand-orange hover:underline"
-                        >
-                          Recording <ExternalLink className="size-3" />
-                        </a>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={busyId === row.id}
-                          onClick={() => handleSyncRecording(row)}
-                          title="Re-check recording"
-                        >
-                          <CloudDownload className="size-3.5" />
-                        </Button>
-                      </div>
-                    ) : (
+                    <div className="flex items-center gap-2">
+                      {row.recording_url || row.recording_status === "ready" ? (
+                        <Badge className="bg-success/15 text-success">Ready</Badge>
+                      ) : row.recording_status === "processing" ? (
+                        <Badge variant="outline">Processing</Badge>
+                      ) : row.recording_status === "failed" ? (
+                        <Badge className="bg-destructive/15 text-destructive">Failed</Badge>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
                         disabled={busyId === row.id}
                         onClick={() => handleSyncRecording(row)}
-                        title="Pull recording from RealtimeKit"
+                        title="Persist recording from RealtimeKit"
                       >
                         {busyId === row.id ? (
                           <Loader2 className="size-4 animate-spin" />
@@ -442,7 +431,7 @@ export function AdminClassroomContent() {
                         )}
                         <span className="ml-1 text-xs">Sync</span>
                       </Button>
-                    )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{row.member_count}</TableCell>
                   <TableCell>

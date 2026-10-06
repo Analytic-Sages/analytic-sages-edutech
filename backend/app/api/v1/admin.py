@@ -42,6 +42,7 @@ from app.schemas.classroom_admin import (
     AdminLiveSessionCreate,
     AdminLiveSessionRow,
     AdminLiveSessionUpdate,
+    AdminRecordingSyncResult,
 )
 from app.schemas.lms_admin import (
     AdminCourseDetail,
@@ -277,6 +278,29 @@ def admin_delete_classroom_session(
     classroom: ClassroomAdminService = Depends(get_classroom_admin_service),
 ) -> None:
     classroom.delete_session(session_id)
+
+
+@router.post(
+    "/classroom/sessions/{session_id}/sync-recording",
+    response_model=AdminLiveSessionRow,
+)
+def admin_sync_classroom_recording(
+    session_id: UUID,
+    _: User = Depends(require_classroom_ops),
+    classroom: ClassroomAdminService = Depends(get_classroom_admin_service),
+) -> AdminLiveSessionRow:
+    """Pull the session's recording URL from RealtimeKit (once it has uploaded)."""
+    return classroom.sync_recording(session_id)
+
+
+@router.post("/classroom/sync-recordings", response_model=AdminRecordingSyncResult)
+def admin_sync_classroom_recordings(
+    _: User = Depends(require_classroom_ops),
+    classroom: ClassroomAdminService = Depends(get_classroom_admin_service),
+    cohort_id: UUID | None = None,
+) -> AdminRecordingSyncResult:
+    """Bulk-pull recording URLs for every ended session (optionally one cohort)."""
+    return classroom.sync_recordings(cohort_id=cohort_id)
 
 
 @router.get("/students", response_model=AdminStudentList)

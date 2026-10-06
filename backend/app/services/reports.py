@@ -13,7 +13,7 @@ from app.models.attendance import Attendance
 from app.models.classroom import Cohort, CohortMember, CohortMemberRole, LiveSession, LiveSessionStatus
 from app.models.project import Project
 from app.models.user import User
-from app.schemas.reports import AtRiskStudentRow, CohortReport
+from app.schemas.reports import AtRiskStudentRow, CohortReport, GradebookRow
 
 
 class CohortReportService:
@@ -21,7 +21,7 @@ class CohortReportService:
         self.db = db
 
     def _require_instructor_access(self, user: User, cohort_id: UUID) -> None:
-        if user.role == UserRole.ADMIN:
+        if user.role in {UserRole.ADMIN, UserRole.OPERATIONS}:
             return
         member = self.db.scalar(
             select(CohortMember).where(
@@ -91,8 +91,14 @@ class CohortReportService:
             projects_by_user.setdefault(project.user_id, []).append(project)
 
         at_risk_rows: list[AtRiskStudentRow] = []
+        gradebook_rows: list[GradebookRow] = []
         for member in students:
             uid = member.user_id
+            attended = sum(
+                1
+                for row in attendance_by_user.get(uid, [])
+                if row.status in {AttendanceStatus.ATTENDED, AttendanceStatus.LATE}
+            )
             missed = sum(
                 1 for row in attendance_by_user.get(uid, []) if row.status == AttendanceStatus.ABSENT
             )
@@ -102,6 +108,8 @@ class CohortReportService:
             own_projects = projects_by_user.get(uid, [])
             incomplete_projects = sum(1 for p in own_projects if p.status != ProjectStatus.COMPLETED)
             at_risk = missed >= 2 or missing_assignments >= 2 or incomplete_projects >= 1
+            scores = [s.score for s in non_missing if s.score is not None]
+            avg_score = round(sum(scores) / len(scores), 1) if scores else None
             at_risk_rows.append(
                 AtRiskStudentRow(
                     user_id=uid,
@@ -110,6 +118,22 @@ class CohortReportService:
                     missed_sessions=missed,
                     missing_assignments=missing_assignments,
                     incomplete_projects=incomplete_projects,
+                    at_risk=at_risk,
+                )
+            )
+            gradebook_rows.append(
+                GradebookRow(
+                    user_id=uid,
+                    full_name=member.user.full_name,
+                    email=member.user.email,
+                    attendance_present=attended,
+                    attendance_total=len(sessions),
+                    assignments_submitted=len(non_missing),
+                    assignments_total=len(assignments),
+                    avg_score=avg_score,
+                    projects_completed=sum(
+                        1 for p in own_projects if p.status == ProjectStatus.COMPLETED
+                    ),
                     at_risk=at_risk,
                 )
             )
@@ -135,4 +159,5 @@ class CohortReportService:
             projects_completed=projects_completed,
             at_risk_count=sum(1 for r in at_risk_rows if r.at_risk),
             at_risk=[r for r in at_risk_rows if r.at_risk],
+            gradebook=gradebook_rows,
         )

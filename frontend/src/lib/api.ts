@@ -1686,10 +1686,21 @@ export type LiveSessionPublic = {
   status: "scheduled" | "live" | "ended" | "cancelled";
   phase: "upcoming" | "live" | "ended" | "cancelled";
   recording_url: string | null;
+  recording_status?: "none" | "processing" | "ready" | "failed";
+  recording_watch_url?: string | null;
   can_join: boolean;
   member_role: "student" | "instructor" | "ta" | null;
   access_blocked?: boolean;
   access_blocked_reason?: string | null;
+};
+
+export type SessionRecordingPlayback = {
+  session_id: string;
+  status: "none" | "processing" | "ready" | "failed";
+  watch_url: string | null;
+  duration_seconds: number | null;
+  embed_url: string | null;
+  hls_url: string | null;
 };
 
 export type ClassroomJoinResponse = {
@@ -1794,6 +1805,12 @@ export function joinClassroomSession(sessionId: string) {
   return apiFetch<ClassroomJoinResponse>(`/api/v1/classroom/sessions/${sessionId}/join`, {
     method: "POST",
   });
+}
+
+export function getSessionRecording(cohortId: string, sessionId: string) {
+  return apiFetch<SessionRecordingPlayback>(
+    `/api/v1/cohorts/${encodeURIComponent(cohortId)}/sessions/${encodeURIComponent(sessionId)}/recording`,
+  );
 }
 
 export type ClassroomCalendarFeed = {
@@ -2559,6 +2576,7 @@ export type AdminLiveSessionRow = {
   status: "scheduled" | "live" | "ended" | "cancelled";
   phase: "upcoming" | "live" | "ended" | "cancelled";
   recording_url: string | null;
+  recording_status?: "none" | "processing" | "ready" | "failed";
   member_count: number;
   created_at: string;
   updated_at: string;

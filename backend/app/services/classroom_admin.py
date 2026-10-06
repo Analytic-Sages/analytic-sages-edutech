@@ -24,14 +24,17 @@ from app.schemas.classroom_admin import (
     AdminLiveSessionCreate,
     AdminLiveSessionRow,
     AdminLiveSessionUpdate,
+    AdminRecordingSyncResult,
 )
 from app.services.classroom import ClassroomService
+from app.services.recordings import RecordingsService
 
 
 class ClassroomAdminService:
     def __init__(self, db: Session, classroom: ClassroomService) -> None:
         self.db = db
         self.classroom = classroom
+        self.recordings = RecordingsService(db, classroom.settings)
 
     def list_cohorts(self) -> list[AdminCohortOption]:
         cohorts = list(
@@ -72,6 +75,13 @@ class ClassroomAdminService:
 
     def _row(self, session: LiveSession) -> AdminLiveSessionRow:
         cohort = self.db.get(Cohort, session.cohort_id)
+        recording = self.recordings._get_recording(session.id)
+        if session.recording_url:
+            recording_status = "ready"
+        elif recording is not None:
+            recording_status = recording.status.value
+        else:
+            recording_status = "none"
         return AdminLiveSessionRow(
             id=session.id,
             cohort_id=session.cohort_id,
@@ -95,6 +105,7 @@ class ClassroomAdminService:
             status=session.status.value,
             phase=self.classroom._effective_phase(session),
             recording_url=session.recording_url,
+            recording_status=recording_status,
             member_count=self._member_count(session.cohort_id),
             created_at=session.created_at,
             updated_at=session.updated_at,
@@ -245,3 +256,19 @@ class ClassroomAdminService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
         self.db.delete(session)
         self.db.commit()
+
+    # ---------- recordings ----------
+
+    def sync_recording(self, session_id: UUID) -> AdminLiveSessionRow:
+        """Persist the session's RealtimeKit recording to permanent storage."""
+        session = self.db.get(LiveSession, session_id)
+        if not session:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+        self.recordings.sync_session(session)
+        self.db.refresh(session)
+        return self._row(session)
+
+    def sync_recordings(self, *, cohort_id: UUID | None = None) -> AdminRecordingSyncResult:
+        """Persist recordings for sessions (optionally one cohort)."""
+        summary = self.recordings.sync_all(cohort_id=cohort_id)
+        return AdminRecordingSyncResult(**summary)

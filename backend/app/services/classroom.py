@@ -19,6 +19,8 @@ from app.models.classroom import (
     CohortStatus,
     LiveSession,
     LiveSessionStatus,
+    RecordingStatus,
+    SessionRecording,
 )
 from app.models.user import User
 from app.schemas.classroom import (
@@ -199,7 +201,13 @@ class ClassroomService:
         return self.settings.realtimekit_participant_preset
 
     def _to_public(
-        self, session: LiveSession, *, member: CohortMember | None, staff: bool, user: User
+        self,
+        session: LiveSession,
+        *,
+        member: CohortMember | None,
+        staff: bool,
+        user: User,
+        recordings: dict[UUID, SessionRecording] | None = None,
     ) -> LiveSessionPublic:
         phase = self._effective_phase(session)
         resources: list[SessionResource] = []
@@ -225,6 +233,23 @@ class ClassroomService:
         if member is not None and member.role == CohortMemberRole.STUDENT:
             blocked_reason = self._payment_standing_block(user, session)
 
+        # Permanent recording state. `recording_watch_url` is our access-gated API
+        # path students hit to obtain a signed playback URL — never the raw provider URL.
+        recording = (recordings or {}).get(session.id) if recordings is not None else self._recording_for(session.id)
+        if session.recording_url:
+            recording_status = "ready"
+            recording_watch_url = session.recording_url
+        elif recording is not None:
+            recording_status = recording.status.value
+            recording_watch_url = (
+                f"/api/v1/cohorts/{session.cohort_id}/sessions/{session.id}/recording"
+                if recording.status == RecordingStatus.READY
+                else None
+            )
+        else:
+            recording_status = "none"
+            recording_watch_url = None
+
         return LiveSessionPublic(
             id=session.id,
             cohort_id=session.cohort_id,
@@ -249,11 +274,29 @@ class ClassroomService:
             status=session.status.value,
             phase=phase,  # type: ignore[arg-type]
             recording_url=session.recording_url,
+            recording_status=recording_status,  # type: ignore[arg-type]
+            recording_watch_url=recording_watch_url,
             can_join=self._can_join(phase) and (member is not None or staff) and blocked_reason is None,
             member_role=role,  # type: ignore[arg-type]
             access_blocked=blocked_reason is not None,
             access_blocked_reason=blocked_reason,
         )
+
+    def _recording_for(self, session_id: UUID) -> SessionRecording | None:
+        return self.db.scalar(
+            select(SessionRecording).where(SessionRecording.session_id == session_id)
+        )
+
+    def _recordings_for(self, session_ids: list[UUID]) -> dict[UUID, SessionRecording]:
+        """Batch-load recordings for a set of sessions (avoids N+1 in lists)."""
+        if not session_ids:
+            return {}
+        rows = list(
+            self.db.scalars(
+                select(SessionRecording).where(SessionRecording.session_id.in_(session_ids))
+            ).all()
+        )
+        return {row.session_id: row for row in rows}
 
     def list_my_sessions(self, user: User) -> list[LiveSessionPublic]:
         if self._is_admin(user):
@@ -269,7 +312,11 @@ class ClassroomService:
                 .unique()
                 .all()
             )
-            return [self._to_public(s, member=None, staff=True, user=user) for s in sessions]
+            recordings = self._recordings_for([s.id for s in sessions])
+            return [
+                self._to_public(s, member=None, staff=True, user=user, recordings=recordings)
+                for s in sessions
+            ]
 
         memberships = list(
             self.db.scalars(select(CohortMember).where(CohortMember.user_id == user.id)).all()
@@ -293,9 +340,14 @@ class ClassroomService:
             .unique()
             .all()
         )
+        recordings = self._recordings_for([s.id for s in sessions])
         return [
             self._to_public(
-                s, member=member_by_cohort.get(s.cohort_id), staff=False, user=user
+                s,
+                member=member_by_cohort.get(s.cohort_id),
+                staff=False,
+                user=user,
+                recordings=recordings,
             )
             for s in sessions
         ]

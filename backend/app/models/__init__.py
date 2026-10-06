@@ -10,7 +10,7 @@ from app.models.billing import (
     TuitionPlan,
     TuitionPlanSchedule,
 )
-from app.models.classroom import Cohort, CohortMember, LiveSession
+from app.models.classroom import Cohort, CohortMember, LiveSession, SessionRecording
 from app.models.course import Course
 from app.models.enrollment import Enrollment
 from app.models.event import Event, EventRegistration
@@ -85,6 +85,7 @@ __all__ = [
     "Cohort",
     "CohortMember",
     "LiveSession",
+    "SessionRecording",
     "CohortWaitlistEntry",
     "Article",
     "AuthorProfile",

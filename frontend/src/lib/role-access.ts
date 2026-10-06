@@ -63,11 +63,12 @@ export const ROLE_ACCESS: Record<AppRole, RoleAccess> = {
   operations: {
     label: "Operations",
     home: "/admin/events",
-    summary: "Events, catalog, Opportunities Hub, and Insights publishing.",
-    areas: ["Events", "Courses", "Opportunities", "Insights"],
+    summary: "Events, catalog, Opportunities Hub, Insights publishing, and cohort attendance/reports.",
+    areas: ["Events", "Courses", "Live sessions", "Attendance", "Reports", "Opportunities", "Insights"],
     can: [
       "Create and publish public events",
       "Manage course catalog / instructors attachment",
+      "Manage live sessions, attendance and cohort reports",
       "Publish and manage opportunities",
       "Review and publish Insights articles",
     ],

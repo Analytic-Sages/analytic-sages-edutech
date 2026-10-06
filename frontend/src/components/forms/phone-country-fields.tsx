@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useMemo } from "react";
+import { Combobox } from "@base-ui/react/combobox";
+import { Check, ChevronDown } from "lucide-react";
 import PhoneInput, {
   getCountries,
   getCountryCallingCode,
@@ -10,7 +11,6 @@ import PhoneInput, {
 } from "react-phone-number-input";
 import en from "react-phone-number-input/locale/en";
 import "react-phone-number-input/style.css";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
@@ -64,6 +64,8 @@ export function PhoneField({
   );
 }
 
+type CountryOption = { code: Country; name: string; dial: string };
+
 type CountrySelectFieldProps = {
   id?: string;
   label?: string;
@@ -74,6 +76,11 @@ type CountrySelectFieldProps = {
   className?: string;
 };
 
+/**
+ * Searchable country picker built on Base UI's Combobox: its Portal + Positioner
+ * handle collision/flipping and scroll for us, so the option list can never be
+ * clipped by a parent card (`overflow-hidden`) or run off-screen.
+ */
 export function CountrySelectField({
   id = "country_of_residence",
   label = "Country of residence",
@@ -83,133 +90,80 @@ export function CountrySelectField({
   error,
   className,
 }: CountrySelectFieldProps) {
-  const [query, setQuery] = useState("");
-  const [open, setOpen] = useState(false);
-  const [rect, setRect] = useState<DOMRect | null>(null);
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const options = useMemo<CountryOption[]>(
+    () =>
+      getCountries()
+        .map((code) => ({
+          code,
+          name: en[code] || code,
+          dial: `+${getCountryCallingCode(code)}`,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    []
+  );
 
-  const options = useMemo(() => {
-    return getCountries()
-      .map((code) => ({
-        code,
-        name: en[code] || code,
-        dial: `+${getCountryCallingCode(code)}`,
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, []);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return options;
-    return options.filter(
-      (opt) =>
-        opt.name.toLowerCase().includes(q) ||
-        opt.code.toLowerCase().includes(q) ||
-        opt.dial.includes(q)
-    );
-  }, [options, query]);
-
-  const selected = options.find((opt) => opt.code === value);
-
-  // Keep the popover anchored to the trigger as it moves (scroll/resize).
-  useLayoutEffect(() => {
-    if (!open || !triggerRef.current) return;
-    const update = () => {
-      if (triggerRef.current) setRect(triggerRef.current.getBoundingClientRect());
-    };
-    update();
-    window.addEventListener("scroll", update, true);
-    window.addEventListener("resize", update);
-    return () => {
-      window.removeEventListener("scroll", update, true);
-      window.removeEventListener("resize", update);
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  const selected = useMemo(
+    () => options.find((opt) => opt.code === value) ?? null,
+    [options, value]
+  );
 
   return (
     <div className={cn("space-y-2", className)}>
       <Label htmlFor={id}>{label}</Label>
       {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
-      <button
-        ref={triggerRef}
-        id={id}
-        type="button"
-        className={cn(
-          "flex h-10 w-full items-center justify-between rounded-lg border border-input bg-transparent px-3 text-left text-sm",
-          "hover:bg-muted/40 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
-          error && "border-destructive"
-        )}
-        onClick={() => setOpen((prev) => !prev)}
-        aria-expanded={open}
-        aria-haspopup="listbox"
+      <Combobox.Root
+        items={options}
+        value={selected}
+        onValueChange={(next) => onChange(next ? next.code : "")}
+        itemToStringLabel={(option) => option.name}
+        itemToStringValue={(option) => option.code}
+        isItemEqualToValue={(item, currentItem) => item.code === currentItem.code}
       >
-        <span className={selected ? "text-foreground" : "text-muted-foreground"}>
-          {selected ? selected.name : "Select your country"}
-        </span>
-        <span className="text-muted-foreground">{open ? "▴" : "▾"}</span>
-      </button>
+        <div className="relative">
+          <Combobox.Input
+            id={id}
+            placeholder="Search countries"
+            aria-invalid={error ? true : undefined}
+            className={cn(
+              "flex h-10 w-full rounded-lg border border-input bg-transparent px-3 pr-9 text-sm outline-none",
+              "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+              "placeholder:text-muted-foreground dark:bg-input/30",
+              error && "border-destructive"
+            )}
+          />
+          <Combobox.Trigger className="absolute top-0 right-0 flex h-10 w-9 items-center justify-center text-muted-foreground">
+            <Combobox.Icon>
+              <ChevronDown className="size-4" />
+            </Combobox.Icon>
+          </Combobox.Trigger>
+        </div>
+        <Combobox.Portal>
+          <Combobox.Positioner sideOffset={4} className="isolate z-[60]">
+            <Combobox.Popup className="max-h-72 w-(--anchor-width) min-w-48 overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg outline-none">
+              <Combobox.Empty className="px-2 py-3 text-sm text-muted-foreground">
+                No countries found
+              </Combobox.Empty>
+              <Combobox.List>
+                {(option: CountryOption) => (
+                  <Combobox.Item
+                    key={option.code}
+                    value={option}
+                    className="flex cursor-default items-center gap-2 rounded-md px-2 py-2 text-sm outline-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground"
+                  >
+                    <span className="min-w-0 flex-1 truncate">{option.name}</span>
+                    <span className="text-xs text-muted-foreground">{option.code}</span>
+                    <Combobox.ItemIndicator>
+                      <Check className="size-4" />
+                    </Combobox.ItemIndicator>
+                  </Combobox.Item>
+                )}
+              </Combobox.List>
+            </Combobox.Popup>
+          </Combobox.Positioner>
+        </Combobox.Portal>
+      </Combobox.Root>
       {error ? <p className="text-xs text-destructive">{error}</p> : null}
-
-      {open && typeof document !== "undefined" && rect
-        ? createPortal(
-            <>
-              <div
-                className="fixed inset-0 z-[59]"
-                onClick={() => setOpen(false)}
-                aria-hidden
-              />
-              <div
-                className="fixed z-[60] rounded-lg border bg-popover p-2 shadow-lg"
-                style={{ top: rect.bottom + 4, left: rect.left, width: rect.width }}
-                role="listbox"
-              >
-                <Input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search countries"
-                  className="mb-2 h-9"
-                  autoFocus
-                />
-                <ul className="max-h-48 overflow-y-auto">
-                  {filtered.map((opt) => (
-                    <li key={opt.code}>
-                      <button
-                        type="button"
-                        role="option"
-                        aria-selected={opt.code === value}
-                        className={cn(
-                          "w-full rounded-md px-2 py-2 text-left text-sm hover:bg-muted",
-                          opt.code === value && "bg-muted font-medium"
-                        )}
-                        onClick={() => {
-                          onChange(opt.code);
-                          setQuery("");
-                          setOpen(false);
-                        }}
-                      >
-                        {opt.name}{" "}
-                        <span className="text-muted-foreground">({opt.code})</span>
-                      </button>
-                    </li>
-                  ))}
-                  {filtered.length === 0 ? (
-                    <li className="px-2 py-3 text-sm text-muted-foreground">No countries found</li>
-                  ) : null}
-                </ul>
-              </div>
-            </>,
-            document.body
-          )
-        : null}
     </div>
   );
 }
+

@@ -63,7 +63,7 @@ class RealtimeKitService:
 
         payload = {
             "title": title,
-            "record_on_start": False,
+            "record_on_start": self.settings.realtimekit_record_on_start,
             "persist_chat": True,
         }
         try:
@@ -87,6 +87,87 @@ class RealtimeKitService:
         if not meeting_id:
             raise RealtimeKitError(f"Unexpected create_meeting response: {data}")
         return str(meeting_id)
+
+    def _recordings_url(self) -> str:
+        return (
+            f"{self.API_BASE}/accounts/{self.settings.cloudflare_account_id}"
+            f"/realtime/kit/{self.settings.realtimekit_app_id}/recordings"
+        )
+
+    def list_recordings(self, *, meeting_id: str) -> list[dict[str, Any]]:
+        """Return recordings for a meeting (empty when not configured/no recordings).
+
+        RealtimeKit keeps composite recordings for ~7 days; each item carries a
+        ``status`` and, once UPLOADED, a ``downloadUrl`` (or ``download_url``).
+        """
+        if not self.configured or not meeting_id or str(meeting_id).startswith("mock-"):
+            return []
+
+        try:
+            with httpx.Client(timeout=30.0) as client:
+                response = client.get(
+                    self._recordings_url(),
+                    headers=self._headers(),
+                    params={"meeting_id": meeting_id},
+                )
+                if response.status_code >= 400:
+                    logger.error(
+                        "RealtimeKit list_recordings failed: %s %s",
+                        response.status_code,
+                        response.text,
+                    )
+                    return []
+                data = response.json()
+        except httpx.HTTPError:
+            logger.exception("RealtimeKit list_recordings failed")
+            return []
+
+        body = data.get("data") if isinstance(data.get("data"), (list, dict)) else data
+        if isinstance(body, dict):
+            items = body.get("recordings") or body.get("items") or []
+        else:
+            items = body
+        return [item for item in items if isinstance(item, dict)]
+
+    def latest_download_url(self, *, meeting_id: str) -> str | None:
+        """Newest UPLOADED recording's download URL for a meeting, if any."""
+        recordings = self.list_recordings(meeting_id=meeting_id)
+        ready = [
+            item
+            for item in recordings
+            if str(item.get("status", "")).upper() in {"UPLOADED", "COMPLETED"}
+        ]
+        # Prefer the most recently created recording.
+        ready.sort(key=lambda item: str(item.get("createdAt") or item.get("created_at") or ""), reverse=True)
+        for item in ready:
+            url = item.get("downloadUrl") or item.get("download_url")
+            if url:
+                return str(url)
+        return None
+
+    def start_recording(self, *, meeting_id: str) -> bool:
+        """Explicitly start recording a meeting (idempotent best-effort)."""
+        if not self.configured or not meeting_id or str(meeting_id).startswith("mock-"):
+            return False
+        url = f"{self._meetings_url(meeting_id)}/recording/start"
+        try:
+            with httpx.Client(timeout=30.0) as client:
+                response = client.post(
+                    url,
+                    headers=self._headers(),
+                    json={"allow_livestream": False, "allow_transcript": False},
+                )
+                if response.status_code >= 400:
+                    logger.error(
+                        "RealtimeKit start_recording failed: %s %s",
+                        response.status_code,
+                        response.text,
+                    )
+                    return False
+                return True
+        except httpx.HTTPError:
+            logger.exception("RealtimeKit start_recording failed")
+            return False
 
     def add_participant(
         self,

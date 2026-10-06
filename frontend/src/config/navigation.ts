@@ -85,6 +85,8 @@ export const operationsNav: NavItem[] = [
   { title: "Events", href: "/admin/events", icon: "events" },
   { title: "Courses", href: "/admin/courses", icon: "courses" },
   { title: "Live sessions", href: "/admin/classroom", icon: "classroom" },
+  { title: "Attendance", href: "/admin/attendance", icon: "classroom" },
+  { title: "Reports", href: "/admin/reports", icon: "analytics" },
   { title: "Opportunities", href: "/admin/opportunities", icon: "opportunities" },
   { title: "Insights", href: "/admin/insights", icon: "insights" },
 ];

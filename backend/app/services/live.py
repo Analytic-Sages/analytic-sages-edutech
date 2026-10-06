@@ -126,7 +126,7 @@ class LiveLearningService:
         return member
 
     def _require_instructor_access(self, user: User, cohort_id: UUID) -> None:
-        if user.role == UserRole.ADMIN:
+        if user.role in {UserRole.ADMIN, UserRole.OPERATIONS}:
             return
         member = self._cohort_enrollment(user, cohort_id)
         if not member or member.role not in {CohortMemberRole.INSTRUCTOR, CohortMemberRole.TA}:
@@ -254,6 +254,7 @@ class LiveLearningService:
         member = self._require_student_enrollment(user, cohort_id)
         cohort = self._get_cohort(cohort_id)
         sessions = self._sessions(cohort_id)
+        recordings = self.classroom._recordings_for([s.id for s in sessions])
         attendance = self._attendance_summary([s.id for s in sessions], user_id=user.id)
         return CohortStudentDetailPublic(
             id=cohort.id,
@@ -269,13 +270,19 @@ class LiveLearningService:
             programme=ProgrammePublic.model_validate(cohort.programme) if cohort.programme else None,
             progress_percent=self._progress_percent(user.id, cohort_id),
             attendance=attendance,
-            sessions=[self.classroom._to_public(s, member=member, staff=False, user=user) for s in sessions],
+            sessions=[
+                self.classroom._to_public(
+                    s, member=member, staff=False, user=user, recordings=recordings
+                )
+                for s in sessions
+            ],
         )
 
     def _preview_cohort(self, user: User, cohort_id: UUID) -> CohortStudentDetailPublic:
         """Read-only student-view preview for admins/ops (no enrollment required)."""
         cohort = self._get_cohort(cohort_id)
         sessions = self._sessions(cohort_id)
+        recordings = self.classroom._recordings_for([s.id for s in sessions])
         return CohortStudentDetailPublic(
             id=cohort.id,
             name=cohort.name,
@@ -290,7 +297,12 @@ class LiveLearningService:
             programme=ProgrammePublic.model_validate(cohort.programme) if cohort.programme else None,
             progress_percent=0,
             attendance=AttendanceSummaryPublic(),
-            sessions=[self.classroom._to_public(s, member=None, staff=False, user=user) for s in sessions],
+            sessions=[
+                self.classroom._to_public(
+                    s, member=None, staff=False, user=user, recordings=recordings
+                )
+                for s in sessions
+            ],
             is_preview=True,
         )
 
@@ -322,7 +334,7 @@ class LiveLearningService:
     # ---------- instructor / admin ----------
 
     def list_instructor_cohorts(self, user: User) -> list[CohortStudentDetailPublic]:
-        if user.role == UserRole.ADMIN:
+        if user.role in {UserRole.ADMIN, UserRole.OPERATIONS}:
             cohorts = list(self.db.scalars(select(Cohort).order_by(Cohort.starts_at.desc().nulls_last())).all())
         else:
             memberships = list(

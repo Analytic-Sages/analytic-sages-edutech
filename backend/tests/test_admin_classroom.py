@@ -11,9 +11,20 @@ from app.core.roles import UserRole
 from app.core.security import SecurityService
 from app.db.session import SessionLocal
 from app.main import app
-from app.models.classroom import Cohort, CohortMember, CohortMemberRole, LiveSession
+from app.models.classroom import (
+    Cohort,
+    CohortMember,
+    CohortMemberRole,
+    LiveSession,
+    LiveSessionStatus,
+    LiveSessionType,
+    RecordingStatus,
+    SessionRecording,
+)
 from app.models.user import User
 from app.services.classroom import ClassroomService
+from app.services.cloudflare_stream import CloudflareStreamService, StreamVideo
+from app.services.realtimekit import RealtimeKitService
 from app.services.seed_bde_classroom import (
     bde_session_schedule,
     ensure_bde_classroom,
@@ -293,4 +304,88 @@ def test_create_rejects_end_before_start():
         )
         assert response.status_code == 400
     finally:
+        _cleanup_user(admin)
+
+
+def test_sync_recording_persists_to_stream(monkeypatch):
+    """Admin sync hands the RealtimeKit recording off to Cloudflare Stream."""
+    monkeypatch.setattr(
+        RealtimeKitService,
+        "latest_download_url",
+        lambda self, *, meeting_id: "https://recordings.example.com/session-1.mp4",
+    )
+    monkeypatch.setattr(
+        CloudflareStreamService,
+        "copy_from_url",
+        lambda self, *, url, meta=None, require_signed=None, max_duration_seconds=None: "stream-uid-1",
+    )
+    monkeypatch.setattr(
+        CloudflareStreamService,
+        "get_video",
+        lambda self, uid: StreamVideo(
+            uid=uid, status="ready", duration_seconds=5432, thumbnail_url=None, embed_url=None, hls_url=None
+        ),
+    )
+    admin = _make_user(UserRole.ADMIN)
+    db = SessionLocal()
+    try:
+        seed_bde_classroom(db)
+        cohort = db.scalar(select(Cohort).where(Cohort.slug == BDE_COHORT_SLUG))
+        session = LiveSession(
+            id=uuid.uuid4(),
+            cohort_id=cohort.id,
+            title="Recorded session",
+            week_label="Week 1",
+            session_number=97,
+            session_type=LiveSessionType.TEACHING,
+            starts_at=datetime.now(timezone.utc) - timedelta(days=1),
+            ends_at=datetime.now(timezone.utc) - timedelta(hours=22),
+            status=LiveSessionStatus.SCHEDULED,
+            realtimekit_meeting_id="meeting-abc",
+        )
+        db.add(session)
+        db.commit()
+        session_id = str(session.id)
+        cohort_id = str(cohort.id)
+
+        synced = client.post(
+            f"/api/v1/admin/classroom/sessions/{session_id}/sync-recording",
+            headers=_auth(admin),
+        )
+        assert synced.status_code == 200, synced.text
+        assert synced.json()["recording_status"] == "ready"
+
+        # A permanent (Stream-backed) recording row exists — never the expiring URL.
+        db = SessionLocal()
+        try:
+            recording = db.scalar(
+                select(SessionRecording).where(SessionRecording.session_id == uuid.UUID(session_id))
+            )
+            assert recording is not None
+            assert recording.provider_recording_id == "stream-uid-1"
+            assert recording.status == RecordingStatus.READY
+            assert recording.duration_seconds == 5432
+            assert "recordings.example.com" not in (recording.recording_url or "")
+        finally:
+            db.close()
+
+        # Bulk sync is idempotent and reports totals.
+        bulk = client.post(
+            f"/api/v1/admin/classroom/sync-recordings?cohort_id={cohort_id}",
+            headers=_auth(admin),
+        )
+        assert bulk.status_code == 200
+        assert bulk.json()["total"] >= 1
+
+        # Clean up.
+        db = SessionLocal()
+        try:
+            row = db.get(LiveSession, uuid.UUID(session_id))
+            if row:
+                db.delete(row)
+                db.commit()
+        finally:
+            db.close()
+    finally:
+        db.close()
         _cleanup_user(admin)

@@ -7,12 +7,14 @@ from fastapi import APIRouter, Depends
 from app.api.deps import (
     CurrentUser,
     get_live_learning_service,
+    get_recordings_service,
     get_report_service,
     require_admin,
-    require_instructor,
+    require_cohort_view,
 )
 from app.models.user import User
 from app.schemas.reports import CohortReport
+from app.schemas.classroom import SessionRecordingPlayback
 from app.schemas.live import (
     AttendanceBulkWrite,
     AttendanceRecordPublic,
@@ -25,6 +27,7 @@ from app.schemas.live import (
     ProgrammeUpsert,
 )
 from app.services.live import LiveLearningService
+from app.services.recordings import RecordingsService
 from app.services.reports import CohortReportService
 
 router = APIRouter(tags=["live"])
@@ -69,9 +72,23 @@ def my_attendance(
     return live.my_attendance(current_user, cohort_id)
 
 
+@router.get(
+    "/cohorts/{cohort_id}/sessions/{session_id}/recording",
+    response_model=SessionRecordingPlayback,
+)
+def session_recording(
+    cohort_id: UUID,
+    session_id: UUID,
+    current_user: CurrentUser,
+    recordings: RecordingsService = Depends(get_recordings_service),
+) -> SessionRecordingPlayback:
+    """Access-gated playback for a concluded session's permanent recording."""
+    return recordings.playback(current_user, cohort_id, session_id)
+
+
 @router.get("/instructor/cohorts", response_model=list[CohortStudentDetailPublic])
 def instructor_cohorts(
-    current_user: User = Depends(require_instructor),
+    current_user: User = Depends(require_cohort_view),
     live: LiveLearningService = Depends(get_live_learning_service),
 ) -> list[CohortStudentDetailPublic]:
     return live.list_instructor_cohorts(current_user)
@@ -80,7 +97,7 @@ def instructor_cohorts(
 @router.get("/instructor/cohorts/{cohort_id}/students", response_model=list[InstructorStudentRow])
 def instructor_students(
     cohort_id: UUID,
-    current_user: User = Depends(require_instructor),
+    current_user: User = Depends(require_cohort_view),
     live: LiveLearningService = Depends(get_live_learning_service),
 ) -> list[InstructorStudentRow]:
     return live.list_cohort_students(current_user, cohort_id)
@@ -89,7 +106,7 @@ def instructor_students(
 @router.get("/instructor/cohorts/{cohort_id}/attendance", response_model=list[AttendanceRecordPublic])
 def instructor_attendance(
     cohort_id: UUID,
-    current_user: User = Depends(require_instructor),
+    current_user: User = Depends(require_cohort_view),
     live: LiveLearningService = Depends(get_live_learning_service),
 ) -> list[AttendanceRecordPublic]:
     return live.get_cohort_attendance(current_user, cohort_id)
@@ -99,7 +116,7 @@ def instructor_attendance(
 def record_attendance(
     cohort_id: UUID,
     payload: AttendanceBulkWrite,
-    current_user: User = Depends(require_instructor),
+    current_user: User = Depends(require_cohort_view),
     live: LiveLearningService = Depends(get_live_learning_service),
 ) -> list[AttendanceRecordPublic]:
     return live.record_attendance(current_user, cohort_id, payload)
@@ -108,7 +125,7 @@ def record_attendance(
 @router.get("/instructor/cohorts/{cohort_id}/report", response_model=CohortReport)
 def cohort_report(
     cohort_id: UUID,
-    current_user: User = Depends(require_instructor),
+    current_user: User = Depends(require_cohort_view),
     reports: CohortReportService = Depends(get_report_service),
 ) -> CohortReport:
     return reports.cohort_report(current_user, cohort_id)
@@ -140,3 +157,4 @@ def create_cohort(
     live: LiveLearningService = Depends(get_live_learning_service),
 ) -> CohortStudentDetailPublic:
     return live.create_cohort(payload)
+

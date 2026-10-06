@@ -9,6 +9,8 @@ dev without uploads. The lesson stores the returned video UID in ``video_id`` an
 from __future__ import annotations
 
 import logging
+import time
+import uuid
 from dataclasses import dataclass
 from typing import Any
 
@@ -180,6 +182,85 @@ class CloudflareStreamService:
             embed_url=self.embed_url(uid),
             hls_url=self.hls_url(uid),
         )
+
+    def copy_from_url(
+        self,
+        *,
+        url: str,
+        meta: dict[str, Any] | None = None,
+        require_signed: bool | None = None,
+        max_duration_seconds: int | None = None,
+    ) -> str:
+        """Ask Cloudflare Stream to fetch a video from a URL (e.g. a RealtimeKit
+        download link) and return the new Stream video uid. Cloudflare performs
+        the download, so we never proxy the bytes ourselves."""
+        if not self.configured:
+            return f"mock-{uuid.uuid4().hex[:12]}"
+
+        payload: dict[str, Any] = {"url": url}
+        if meta:
+            payload["meta"] = meta
+        if require_signed is not None:
+            payload["requireSignedURLs"] = require_signed
+        if max_duration_seconds:
+            payload["maxDurationSeconds"] = max_duration_seconds
+
+        try:
+            with httpx.Client(timeout=60.0) as client:
+                response = client.post(
+                    self._stream_url("/copy"), headers=self._headers(), json=payload
+                )
+                if response.status_code >= 400:
+                    logger.error(
+                        "Cloudflare Stream copy failed: %s %s",
+                        response.status_code,
+                        response.text[:400],
+                    )
+                    raise CloudflareStreamError(
+                        "Cloudflare Stream could not copy the recording",
+                        status_code=response.status_code,
+                    )
+                data = response.json()
+        except httpx.HTTPError as exc:
+            logger.exception("Cloudflare Stream copy request failed")
+            raise CloudflareStreamError("Cloudflare Stream is unreachable") from exc
+
+        uid = (data.get("result") or {}).get("uid")
+        if not uid:
+            raise CloudflareStreamError(f"Unexpected copy response: {data}")
+        return str(uid)
+
+    def signed_playback_token(self, uid: str, *, ttl_seconds: int = 3600) -> str | None:
+        """Mint a short-lived signed playback token for a private Stream video.
+
+        Returns None when no signing key is configured (caller falls back to the
+        enrollment-gated playback URL). Requires the optional `cryptography` dep.
+        """
+        if not self.settings.cloudflare_stream_signing_configured:
+            return None
+        key_id = self.settings.cloudflare_stream_signing_key_id
+        pem = self.settings.cloudflare_stream_signing_key_pem
+        if not key_id or not pem:
+            return None
+        try:
+            import jwt  # local import keeps module import cheap
+        except ModuleNotFoundError:  # pragma: no cover - dependency always present in prod
+            logger.warning("PyJWT missing; cannot mint signed Stream token")
+            return None
+        now = int(time.time())
+        payload = {"sub": uid, "kid": key_id, "exp": now + ttl_seconds, "iat": now}
+        try:
+            return jwt.encode(payload, pem, algorithm="RS256", headers={"kid": key_id})
+        except Exception:  # noqa: BLE001 - signing must never 500 the request
+            logger.exception("Failed to sign Cloudflare Stream token")
+            return None
+
+    def signed_playback_url(self, uid: str, *, ttl_seconds: int = 3600) -> str | None:
+        token = self.signed_playback_token(uid, ttl_seconds=ttl_seconds)
+        base = self._customer_base()
+        if not token or not base:
+            return None
+        return f"{base}/{uid}/iframe?token={token}"
 
     def delete_video(self, uid: str) -> bool:
         if not self.configured or uid.startswith("mock-"):

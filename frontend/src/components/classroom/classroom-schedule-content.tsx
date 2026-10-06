@@ -14,6 +14,7 @@ import {
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { AllSessionsCalendarMenu, SessionCalendarMenu } from "@/components/classroom/add-to-calendar";
+import { SessionRecordingButton } from "@/components/classroom/session-recording-button";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ApiError, listClassroomSessions, type LiveSessionPublic } from "@/lib/api";
@@ -262,7 +263,7 @@ function SessionCard({
             {session.resources.length} resource{session.resources.length === 1 ? "" : "s"}
           </span>
         )}
-        {session.recording_url && (
+        {session.recording_url ? (
           <Link
             href={session.recording_url}
             className="inline-flex items-center gap-1.5 text-brand-navy hover:underline dark:text-brand-orange"
@@ -272,7 +273,13 @@ function SessionCard({
             <ExternalLink className="size-3.5" />
             Watch recording
           </Link>
-        )}
+        ) : session.recording_status === "ready" ? (
+          <SessionRecordingButton
+            session={session}
+            className="h-7 px-2.5 text-xs"
+            label="Watch recording"
+          />
+        ) : null}
         </div>
       </CardContent>
     </Card>

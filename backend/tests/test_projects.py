@@ -237,4 +237,21 @@ def test_cohort_report_flags_at_risk():
     assert data["student_count"] == 2
     assert data["at_risk_count"] == 1
     assert data["at_risk"][0]["email"] == student_a.email
+
+    # Gradebook: one row per student with attendance + assignment rollups.
+    gradebook = {row["email"]: row for row in data["gradebook"]}
+    assert set(gradebook) == {student_a.email, student_b.email}
+    assert gradebook[student_a.email]["attendance_present"] == 0
+    assert gradebook[student_a.email]["at_risk"] is True
+    assert gradebook[student_b.email]["attendance_present"] == 1
+    assert gradebook[student_b.email]["assignments_submitted"] == 1
+    assert gradebook[student_b.email]["assignments_total"] == 1
+
+    # Admin can read the same report (supervising staff performance review).
+    admin = _make_user("proj-test-admin", UserRole.ADMIN)
+    admin_report = client.get(
+        f"/api/v1/instructor/cohorts/{cohort_id}/report", headers=_auth(admin)
+    )
+    assert admin_report.status_code == 200
+    assert admin_report.json()["student_count"] == 2
     _cleanup()

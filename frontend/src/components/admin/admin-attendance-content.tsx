@@ -156,6 +156,12 @@ export function AdminAttendanceContent() {
         </p>
       )}
 
+      <p className="mb-4 rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+        Attendance here is the official cohort record, marked by staff (or a TA) per session.
+        RealtimeKit keeps its own participant analytics for meetings, but this sheet is what appears
+        on the student&apos;s classroom and the cohort report.
+      </p>
+
       {sessions.length > 0 && (
         <Card className="mb-6 shadow-card">
           <CardHeader className="pb-2">

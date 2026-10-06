@@ -15,6 +15,21 @@ class AtRiskStudentRow(BaseModel):
     at_risk: bool = False
 
 
+class GradebookRow(BaseModel):
+    """Per-student performance snapshot: attendance, assignments/grades and projects."""
+
+    user_id: UUID
+    full_name: str | None = None
+    email: str
+    attendance_present: int = 0
+    attendance_total: int = 0
+    assignments_submitted: int = 0
+    assignments_total: int = 0
+    avg_score: float | None = None
+    projects_completed: int = 0
+    at_risk: bool = False
+
+
 class CohortReport(BaseModel):
     cohort_id: UUID
     cohort_name: str
@@ -24,3 +39,4 @@ class CohortReport(BaseModel):
     projects_completed: int = 0
     at_risk_count: int = 0
     at_risk: list[AtRiskStudentRow] = Field(default_factory=list)
+    gradebook: list[GradebookRow] = Field(default_factory=list)

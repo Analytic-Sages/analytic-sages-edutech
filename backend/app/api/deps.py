@@ -45,6 +45,7 @@ from app.services.opportunity_review_assist import OpportunityReviewAssistServic
 from app.services.opportunity_discovery import OpportunityDiscoveryService
 from app.services.storage import StorageService
 from app.services.waitlist import WaitlistService
+from app.services.recordings import RecordingsService
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -239,6 +240,13 @@ def get_waitlist_service(db: Session = Depends(get_db)) -> WaitlistService:
     return WaitlistService(db)
 
 
+def get_recordings_service(
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> RecordingsService:
+    return RecordingsService(db, settings)
+
+
 def get_current_user(
     db: Session = Depends(get_db),
     security: SecurityService = Depends(get_security_service),
@@ -307,6 +315,8 @@ def require_roles(*roles: UserRole):
 
 require_admin = require_roles(UserRole.ADMIN)
 require_instructor = require_roles(UserRole.ADMIN, UserRole.INSTRUCTOR)
+# Cohort teaching/reporting surfaces: instructors + supervising staff (ops) + admin.
+require_cohort_view = require_roles(UserRole.ADMIN, UserRole.INSTRUCTOR, UserRole.OPERATIONS)
 require_event_ops = require_roles(UserRole.ADMIN, UserRole.OPERATIONS)
 
 

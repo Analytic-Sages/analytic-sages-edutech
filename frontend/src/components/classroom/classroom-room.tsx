@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "@/components/providers/theme-provider";
 import { SessionCalendarMenu } from "@/components/classroom/add-to-calendar";
+import { SessionRecordingButton } from "@/components/classroom/session-recording-button";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
 import {
@@ -475,11 +476,13 @@ function UpcomingState({
 }
 
 function EndedState({ session }: { session: LiveSessionPublic }) {
+  const hasRecording = Boolean(session.recording_url) || session.recording_status === "ready";
   return (
     <div className="flex flex-1 flex-col items-center justify-center rounded-xl border bg-card p-10 text-center shadow-card">
       <p className="font-heading text-3xl font-semibold">Class completed</p>
       <p className="mt-2 max-w-md text-muted-foreground">
-        Attendance is being recorded. Check back later if a session recording becomes available.
+        Attendance is being recorded. Recordings of concluded sessions stay available to watch any
+        time.
       </p>
       {session.recording_url ? (
         <a
@@ -490,6 +493,8 @@ function EndedState({ session }: { session: LiveSessionPublic }) {
         >
           Watch recording
         </a>
+      ) : hasRecording ? (
+        <SessionRecordingButton session={session} className="mt-6" />
       ) : (
         <p className="mt-4 max-w-md text-sm text-muted-foreground">
           The recording is being processed and will appear here automatically once it&apos;s ready.

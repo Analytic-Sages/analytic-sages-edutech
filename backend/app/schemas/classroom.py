@@ -37,6 +37,9 @@ class LiveSessionPublic(BaseModel):
     status: Literal["scheduled", "live", "ended", "cancelled"]
     phase: Literal["upcoming", "live", "ended", "cancelled"]
     recording_url: str | None = None
+    # Permanent recording state + access-gated playback path (see /cohorts/.../recording).
+    recording_status: Literal["none", "processing", "ready", "failed"] = "none"
+    recording_watch_url: str | None = None
     can_join: bool = False
     member_role: Literal["student", "instructor", "ta"] | None = None
     access_blocked: bool = False
@@ -60,6 +63,17 @@ class ClassroomCalendarFeed(BaseModel):
     token: str
     url: str
     webcal_url: str
+
+
+class SessionRecordingPlayback(BaseModel):
+    """Access-gated playback for a concluded session's permanent recording."""
+
+    session_id: UUID
+    status: Literal["none", "processing", "ready", "failed"] = "none"
+    watch_url: str | None = None
+    duration_seconds: int | None = None
+    embed_url: str | None = None
+    hls_url: str | None = None
 
 
 class PublicCohortCard(BaseModel):

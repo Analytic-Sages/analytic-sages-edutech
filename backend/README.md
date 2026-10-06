@@ -198,7 +198,21 @@ Once set, uploads go straight to Supabase Storage and return a permanent `https:
 | `GET/POST /api/v1/admin/classroom/sessions` | Admin: list / create sessions |
 | `PATCH/DELETE /api/v1/admin/classroom/sessions/{id}` | Admin: edit / delete a session |
 | `POST /api/v1/admin/classroom/sessions/{id}/cancel` | Admin: cancel a session |
+| `POST /api/v1/admin/classroom/sessions/{id}/sync-recording` | Admin: persist the session recording from RealtimeKit into Cloudflare Stream |
+| `POST /api/v1/admin/classroom/sync-recordings` | Admin: bulk-persist recordings (`?cohort_id=`) for ended sessions |
+| `GET /api/v1/cohorts/{id}/sessions/{sid}/recording` | Access-gated playback (enrolled student / staff) → signed URL for the permanent recording |
 | `POST /api/v1/internal/classroom/sync-schedule` | Ops: re-provision the canonical 30-session schedule (token `CLASSROOM_SYNC_TOKEN` → `OPPORTUNITY_SYNC_TOKEN`) |
+| `POST /api/v1/internal/classroom/sync-recordings` | Ops/cron: persist all ended-session recordings before RealtimeKit expires them (~7 days) |
+
+**Recordings are permanent.** RealtimeKit only ever exposes a *temporary* download URL
+(≈7-day R2 link), so that URL is never stored as the recording. Instead the sync flow
+asks **Cloudflare Stream** to fetch the recording (`POST /stream/copy`) and keeps the
+resulting Stream video uid in `session_recordings` (`status` = `processing` → `ready`).
+Students watch recordings via `GET /api/v1/cohorts/{id}/sessions/{sid}/recording`, which
+checks enrollment then mints a short-lived **signed** playback URL (set
+`CLOUDFLARE_STREAM_SIGNING_KEY_ID` + `CLOUDFLARE_STREAM_SIGNING_KEY_PEM`; otherwise it
+returns the enrollment-gated embed URL). Run the internal sync soon after each class so
+the recording is handed off before the temporary URL expires.
 
 Admin staff can create and manage live sessions from **Admin → Live sessions**
 (`/admin/classroom`) without a developer: pick a cohort, set title, week label,

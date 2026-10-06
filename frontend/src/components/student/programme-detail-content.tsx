@@ -9,6 +9,7 @@ import { ButtonLink } from "@/components/ui/button-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { StudentProjectsSection } from "@/components/student/student-projects-section";
+import { SessionRecordingButton } from "@/components/classroom/session-recording-button";
 import {
   ApiError,
   getAccessToken,
@@ -227,7 +228,7 @@ export function ProgrammeDetailContent({ slug }: { slug: string }) {
                         View
                       </ButtonLink>
                     )}
-                    {session.recording_url && (
+                    {session.recording_url ? (
                       <a
                         href={session.recording_url}
                         target="_blank"
@@ -237,7 +238,13 @@ export function ProgrammeDetailContent({ slug }: { slug: string }) {
                         Watch recording
                         <ExternalLink className="size-3" />
                       </a>
-                    )}
+                    ) : session.recording_status === "ready" ? (
+                      <SessionRecordingButton
+                        session={session}
+                        className="h-8 px-3 text-sm"
+                        label="Watch recording"
+                      />
+                    ) : null}
                   </div>
                 </CardHeader>
                 {session.resources.length > 0 && (
