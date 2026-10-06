@@ -2693,6 +2693,24 @@ export function previewAdminRecordingImport(recordingId: string) {
   );
 }
 
+export type RecordingArchiveResult = {
+  recording_id: string;
+  success: boolean;
+  outcome: string;
+  detail: string;
+  bucket: string | null;
+  object_key: string | null;
+  size_bytes: number | null;
+  provider_status: string | null;
+};
+
+export function backfillAdminClassroomRecording(recordingId: string) {
+  return apiFetch<RecordingArchiveResult>(
+    `/api/v1/admin/classroom/recordings/${encodeURIComponent(recordingId)}/backfill`,
+    { method: "POST" }
+  );
+}
+
 export function importAdminClassroomRecording(
   sessionId: string,
   payload: { recording_id: string; download_url?: string | null; reason?: string | null }

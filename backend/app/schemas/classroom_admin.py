@@ -96,6 +96,19 @@ class RecordingImportPreview(BaseModel):
     note: str | None = None
 
 
+class RecordingArchiveResult(BaseModel):
+    """Outcome of copying one RealtimeKit recording into the private R2 bucket."""
+
+    recording_id: str
+    success: bool
+    outcome: str
+    detail: str
+    bucket: str | None = None
+    object_key: str | None = None
+    size_bytes: int | None = None
+    provider_status: str | None = None
+
+
 class RecordingImportRequest(BaseModel):
     """Attach an existing RealtimeKit recording to a specific LMS session.
 

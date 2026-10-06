@@ -91,6 +91,17 @@ class Settings(BaseSettings):
     # can sync their recording URL automatically. Requires recording enabled on the
     # Cloudflare account.
     realtimekit_record_on_start: bool = True
+    # Shared secret for POST /api/v1/webhooks/realtimekit. Unsigned calls are rejected.
+    realtimekit_webhook_secret: str | None = None
+
+    # Cloudflare R2 (S3-compatible) private archive for live-session recordings.
+    # Credentials stay server-side. The bucket must not be public.
+    # Endpoint defaults to https://<CLOUDFLARE_ACCOUNT_ID>.r2.cloudflarestorage.com.
+    r2_access_key_id: str | None = None
+    r2_secret_access_key: str | None = None
+    r2_bucket: str = "analytic-sages-classroom"
+    r2_recording_prefix: str = "live-sessions/"
+    r2_endpoint_url: str | None = None
 
     # RealtimeKit attendance sync — post-session reconciliation of participant
     # join/leave intervals into the LMS attendance records. Off by default so
@@ -244,6 +255,30 @@ class Settings(BaseSettings):
             and self.cloudflare_api_token
             and self.cloudflare_stream_customer_code
         )
+
+    @property
+    def resolved_r2_endpoint(self) -> str | None:
+        if self.r2_endpoint_url and self.r2_endpoint_url.strip():
+            return self.r2_endpoint_url.strip().rstrip("/")
+        if self.cloudflare_account_id:
+            return f"https://{self.cloudflare_account_id.strip()}.r2.cloudflarestorage.com"
+        return None
+
+    @property
+    def r2_configured(self) -> bool:
+        return bool(
+            self.r2_access_key_id
+            and self.r2_secret_access_key
+            and self.r2_bucket.strip()
+            and self.resolved_r2_endpoint
+        )
+
+    @property
+    def r2_recording_prefix_normalized(self) -> str:
+        prefix = (self.r2_recording_prefix or "live-sessions").strip().strip("/")
+        if not prefix or ".." in prefix.split("/"):
+            return "live-sessions"
+        return prefix
 
     @property
     def cloudflare_stream_signing_configured(self) -> bool:

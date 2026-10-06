@@ -13,6 +13,7 @@ from app.core.security import SecurityService
 from app.db.session import get_db
 from app.models.user import User
 from app.services.assignments import AssignmentService
+from app.services.recording_archive import RecordingArchiveService
 from app.services.auth import AuthService
 from app.services.certificates import CertificateService
 from app.services.notifications import NotificationService
@@ -196,6 +197,12 @@ def get_classroom_admin_service(
     return ClassroomAdminService(db, classroom)
 
 
+def get_recording_archive_service(
+    settings: Settings = Depends(get_settings),
+) -> RecordingArchiveService:
+    return RecordingArchiveService(settings)
+
+
 def get_admin_students_service(
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
@@ -349,6 +356,10 @@ def require_event_registrant_manager(
 require_catalog_ops = require_roles(UserRole.ADMIN, UserRole.OPERATIONS)
 # Live classroom management (start/end sessions, set recordings).
 require_classroom_ops = require_roles(UserRole.ADMIN, UserRole.OPERATIONS)
+# Recording archive: classroom admins plus instructors. Students cannot call it.
+require_recording_archive = require_roles(
+    UserRole.ADMIN, UserRole.INSTRUCTOR, UserRole.OPERATIONS
+)
 # Course authoring: staff who can build courses/modules/lessons without a developer.
 require_course_author = require_roles(UserRole.ADMIN, UserRole.OPERATIONS, UserRole.INSTRUCTOR)
 require_opportunity_ops = require_roles(

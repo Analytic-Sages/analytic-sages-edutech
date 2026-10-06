@@ -18,6 +18,7 @@ from app.api.v1 import (
     projects,
     quizzes,
     rbac,
+    realtimekit_webhooks,
     referrals,
     self_paced,
     waitlist,
@@ -32,6 +33,7 @@ api_router.include_router(admin.router)
 api_router.include_router(billing.router)
 api_router.include_router(billing.admin_router)
 api_router.include_router(payments.router)
+api_router.include_router(realtimekit_webhooks.router)
 api_router.include_router(classroom.router)
 api_router.include_router(classroom.internal_router)
 api_router.include_router(assignments.router)

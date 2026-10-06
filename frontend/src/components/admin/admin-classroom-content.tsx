@@ -32,6 +32,7 @@ import {
   deleteAdminClassroomSession,
   getAdminClassroomCohorts,
   getAdminClassroomSessions,
+  backfillAdminClassroomRecording,
   importAdminClassroomRecording,
   previewAdminRecordingImport,
   syncAdminClassroomRecording,
@@ -255,6 +256,23 @@ export function AdminClassroomContent() {
       setImportMessage("Recording imported. Students can watch it once Cloudflare Stream finishes.");
     } catch (err) {
       setImportMessage(err instanceof ApiError ? err.detail : "Could not import this recording.");
+    } finally {
+      setImportBusy(false);
+    }
+  }
+
+  async function handleArchiveRecording() {
+    if (!importRecordingId.trim()) {
+      setImportMessage("Enter a RealtimeKit recording ID.");
+      return;
+    }
+    setImportBusy(true);
+    setImportMessage(null);
+    try {
+      const result = await backfillAdminClassroomRecording(importRecordingId.trim());
+      setImportMessage(result.detail);
+    } catch (err) {
+      setImportMessage(err instanceof ApiError ? err.detail : "Could not archive this recording.");
     } finally {
       setImportBusy(false);
     }
@@ -675,6 +693,15 @@ export function AdminClassroomContent() {
                     onClick={handleImportRecording}
                   >
                     Import onto this session
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={importBusy || !importRecordingId.trim()}
+                    onClick={handleArchiveRecording}
+                  >
+                    Archive to R2
                   </Button>
                 </div>
                 {importPreview && (

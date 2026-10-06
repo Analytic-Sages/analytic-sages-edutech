@@ -199,6 +199,8 @@ Once set, uploads go straight to Supabase Storage and return a permanent `https:
 | `PATCH/DELETE /api/v1/admin/classroom/sessions/{id}` | Admin: edit / delete a session |
 | `POST /api/v1/admin/classroom/sessions/{id}/cancel` | Admin: cancel a session |
 | `POST /api/v1/admin/classroom/sessions/{id}/sync-recording` | Admin: persist the session recording from RealtimeKit into Cloudflare Stream |
+| `POST /api/v1/admin/classroom/recordings/{recording_id}/backfill` | Instructor, admin, or operations: copy one finished recording into private R2 |
+| `POST /api/v1/webhooks/realtimekit` | RealtimeKit recording-status webhook. Uploads to R2 only after the recording is uploaded |
 | `POST /api/v1/admin/classroom/sync-recordings` | Admin: bulk-persist recordings (`?cohort_id=`) for ended sessions |
 | `GET /api/v1/cohorts/{id}/sessions/{sid}/recording` | Access-gated playback (enrolled student / staff) → signed URL for the permanent recording |
 | `POST /api/v1/internal/classroom/sync-schedule` | Ops: re-provision the canonical 30-session schedule (token `CLASSROOM_SYNC_TOKEN` → `OPPORTUNITY_SYNC_TOKEN`) |
@@ -218,6 +220,17 @@ checks enrollment then mints a short-lived **signed** playback URL (set
 `CLOUDFLARE_STREAM_SIGNING_KEY_ID` + `CLOUDFLARE_STREAM_SIGNING_KEY_PEM`; otherwise it
 returns the enrollment-gated embed URL). Run the internal sync soon after each class so
 the recording is handed off before the temporary URL expires.
+
+The same temporary file can also be archived to a **private** Cloudflare R2 bucket
+(`R2_BUCKET`, default `analytic-sages-classroom`) at `live-sessions/{recording_id}.mp4`.
+Credentials (`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`) stay on the server. The bucket
+is not made public. `POST /api/v1/webhooks/realtimekit` (header `dyte-signature`, secret
+`REALTIMEKIT_WEBHOOK_SECRET`) tracks recording status and starts that copy when the
+status is `UPLOADED`. The admin action **Archive to R2** runs the same copy for one
+recording, including the October 5 orientation file, and reports a failure when the
+download link is missing or expired. A successful archive is recorded only after the
+object exists and its size matches the download. Playback for students remains the
+enrollment-gated Cloudflare Stream URL.
 
 #### RealtimeKit attendance
 

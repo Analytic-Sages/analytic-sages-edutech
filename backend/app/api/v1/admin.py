@@ -12,14 +12,17 @@ from app.api.deps import (
     get_course_admin_service,
     get_payment_service,
     get_quiz_admin_service,
+    get_recording_archive_service,
     get_self_paced_service,
     get_storage_service,
     require_admin,
     require_catalog_ops,
     require_classroom_ops,
     require_course_author,
+    require_recording_archive,
 )
 from app.models.user import User
+from app.services.recording_archive import RecordingArchiveService
 from app.schemas.admin import (
     AdminAnalytics,
     AdminCohortDetail,
@@ -50,6 +53,7 @@ from app.schemas.classroom_admin import (
     AdminLiveSessionRow,
     AdminLiveSessionUpdate,
     AdminRecordingSyncResult,
+    RecordingArchiveResult,
     RecordingImportPreview,
     RecordingImportRequest,
 )
@@ -324,6 +328,33 @@ def admin_recording_import_preview(
     LMS sessions that plausibly match, so an admin can confirm before importing.
     """
     return classroom.preview_recording_import(recording_id)
+
+
+@router.post(
+    "/classroom/recordings/{recording_id}/backfill",
+    response_model=RecordingArchiveResult,
+)
+def admin_backfill_classroom_recording(
+    recording_id: str,
+    _: User = Depends(require_recording_archive),
+    archive: RecordingArchiveService = Depends(get_recording_archive_service),
+) -> RecordingArchiveResult:
+    """Copy one finished RealtimeKit recording into the private R2 bucket.
+
+    Instructors, classroom admins, and operations can run this. A missing or
+    expired download is returned as a failure and is not marked successful.
+    """
+    outcome = archive.backfill(recording_id)
+    return RecordingArchiveResult(
+        recording_id=outcome.recording_id,
+        success=outcome.success,
+        outcome=outcome.outcome,
+        detail=outcome.detail,
+        bucket=outcome.bucket,
+        object_key=outcome.object_key,
+        size_bytes=outcome.size_bytes,
+        provider_status=outcome.provider_status,
+    )
 
 
 @router.post(
