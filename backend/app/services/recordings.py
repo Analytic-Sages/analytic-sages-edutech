@@ -33,6 +33,7 @@ from app.schemas.classroom import SessionRecordingPlayback
 from app.schemas.classroom_admin import RecordingCandidateSession, RecordingImportPreview
 from app.services.cloudflare_stream import CloudflareStreamError, CloudflareStreamService
 from app.services.realtimekit import RealtimeKitService
+from app.services.recording_archive import RecordingArchiveError, RecordingArchiveService
 
 logger = logging.getLogger(__name__)
 
@@ -152,14 +153,130 @@ class RecordingsService:
         return recording
 
     def playback_url(self, recording: SessionRecording) -> str | None:
-        """Signed (private) playback URL for a ready recording, else None."""
-        if recording.status != RecordingStatus.READY or not recording.provider_recording_id:
+        """Signed Cloudflare Stream URL for a ready Stream video, else None."""
+        if (
+            recording.provider != "cloudflare_stream"
+            or recording.status != RecordingStatus.READY
+            or not recording.provider_recording_id
+        ):
             return None
         signed = self.stream.signed_playback_url(recording.provider_recording_id)
         if signed:
             return signed
         # No signing key configured → fall back to the (still access-gated) embed URL.
         return recording.recording_url or self.stream.embed_url(recording.provider_recording_id)
+
+    def link_r2_archive(
+        self,
+        recording_id: str,
+        object_key: str,
+        *,
+        session_id: UUID | None = None,
+    ) -> str:
+        """Remember which session plays an archived R2 object.
+
+        An explicit session id is the instructor's confirmation from the session
+        editor. Without one, an existing link is updated, or the single verified
+        candidate is used. A recording is never attached to two sessions, and
+        ``realtimekit_meeting_id`` is left unchanged.
+        """
+        recording_id = recording_id.strip()
+        existing = self.db.scalar(
+            select(SessionRecording).where(
+                SessionRecording.realtimekit_recording_id == recording_id
+            )
+        )
+        if session_id is None:
+            if existing is not None:
+                self._apply_r2_archive(existing, recording_id, object_key)
+                self.db.commit()
+                return "updated"
+            session = self._unique_archive_session(recording_id)
+            if session is None:
+                return "skipped"
+            self._apply_r2_archive(self.get_or_create(session.id), recording_id, object_key)
+            self.db.commit()
+            return "linked"
+
+        session = self.db.get(LiveSession, session_id)
+        if session is None:
+            return "not_found"
+        if existing is not None and existing.session_id != session.id:
+            return "conflict"
+        row = self._get_recording(session.id)
+        if (
+            row is not None
+            and row.realtimekit_recording_id
+            and row.realtimekit_recording_id != recording_id
+        ):
+            return "conflict"
+        self._apply_r2_archive(row or self.get_or_create(session.id), recording_id, object_key)
+        self.db.commit()
+        return "linked"
+
+    def _apply_r2_archive(
+        self, recording: SessionRecording, recording_id: str, object_key: str
+    ) -> None:
+        recording.realtimekit_recording_id = recording_id
+        recording.storage_provider = "r2"
+        recording.storage_key = object_key
+        if not recording.provider_recording_id:
+            recording.provider = "r2"
+        recording.status = RecordingStatus.READY
+        recording.error = None
+
+    def _unique_archive_session(self, recording_id: str) -> LiveSession | None:
+        try:
+            preview = self.recording_import_preview(recording_id)
+        except HTTPException:
+            return None
+        if preview.ambiguous or len(preview.candidates) != 1:
+            return None
+        return self.db.get(LiveSession, preview.candidates[0].session_id)
+
+    def _r2_watch_url(self, session: LiveSession, recording: SessionRecording | None) -> str | None:
+        """Private R2 playback when Stream cannot build a URL. Never a public object URL."""
+        archive = RecordingArchiveService(self.settings, realtimekit=self.realtimekit)
+        candidates: list[tuple[str, str]] = []
+        if recording is not None and recording.storage_provider == "r2" and recording.storage_key:
+            rid = recording.realtimekit_recording_id or ""
+            candidates.append((recording.storage_key, rid))
+        if recording is not None and recording.realtimekit_recording_id:
+            try:
+                candidates.append(
+                    (archive.object_key(recording.realtimekit_recording_id), recording.realtimekit_recording_id)
+                )
+            except RecordingArchiveError:
+                pass
+        seen: set[str] = set()
+        for key, _recording_id in candidates:
+            if key in seen:
+                continue
+            seen.add(key)
+            url = archive.presigned_watch_url(key)
+            if url:
+                return url
+        if not session.realtimekit_meeting_id:
+            return None
+        found: list[tuple[str, str, str]] = []
+        for item in self.realtimekit.list_recordings(meeting_id=str(session.realtimekit_meeting_id)):
+            if str(item.get("status", "")).upper() not in {"UPLOADED", "COMPLETED"}:
+                continue
+            item_id = str(item.get("id") or item.get("recordingId") or item.get("recording_id") or "")
+            if not item_id:
+                continue
+            try:
+                key = archive.object_key(item_id)
+            except RecordingArchiveError:
+                continue
+            url = archive.presigned_watch_url(key)
+            if url:
+                found.append((item_id, key, url))
+        if len(found) != 1:
+            return None
+        item_id, key, url = found[0]
+        self.link_r2_archive(item_id, key, session_id=session.id)
+        return url
 
     def playback(self, user: User, cohort_id: UUID, session_id: UUID) -> SessionRecordingPlayback:
         """Access-gated playback for a session's permanent recording.
@@ -185,16 +302,29 @@ class RecordingsService:
             )
 
         recording = self._get_recording(session_id)
-        # A ready Stream copy outlives any temporary URL stored on the session row.
-        if recording is not None and recording.status == RecordingStatus.READY:
-            uid = recording.provider_recording_id
+        stream_url = None
+        if (
+            recording is not None
+            and recording.status == RecordingStatus.READY
+            and recording.provider == "cloudflare_stream"
+            and recording.provider_recording_id
+        ):
+            stream_url = self.playback_url(recording)
+        # A ready Stream URL wins. Otherwise play the private R2 archive.
+        watch_url = stream_url or self._r2_watch_url(session, recording)
+        if watch_url:
+            uid = (
+                recording.provider_recording_id
+                if recording is not None and recording.provider == "cloudflare_stream"
+                else None
+            )
             return SessionRecordingPlayback(
                 session_id=session_id,
                 status="ready",
-                watch_url=self.playback_url(recording),
-                duration_seconds=recording.duration_seconds,
+                watch_url=watch_url,
+                duration_seconds=recording.duration_seconds if recording else None,
                 embed_url=self.stream.embed_url(uid) if uid else None,
-                hls_url=self.stream.signed_playback_url(uid) if uid else None,
+                hls_url=self.stream.signed_playback_url(uid) if uid and stream_url else None,
             )
 
         # Manual override (legacy / hand-added link) when no permanent copy exists.

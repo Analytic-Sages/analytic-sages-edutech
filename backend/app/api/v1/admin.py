@@ -21,8 +21,13 @@ from app.api.deps import (
     require_course_author,
     require_recording_archive,
 )
+from sqlalchemy.orm import Session
+
+from app.core.config import Settings, get_settings
+from app.db.session import get_db
 from app.models.user import User
 from app.services.recording_archive import RecordingArchiveService
+from app.services.recordings import RecordingsService
 from app.schemas.admin import (
     AdminAnalytics,
     AdminCohortDetail,
@@ -336,20 +341,37 @@ def admin_recording_import_preview(
 )
 def admin_backfill_classroom_recording(
     recording_id: str,
+    session_id: UUID | None = None,
     _: User = Depends(require_recording_archive),
     archive: RecordingArchiveService = Depends(get_recording_archive_service),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
 ) -> RecordingArchiveResult:
     """Copy one finished RealtimeKit recording into the private R2 bucket.
 
     Instructors, classroom admins, and operations can run this. A missing or
     expired download is returned as a failure and is not marked successful.
+    When session_id is set, that session is the one students watch.
     """
     outcome = archive.backfill(recording_id)
+    detail = outcome.detail
+    if outcome.success and outcome.object_key:
+        linked = RecordingsService(db, settings).link_r2_archive(
+            outcome.recording_id,
+            outcome.object_key,
+            session_id=session_id,
+        )
+        if linked in {"linked", "updated"}:
+            detail = f"{detail} Students can watch it from the classroom."
+        elif linked == "conflict":
+            detail = f"{detail} It is already linked to a different session, so this session was not changed."
+        elif linked == "not_found":
+            detail = f"{detail} The session to attach was not found."
     return RecordingArchiveResult(
         recording_id=outcome.recording_id,
         success=outcome.success,
         outcome=outcome.outcome,
-        detail=outcome.detail,
+        detail=detail,
         bucket=outcome.bucket,
         object_key=outcome.object_key,
         size_bytes=outcome.size_bytes,

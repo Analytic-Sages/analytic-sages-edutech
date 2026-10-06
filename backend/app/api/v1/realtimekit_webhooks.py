@@ -11,11 +11,14 @@ import json
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy.orm import Session
 
 from app.api.deps import get_recording_archive_service
 from app.core.config import Settings, get_settings
+from app.db.session import get_db
 from app.schemas.classroom_admin import RecordingArchiveResult
 from app.services.recording_archive import RecordingArchiveService, verify_realtimekit_signature
+from app.services.recordings import RecordingsService
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +43,7 @@ async def realtimekit_recording_webhook(
     request: Request,
     settings: Settings = Depends(get_settings),
     archive: RecordingArchiveService = Depends(get_recording_archive_service),
+    db: Session = Depends(get_db),
 ) -> RecordingArchiveResult:
     secret = settings.realtimekit_webhook_secret or ""
     body = await request.body()
@@ -61,6 +65,8 @@ async def realtimekit_recording_webhook(
             detail="RealtimeKit webhook body is not an object",
         )
     outcome = archive.handle_webhook(payload)
+    if outcome.success and outcome.object_key:
+        RecordingsService(db, settings).link_r2_archive(outcome.recording_id, outcome.object_key)
     if outcome.retryable:
         logger.error(
             "RealtimeKit recording archive will be retried recording_id=%s outcome=%s",

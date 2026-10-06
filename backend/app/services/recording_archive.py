@@ -449,6 +449,27 @@ class RecordingArchiveService:
         )
         return self._s3
 
+    def presigned_watch_url(self, object_key: str, *, expires_in: int = 3600) -> str | None:
+        """Short-lived private GET URL. None when the object is missing or R2 is unset."""
+        if not self.settings.r2_configured or not object_key or ".." in object_key.split("/"):
+            return None
+        bucket = self.settings.r2_bucket.strip()
+        try:
+            size = self._head(bucket, object_key)
+        except RecordingArchiveError:
+            return None
+        if not size:
+            return None
+        try:
+            return self._client().generate_presigned_url(
+                "get_object",
+                Params={"Bucket": bucket, "Key": object_key},
+                ExpiresIn=expires_in,
+            )
+        except Exception:
+            logger.exception("R2 presign failed key=%s", object_key)
+            return None
+
     @staticmethod
     def _delete_quiet(client: Any, bucket: str, key: str) -> None:
         try:

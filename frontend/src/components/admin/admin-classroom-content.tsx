@@ -269,7 +269,10 @@ export function AdminClassroomContent() {
     setImportBusy(true);
     setImportMessage(null);
     try {
-      const result = await backfillAdminClassroomRecording(importRecordingId.trim());
+      const result = await backfillAdminClassroomRecording(
+        importRecordingId.trim(),
+        editing?.id
+      );
       setImportMessage(result.detail);
     } catch (err) {
       setImportMessage(err instanceof ApiError ? err.detail : "Could not archive this recording.");

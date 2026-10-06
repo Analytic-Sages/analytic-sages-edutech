@@ -222,15 +222,16 @@ returns the enrollment-gated embed URL). Run the internal sync soon after each c
 the recording is handed off before the temporary URL expires.
 
 The same temporary file can also be archived to a **private** Cloudflare R2 bucket
-(`R2_BUCKET`, default `analytic-sages-classroom`) at `live-sessions/{recording_id}.mp4`.
+(`R2_BUCKET`, default `analytic-sages-recordings`) at `live-sessions/{recording_id}.mp4`.
 Credentials (`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`) stay on the server. The bucket
 is not made public. `POST /api/v1/webhooks/realtimekit` (header `dyte-signature`, secret
 `REALTIMEKIT_WEBHOOK_SECRET`) tracks recording status and starts that copy when the
 status is `UPLOADED`. The admin action **Archive to R2** runs the same copy for one
 recording, including the October 5 orientation file, and reports a failure when the
 download link is missing or expired. A successful archive is recorded only after the
-object exists and its size matches the download. Playback for students remains the
-enrollment-gated Cloudflare Stream URL.
+object exists and its size matches the download. Watch uses a ready Cloudflare Stream
+URL when one can be built. Otherwise the same enrollment check mints a one-hour
+private R2 link for `live-sessions/{recording_id}.mp4`. The bucket stays private.
 
 #### RealtimeKit attendance
 

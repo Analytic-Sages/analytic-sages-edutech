@@ -3,6 +3,8 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime, timedelta
 
+from unittest.mock import patch
+
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
@@ -179,6 +181,51 @@ def test_operations_can_preview_recording_but_editor_cannot():
         headers=_auth(editor),
     )
     assert editor_resp.status_code == 403
+    _cleanup()
+
+
+def test_watch_uses_private_r2_when_stream_url_is_missing():
+    """A ready Stream row with no playable URL falls back to the R2 archive."""
+    _cleanup()
+    cohort_id, session_id = _seed()
+    recording_id = "fff4d97c-b29d-4a88-8fb6-0d46e13ee11c"
+    db = SessionLocal()
+    try:
+        recording = db.scalar(select(SessionRecording).where(SessionRecording.session_id == session_id))
+        assert recording is not None
+        recording.recording_url = None
+        recording.realtimekit_recording_id = recording_id
+        recording.storage_provider = "r2"
+        recording.storage_key = f"live-sessions/{recording_id}.mp4"
+        db.commit()
+    finally:
+        db.close()
+    student = _make_user("recordings-test-r2")
+    db = SessionLocal()
+    try:
+        db.add(CohortMember(cohort_id=cohort_id, user_id=student.id, role=CohortMemberRole.STUDENT))
+        db.commit()
+    finally:
+        db.close()
+
+    with (
+        patch("app.services.cloudflare_stream.CloudflareStreamService.embed_url", return_value=None),
+        patch(
+            "app.services.cloudflare_stream.CloudflareStreamService.signed_playback_url",
+            return_value=None,
+        ),
+        patch(
+            "app.services.recording_archive.RecordingArchiveService.presigned_watch_url",
+            return_value="https://r2.example/watch",
+        ) as presign,
+    ):
+        resp = client.get(
+            f"/api/v1/cohorts/{cohort_id}/sessions/{session_id}/recording",
+            headers=_auth(student),
+        )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["watch_url"] == "https://r2.example/watch"
+    presign.assert_called()
     _cleanup()
 
 

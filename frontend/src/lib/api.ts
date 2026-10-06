@@ -2704,9 +2704,10 @@ export type RecordingArchiveResult = {
   provider_status: string | null;
 };
 
-export function backfillAdminClassroomRecording(recordingId: string) {
+export function backfillAdminClassroomRecording(recordingId: string, sessionId?: string) {
+  const params = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : "";
   return apiFetch<RecordingArchiveResult>(
-    `/api/v1/admin/classroom/recordings/${encodeURIComponent(recordingId)}/backfill`,
+    `/api/v1/admin/classroom/recordings/${encodeURIComponent(recordingId)}/backfill${params}`,
     { method: "POST" }
   );
 }

@@ -237,7 +237,12 @@ class ClassroomService:
         # students hit the enrollment-gated playback endpoint after that link expires.
         recording = (recordings or {}).get(session.id) if recordings is not None else self._recording_for(session.id)
         stream_ready = recording is not None and recording.status == RecordingStatus.READY
-        if stream_ready:
+        r2_ready = (
+            recording is not None
+            and recording.storage_provider == "r2"
+            and bool(recording.storage_key)
+        )
+        if stream_ready or r2_ready:
             recording_status = "ready"
             recording_watch_url = (
                 f"/api/v1/cohorts/{session.cohort_id}/sessions/{session.id}/recording"

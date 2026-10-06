@@ -218,6 +218,24 @@ def test_webhook_in_progress_does_not_upload():
     assert store.uploads == []
 
 
+def test_presigned_watch_url_only_for_an_existing_object():
+    store = FakeS3()
+    key = f"live-sessions/{RECORDING_ID}.mp4"
+    store.objects[("analytic-sages-classroom", key)] = {"size": 224745792}
+
+    def generate_presigned_url(operation: str, Params: dict, ExpiresIn: int) -> str:
+        assert operation == "get_object"
+        assert Params == {"Bucket": "analytic-sages-classroom", "Key": key}
+        assert ExpiresIn == 3600
+        return "https://signed.example/watch"
+
+    store.generate_presigned_url = generate_presigned_url  # type: ignore[method-assign]
+    service = RecordingArchiveService(_settings(), s3_client=store)
+    assert service.presigned_watch_url(key) == "https://signed.example/watch"
+    assert service.presigned_watch_url("live-sessions/missing.mp4") is None
+    assert service.presigned_watch_url("../secret.mp4") is None
+
+
 def test_webhook_signature_and_unsigned_rejection():
     body = json.dumps({"event": "recording.statusUpdate"}).encode()
     signature = hmac.new(b"hook-secret", body, hashlib.sha256).hexdigest()

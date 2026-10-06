@@ -99,7 +99,7 @@ class Settings(BaseSettings):
     # Endpoint defaults to https://<CLOUDFLARE_ACCOUNT_ID>.r2.cloudflarestorage.com.
     r2_access_key_id: str | None = None
     r2_secret_access_key: str | None = None
-    r2_bucket: str = "analytic-sages-classroom"
+    r2_bucket: str = "analytic-sages-recordings"
     r2_recording_prefix: str = "live-sessions/"
     r2_endpoint_url: str | None = None
 
