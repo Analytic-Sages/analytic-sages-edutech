@@ -20,6 +20,7 @@ from app.api.v1 import (
     rbac,
     referrals,
     self_paced,
+    waitlist,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -41,6 +42,7 @@ api_router.include_router(quizzes.router)
 api_router.include_router(events.router)
 api_router.include_router(instructors.router)
 api_router.include_router(live.router)
+api_router.include_router(waitlist.router)
 api_router.include_router(insights.router)
 api_router.include_router(opportunities.router)
 api_router.include_router(referrals.router)

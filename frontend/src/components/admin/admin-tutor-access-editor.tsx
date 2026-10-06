@@ -9,7 +9,7 @@ import {
   ApiError,
   getAdminCohortTutors,
   getAdminCourseTutors,
-  getAdminUsers,
+  getAdminStaffUsers,
   putAdminCohortTutors,
   putAdminCourseTutors,
   type AdminTutorRow,
@@ -22,6 +22,7 @@ const STAFF_ROLES = new Set(["admin", "operations", "partnerships", "editor", "a
 
 export function AdminTutorAccessEditor({ kind, slug, title }: Props) {
   const [users, setUsers] = useState<AdminUserRow[]>([]);
+  const [assignedOnly, setAssignedOnly] = useState<AdminUserRow[]>([]);
   const [assigned, setAssigned] = useState<AdminTutorRow[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -37,13 +38,32 @@ export function AdminTutorAccessEditor({ kind, slug, title }: Props) {
       setError(null);
       try {
         const [staff, tutors] = await Promise.all([
-          getAdminUsers(500),
+          getAdminStaffUsers(500),
           kind === "course" ? getAdminCourseTutors(slug) : getAdminCohortTutors(slug),
         ]);
         if (cancelled) return;
-        setUsers(staff.filter((user) => user.is_active && STAFF_ROLES.has(user.role)));
+        const staffById = new Map(staff.map((user) => [user.id, user] as const));
+        setUsers(
+          staff.filter((user) => user.is_active && STAFF_ROLES.has(user.role)),
+        );
         setAssigned(tutors);
+        // Merge assigned tutors into the picker so an already-assigned staff member
+        // always shows even if they fall outside the staff listing window.
         setSelected(new Set(tutors.map((tutor) => tutor.user_id)));
+        setAssignedOnly(
+          tutors
+            .filter((tutor) => !staffById.has(tutor.user_id))
+            .map((tutor) => ({
+              id: tutor.user_id,
+              email: tutor.email,
+              full_name: tutor.full_name,
+              role: tutor.role,
+              email_verified: true,
+              is_active: true,
+              in_featured_cohort: false,
+              created_at: "",
+            })),
+        );
       } catch (err) {
         if (!cancelled) setError(err instanceof ApiError ? err.detail : "Failed to load tutors");
       } finally {
@@ -57,12 +77,14 @@ export function AdminTutorAccessEditor({ kind, slug, title }: Props) {
   }, [kind, slug]);
 
   const visibleUsers = useMemo(() => {
+    const seen = new Set(users.map((user) => user.id));
+    const pool = [...users, ...assignedOnly.filter((user) => !seen.has(user.id))];
     const needle = query.trim().toLowerCase();
-    if (!needle) return users;
-    return users.filter((user) =>
+    if (!needle) return pool;
+    return pool.filter((user) =>
       `${user.email} ${user.full_name ?? ""}`.toLowerCase().includes(needle),
     );
-  }, [users, query]);
+  }, [users, assignedOnly, query]);
 
   function toggle(userId: string) {
     setSelected((prev) => {

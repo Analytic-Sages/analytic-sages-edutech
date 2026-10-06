@@ -44,6 +44,7 @@ from app.services.opportunity_digest import OpportunityDigestService
 from app.services.opportunity_review_assist import OpportunityReviewAssistService
 from app.services.opportunity_discovery import OpportunityDiscoveryService
 from app.services.storage import StorageService
+from app.services.waitlist import WaitlistService
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -232,6 +233,10 @@ def get_instructor_service(db: Session = Depends(get_db)) -> InstructorService:
 
 def get_admin_service(db: Session = Depends(get_db)) -> AdminService:
     return AdminService(db)
+
+
+def get_waitlist_service(db: Session = Depends(get_db)) -> WaitlistService:
+    return WaitlistService(db)
 
 
 def get_current_user(

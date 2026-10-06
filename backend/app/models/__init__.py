@@ -52,6 +52,7 @@ from app.models.user import (
     RefreshToken,
     User,
 )
+from app.models.waitlist import CohortWaitlistEntry
 
 __all__ = [
     "User",
@@ -84,6 +85,7 @@ __all__ = [
     "Cohort",
     "CohortMember",
     "LiveSession",
+    "CohortWaitlistEntry",
     "Article",
     "AuthorProfile",
     "ArticleContributor",

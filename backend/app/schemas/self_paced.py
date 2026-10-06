@@ -164,6 +164,8 @@ class AdminCourseRow(BaseModel):
     completions_count: int
     avg_progress_percent: int
     instructor_count: int = 0
+    # Staff with login access to the course (managed by the tutor editor).
+    tutor_count: int = 0
     last_activity_at: datetime | None = None
 
 

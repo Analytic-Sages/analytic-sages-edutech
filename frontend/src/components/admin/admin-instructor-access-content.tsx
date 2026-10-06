@@ -99,7 +99,7 @@ export function AdminInstructorAccessContent() {
                         variant="outline"
                         size="sm"
                       >
-                        {row.instructor_count} assigned
+                        Manage instructor access ({row.tutor_count ?? 0})
                       </ButtonLink>
                     </TableCell>
                   </TableRow>
@@ -142,7 +142,7 @@ export function AdminInstructorAccessContent() {
                         variant="outline"
                         size="sm"
                       >
-                        {row.instructor_count ?? 0} assigned
+                        Manage instructor access ({row.tutor_count ?? 0})
                       </ButtonLink>
                     </TableCell>
                   </TableRow>

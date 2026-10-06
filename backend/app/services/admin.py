@@ -142,10 +142,11 @@ class AdminService:
             untracked=list(UNTRACKED),
         )
 
-    def list_users(self, *, limit: int = 200) -> list[AdminUserRow]:
+    def list_users(self, *, limit: int = 200, staff_only: bool = False) -> list[AdminUserRow]:
         featured = self._featured_cohort()
         member_ids = self._member_user_ids(featured.id) if featured else set()
-        return self._user_rows(self._list_users(limit=limit), member_ids)
+        users = self._list_staff_users(limit=limit) if staff_only else self._list_users(limit=limit)
+        return self._user_rows(users, member_ids)
 
     def list_payments(self, *, limit: int = 200) -> list[AdminPaymentRow]:
         return self._payment_rows(self._list_payments(limit=limit))

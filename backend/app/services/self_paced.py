@@ -642,6 +642,7 @@ class SelfPacedService:
             completions_count=sum(1 for item in counted if item.completed_at),
             avg_progress_percent=avg,
             instructor_count=self._instructor_count(course.id),
+            tutor_count=self._tutor_count(course.id),
             last_activity_at=last_activity,
         )
 
@@ -654,3 +655,8 @@ class SelfPacedService:
         from app.services.instructors import InstructorService
 
         return InstructorService(self.db).course_instructor_count(course_id)
+
+    def _tutor_count(self, course_id: UUID) -> int:
+        from app.services.instructors import InstructorService
+
+        return InstructorService(self.db).course_tutor_count(course_id)

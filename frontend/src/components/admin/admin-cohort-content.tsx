@@ -30,6 +30,7 @@ import {
 } from "@/lib/api";
 import { FEATURED_COHORT_SLUG } from "@/lib/auth-redirect";
 import { formatPrice } from "@/lib/mock-data";
+import { AdminCohortWaitlistPanel } from "@/components/admin/admin-cohort-waitlist-panel";
 
 export function AdminCohortContent() {
   const [detail, setDetail] = useState<AdminCohortDetail | null>(null);
@@ -194,6 +195,8 @@ export function AdminCohortContent() {
           </div>
         )}
       </div>
+
+      <AdminCohortWaitlistPanel key={slug} slug={slug} />
 
       <div>
         <h2 className="mb-4 font-heading text-xl font-semibold">Cohort checkouts</h2>

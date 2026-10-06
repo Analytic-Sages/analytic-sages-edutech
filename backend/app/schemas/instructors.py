@@ -96,6 +96,8 @@ class AdminCohortInstructorRow(BaseModel):
     name: str
     status: str
     instructor_count: int
+    # Staff with login access to the cohort's classroom (managed by the tutor editor).
+    tutor_count: int = 0
 
 
 class AdminTutorRow(BaseModel):

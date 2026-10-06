@@ -137,7 +137,7 @@ export function AdminCoursesContent() {
                         variant="outline"
                         size="sm"
                       >
-                        {row.instructor_count ?? 0} instructors
+                        Instructor access ({row.tutor_count ?? 0})
                       </ButtonLink>
                     </div>
                   </TableCell>
@@ -176,7 +176,7 @@ export function AdminCoursesContent() {
                   </TableCell>
                   <TableCell>
                     <ButtonLink href={`/admin/cohorts/${row.slug}/instructors`} variant="outline" size="sm">
-                      {row.instructor_count} assigned
+                      Instructor access ({row.tutor_count ?? 0})
                     </ButtonLink>
                   </TableCell>
                 </TableRow>

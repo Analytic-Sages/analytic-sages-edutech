@@ -261,6 +261,14 @@ export function getProgramPageHref(cohortApiSlug: string): string | null {
   return page ? `/programs/${page.pageSlug}` : null;
 }
 
+/** Waitlist page for a cohort whose registration has closed (next-intake intake form). */
+export function getProgramWaitlistHref(cohortApiSlug: string): string | null {
+  const engineering = getEngineeringProgramPage(cohortApiSlug);
+  if (engineering) return `/waitlist/${engineering.pageSlug}`;
+  const page = programPages.find((item) => item.cohortSlug === cohortApiSlug);
+  return page ? `/waitlist/${page.pageSlug}` : null;
+}
+
 export function getProgramPostcard(cohortApiSlug: string): string | null {
   const engineering = getEngineeringProgramPage(cohortApiSlug);
   if (engineering) return engineering.postcardImage;

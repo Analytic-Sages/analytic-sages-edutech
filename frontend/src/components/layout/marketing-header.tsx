@@ -8,7 +8,7 @@ import { useTheme } from "@/components/providers/theme-provider";
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { publicMarketingNav } from "@/config/navigation";
+import { publicMarketingHeaderNav } from "@/config/navigation";
 import { useIsSignedIn } from "@/hooks/use-access-token";
 import { cn } from "@/lib/utils";
 
@@ -25,7 +25,7 @@ export function MarketingHeader() {
         </div>
 
         <nav className="hidden items-center gap-10 lg:pointer-fine:flex">
-          {publicMarketingNav().map((item) => {
+          {publicMarketingHeaderNav().map((item) => {
             const active =
               pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
@@ -113,7 +113,7 @@ export function MarketingHeader() {
                 <Logo size="lg" />
               </div>
               <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-6 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-                {publicMarketingNav().map((item) => {
+                {publicMarketingHeaderNav().map((item) => {
                   const active =
                     pathname === item.href || pathname.startsWith(`${item.href}/`);
                   return (

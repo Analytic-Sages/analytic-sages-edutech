@@ -483,6 +483,7 @@ export type AdminCourseRow = {
   completions_count: number;
   avg_progress_percent: number;
   instructor_count?: number;
+  tutor_count?: number;
   last_activity_at: string | null;
 };
 
@@ -519,6 +520,7 @@ export type AdminCohortInstructorRow = {
   name: string;
   status: string;
   instructor_count: number;
+  tutor_count?: number;
 };
 
 export type AuthUser = {
@@ -1719,7 +1721,62 @@ export type PublicCohortCard = {
   next_session_phase: "upcoming" | "live" | "ended" | "cancelled" | null;
   sessions_count: number;
   instructors?: InstructorPublic[];
+  waitlist_open?: boolean;
 };
+
+export type WaitlistEntry = {
+  id: string;
+  cohort_id: string;
+  created_at: string;
+};
+
+export type WaitlistStatus = {
+  is_open: boolean;
+  is_on_waitlist: boolean;
+  missing_fields: string[];
+  entry: WaitlistEntry | null;
+};
+
+export type AdminWaitlistRow = {
+  user_id: string;
+  full_name: string | null;
+  email: string;
+  phone_number: string | null;
+  phone_country_code: string | null;
+  country_of_residence: string | null;
+  discord_username: string | null;
+  telegram_username: string | null;
+  note: string | null;
+  created_at: string;
+};
+
+export type AdminWaitlistResponse = {
+  cohort_id: string;
+  cohort_slug: string;
+  cohort_name: string;
+  is_open: boolean;
+  count: number;
+  entries: AdminWaitlistRow[];
+};
+
+export function getMyWaitlistStatus(cohortId: string) {
+  return apiFetch<WaitlistStatus>(
+    `/api/v1/cohorts/${encodeURIComponent(cohortId)}/waitlist/me`,
+  );
+}
+
+export function joinWaitlist(cohortId: string, note?: string) {
+  return apiFetch<WaitlistEntry>(
+    `/api/v1/cohorts/${encodeURIComponent(cohortId)}/waitlist`,
+    { method: "POST", body: JSON.stringify({ note: note ?? null }) },
+  );
+}
+
+export function getAdminCohortWaitlist(slug: string) {
+  return apiFetch<AdminWaitlistResponse>(
+    `/api/v1/admin/cohorts/${encodeURIComponent(slug)}/waitlist`,
+  );
+}
 
 export function listPublicCohorts() {
   return apiFetch<PublicCohortCard[]>("/api/v1/classroom/public/cohorts", { auth: false });
@@ -2361,6 +2418,11 @@ export function getAdminAnalytics() {
 
 export function getAdminUsers(limit = 200) {
   return apiFetch<AdminUserRow[]>(`/api/v1/admin/users?limit=${limit}`);
+}
+
+/** Active staff accounts only (role != student) — used for tutor access pickers. */
+export function getAdminStaffUsers(limit = 500) {
+  return apiFetch<AdminUserRow[]>(`/api/v1/admin/users?limit=${limit}&staff_only=true`);
 }
 
 export type AdminProfile = AdminUserRow & {

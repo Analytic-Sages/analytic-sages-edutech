@@ -82,3 +82,5 @@ class PublicCohortCard(BaseModel):
     next_session_phase: Literal["upcoming", "live", "ended", "cancelled"] | None = None
     sessions_count: int = 0
     instructors: list[InstructorPublic] = Field(default_factory=list)
+    # When true, registration is closed and the CTA links to the waitlist.
+    waitlist_open: bool = False

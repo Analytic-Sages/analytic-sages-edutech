@@ -235,6 +235,15 @@ class InstructorService:
                 )
             ).all()
         )
+        tutor_counts = dict(
+            self.db.execute(
+                select(CohortMember.cohort_id, func.count(CohortMember.id))
+                .where(
+                    CohortMember.role.in_((CohortMemberRole.INSTRUCTOR, CohortMemberRole.TA))
+                )
+                .group_by(CohortMember.cohort_id)
+            ).all()
+        )
         return [
             AdminCohortInstructorRow(
                 id=cohort.id,
@@ -242,6 +251,7 @@ class InstructorService:
                 name=cohort.name,
                 status=cohort.status.value,
                 instructor_count=int(counts.get(cohort.id, 0)),
+                tutor_count=int(tutor_counts.get(cohort.id, 0)),
             )
             for cohort in cohorts
         ]
@@ -250,6 +260,17 @@ class InstructorService:
         return int(
             self.db.scalar(
                 select(func.count(CourseInstructor.id)).where(CourseInstructor.course_id == course_id)
+            )
+            or 0
+        )
+
+    def course_tutor_count(self, course_id: UUID) -> int:
+        """Number of login users with an access grant to the course (tutor editor)."""
+        return int(
+            self.db.scalar(
+                select(func.count(CourseAccessGrant.id)).where(
+                    CourseAccessGrant.course_id == course_id
+                )
             )
             or 0
         )

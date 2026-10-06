@@ -33,6 +33,17 @@ export const marketingNav = [
   { title: "Partner With Us", href: "/partner-with-us" },
 ] as const;
 
+/** Top navigation bar. Hides "Student Projects" while the showcase is not in the header. */
+export const marketingHeaderNav = [
+  { title: "Our Programs", href: "/programs" },
+  { title: "Events", href: "/events" },
+  { title: "Opportunities", href: "/opportunities" },
+  { title: "Community", href: "/community" },
+  { title: "Insights", href: "/insights" },
+  { title: "About us", href: "/about" },
+  { title: "Partner With Us", href: "/partner-with-us" },
+] as const;
+
 export const studentNav: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: "dashboard" },
   { title: "Live Programmes", href: "/programmes", icon: "classroom" },
@@ -99,6 +110,12 @@ export const staffNav: NavItem[] = [
 export function publicMarketingNav() {
   if (isOpportunitiesPublic()) return marketingNav;
   return marketingNav.filter((item) => item.href !== "/opportunities");
+}
+
+/** Header nav: same rule as `publicMarketingNav`, minus the showcase link. */
+export function publicMarketingHeaderNav() {
+  if (isOpportunitiesPublic()) return marketingHeaderNav;
+  return marketingHeaderNav.filter((item) => item.href !== "/opportunities");
 }
 
 export function publicStudentNav(): NavItem[] {

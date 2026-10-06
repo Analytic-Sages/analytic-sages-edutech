@@ -17,6 +17,7 @@ import {
   comingSoonCohortSlugs,
   getProgramPageHref,
   getProgramPostcard,
+  getProgramWaitlistHref,
   listComingSoonPrograms,
   type ProgramPageContent,
 } from "@/lib/program-pages";
@@ -277,7 +278,9 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
   const when = formatWhen(cohort.next_session_starts_at);
   const isLive = cohort.next_session_phase === "live";
   const programHref = getProgramPageHref(cohort.slug);
+  const waitlistHref = getProgramWaitlistHref(cohort.slug);
   const postcard = getProgramPostcard(cohort.slug);
+  const waitlistOpen = Boolean(cohort.waitlist_open);
 
   return (
     <Card className="overflow-hidden shadow-card">
@@ -295,7 +298,7 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-md bg-brand-orange/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-brand-orange">
-            Open for registration
+            {waitlistOpen ? "Waitlist open" : "Open for registration"}
           </span>
           {isLive && (
             <span className="inline-flex items-center gap-1.5 rounded-md bg-red-500/15 px-2 py-0.5 text-xs font-semibold uppercase text-red-600 dark:text-red-300">
@@ -346,7 +349,15 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
           )}
         </div>
         <div className="flex flex-wrap gap-3 pt-2">
-          {programHref ? (
+          {waitlistOpen && waitlistHref ? (
+            <ButtonLink
+              href={waitlistHref}
+              className={cn("bg-brand-orange text-white hover:bg-brand-orange/90")}
+            >
+              Join Waitlist
+              <ArrowRight className="ml-1 size-4" />
+            </ButtonLink>
+          ) : programHref ? (
             <ButtonLink
               href={programHref}
               className={cn("bg-brand-orange text-white hover:bg-brand-orange/90")}

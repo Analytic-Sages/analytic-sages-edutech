@@ -27,6 +27,8 @@ export type CohortRegistrationState = {
   apiOpen: boolean;
   /** Marketing CTAs should offer checkout */
   open: boolean;
+  /** Registration is closed and the CTA should offer the waitlist instead */
+  waitlistOpen: boolean;
   checkoutHref: string;
   /** Live cohort price when available; otherwise marketing fallback */
   priceLabel: string;
@@ -79,7 +81,8 @@ export function useCohortRegistration(
   }, [cohortSlug]);
 
   const apiOpen = cohort?.status === "open" || cohort?.status === "active";
-  const open = registrationLive || apiOpen;
+  const waitlistOpen = Boolean(cohort?.waitlist_open);
+  const open = (registrationLive || apiOpen) && !waitlistOpen;
   const priceLabel =
     cohort && cohort.price > 0 ? formatPrice(cohort.price, cohort.currency) : FALLBACK_PRICE;
 
@@ -89,6 +92,7 @@ export function useCohortRegistration(
     loading,
     apiOpen,
     open,
+    waitlistOpen,
     checkoutHref: `/checkout/cohort/${cohortSlug}`,
     priceLabel,
     tuitionSummary: open ? marketingTuition ?? null : null,

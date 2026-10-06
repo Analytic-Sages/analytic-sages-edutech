@@ -136,8 +136,9 @@ def admin_users(
     _: User = Depends(require_admin),
     admin: AdminService = Depends(get_admin_service),
     limit: int = Query(default=200, ge=1, le=500),
+    staff_only: bool = Query(default=False),
 ) -> list[AdminUserRow]:
-    return admin.list_users(limit=limit)
+    return admin.list_users(limit=limit, staff_only=staff_only)
 
 
 @router.get("/users/{user_id}", response_model=AdminUserDetail)

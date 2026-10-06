@@ -30,6 +30,7 @@ from app.schemas.classroom import (
 from app.services.calendar_ics import CalendarEvent, build_calendar
 from app.services.instructors import InstructorService
 from app.services.realtimekit import RealtimeKitError, RealtimeKitService
+from app.services.waitlist import WaitlistService
 
 logger = logging.getLogger(__name__)
 
@@ -185,6 +186,7 @@ class ClassroomService:
                     ),
                     sessions_count=len(sessions),
                     instructors=instructors.list_for_cohort(cohort),
+                    waitlist_open=WaitlistService(self.db).is_waitlist_open(cohort),
                 )
             )
         return cards

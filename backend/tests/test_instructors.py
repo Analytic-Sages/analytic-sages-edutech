@@ -270,3 +270,43 @@ def test_admin_can_assign_login_tutors_to_course_and_cohort():
     )
     assert bad.status_code == 400
     _cleanup()
+
+
+def test_staff_only_listing_surfaces_existing_instructors_and_counts_tutors():
+    _cleanup()
+    course = _seed_course()
+    _seed_cohort(course.id)
+    admin = _make_user(f"admin-staffonly-{uuid.uuid4()}@example.com", role=UserRole.ADMIN)
+    instructor = _make_user(f"instructor-staffonly-{uuid.uuid4()}@example.com", role=UserRole.INSTRUCTOR)
+    student = _make_user(f"student-staffonly-{uuid.uuid4()}@example.com")
+
+    # staff_only returns the instructor and never students, regardless of volume.
+    staff = client.get("/api/v1/admin/users?staff_only=true&limit=500", headers=_auth(admin))
+    assert staff.status_code == 200
+    emails = {row["email"] for row in staff.json()}
+    assert instructor.email in emails
+    assert student.email not in emails
+    assert all(row["role"] != "student" for row in staff.json())
+
+    # Assign the instructor as a login tutor, then the counts reflect it.
+    client.put(
+        f"/api/v1/admin/cohorts/{COHORT_SLUG}/tutors",
+        headers=_auth(admin),
+        json={"user_ids": [str(instructor.id)]},
+    )
+    client.put(
+        f"/api/v1/admin/courses/{COURSE_SLUG}/tutors",
+        headers=_auth(admin),
+        json={"user_ids": [str(instructor.id)]},
+    )
+
+    cohorts = client.get("/api/v1/admin/catalog/cohorts", headers=_auth(admin))
+    assert cohorts.status_code == 200
+    cohort_row = next(c for c in cohorts.json() if c["slug"] == COHORT_SLUG)
+    assert cohort_row["tutor_count"] == 1
+
+    courses = client.get("/api/v1/admin/courses", headers=_auth(admin))
+    assert courses.status_code == 200
+    course_row = next(c for c in courses.json() if c["slug"] == COURSE_SLUG)
+    assert course_row["tutor_count"] == 1
+    _cleanup()

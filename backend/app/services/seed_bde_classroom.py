@@ -57,6 +57,10 @@ OFFICE_HOUR_WEEKDAY = 4  # Friday
 SESSIONS_PER_WEEK = 2
 TOTAL_TEACHING_SESSIONS = TOTAL_WEEKS * SESSIONS_PER_WEEK  # 20
 
+# The cohort is in progress, so new interest joins the waitlist for the next intake
+# instead of the checkout flow.
+WAITLIST_ENROLLMENT_SETTINGS: dict[str, bool] = {"waitlist_open": True}
+
 
 @dataclass(frozen=True)
 class ScheduledSession:
@@ -411,6 +415,7 @@ def seed_bde_classroom(db: Session, *, reset: bool = False) -> dict[str, int]:
             price=COHORT_PRICE,
             currency=COHORT_CURRENCY,
             referral_commission_eligible=True,
+            enrollment_settings={**WAITLIST_ENROLLMENT_SETTINGS},
         )
         db.add(cohort)
         db.flush()
@@ -424,6 +429,11 @@ def seed_bde_classroom(db: Session, *, reset: bool = False) -> dict[str, int]:
         cohort.price = COHORT_PRICE
         cohort.currency = COHORT_CURRENCY
         cohort.referral_commission_eligible = True
+        # The programme has started, so new interest joins the waitlist for the next intake.
+        cohort.enrollment_settings = {
+            **(cohort.enrollment_settings or {}),
+            **WAITLIST_ENROLLMENT_SETTINGS,
+        }
         if course:
             cohort.course_id = course.id
 

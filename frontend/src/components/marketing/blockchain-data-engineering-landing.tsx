@@ -36,7 +36,7 @@ export function BlockchainDataEngineeringLanding({
   enrollmentMode?: "cohort" | "self-paced-coming-soon";
 }) {
   const selfPacedComingSoon = enrollmentMode === "self-paced-coming-soon";
-  const { cohort, loading, open, checkoutHref, priceLabel, tuitionSummary } =
+  const { cohort, loading, open, waitlistOpen, checkoutHref, priceLabel, tuitionSummary } =
     useCohortRegistration(program.cohortSlug, {
       tuitionSummary: program.tuitionSummary,
       registrationLive: program.registrationLive,
@@ -45,13 +45,23 @@ export function BlockchainDataEngineeringLanding({
   const curriculumHref = program.curriculumPath;
   const startDate = formatDate(cohort?.starts_at ?? null);
   const deadline = formatDate(cohort?.registration_deadline ?? null);
-  const primaryHref = selfPacedComingSoon ? program.canonicalPath : checkoutHref;
+  const waitlistHref = `/waitlist/${program.pageSlug}`;
+  const showWaitlist = !selfPacedComingSoon && waitlistOpen;
+  const primaryHref = selfPacedComingSoon
+    ? program.canonicalPath
+    : showWaitlist
+      ? waitlistHref
+      : checkoutHref;
   const primaryLabel = selfPacedComingSoon
     ? "Explore Instructor-Led Cohort"
-    : program.applyLabel;
+    : showWaitlist
+      ? "Join Waitlist"
+      : program.applyLabel;
   const mobileCtaLabel = selfPacedComingSoon
     ? "Explore Instructor-Led Cohort"
-    : `Join cohort · ${priceLabel}`;
+    : showWaitlist
+      ? "Join Waitlist"
+      : `Join cohort · ${priceLabel}`;
 
   return (
     <div className="bg-background pb-24 text-foreground md:pb-0">
@@ -92,9 +102,22 @@ export function BlockchainDataEngineeringLanding({
               ) : (
                 <>
                   <p className="font-heading text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                    {priceLabel}
+                    {showWaitlist ? "Next cohort waitlist" : priceLabel}
                   </p>
-                  {open ? (
+                  {showWaitlist ? (
+                    <>
+                      <p className="mt-1 text-sm font-medium text-brand-orange">
+                        Waitlist now open
+                      </p>
+                      <p className="mt-2 text-sm leading-relaxed text-white/80">
+                        The current cohort has started. Join the waitlist to be first in line for
+                        the next Blockchain Data Engineering intake.
+                      </p>
+                      {startDate ? (
+                        <p className="mt-2 text-xs text-white/55">Current cohort began {startDate}</p>
+                      ) : null}
+                    </>
+                  ) : open ? (
                     <>
                       <p className="mt-1 text-sm font-medium text-brand-orange">
                         Open for registration
@@ -363,11 +386,11 @@ export function BlockchainDataEngineeringLanding({
               </p>
             )}
             <ButtonLink
-              href={checkoutHref}
+              href={primaryHref}
               size="lg"
               className="mt-8 h-12 bg-brand-orange px-10 text-base text-white hover:bg-brand-orange/90"
             >
-              {program.applyLabel}
+              {showWaitlist ? "Join the waitlist" : program.applyLabel}
               <ArrowRight className="ml-2 size-4" />
             </ButtonLink>
           </div>
