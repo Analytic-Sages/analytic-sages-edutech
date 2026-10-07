@@ -11,6 +11,7 @@ import { ApiError, listPublicCohorts, type PublicCohortCard } from "@/lib/api";
 import {
   BDE_COHORT_SLUG,
   blockchainDataEngineeringProgram,
+  getEngineeringProgramPage,
 } from "@/lib/blockchain-data-engineering-program";
 import { formatPrice } from "@/lib/mock-data";
 import {
@@ -281,6 +282,7 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
   const waitlistHref = getProgramWaitlistHref(cohort.slug);
   const postcard = getProgramPostcard(cohort.slug);
   const waitlistOpen = Boolean(cohort.waitlist_open);
+  const engineering = getEngineeringProgramPage(cohort.slug);
 
   return (
     <Card className="overflow-hidden shadow-card">
@@ -308,16 +310,43 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
           )}
         </div>
         <CardTitle className="font-heading text-2xl">{cohort.name}</CardTitle>
-        {cohort.description && (
+        {engineering ? (
+          <p className="text-base font-medium text-foreground/80">{engineering.support}</p>
+        ) : cohort.description ? (
           <p className="text-base font-medium text-foreground/80">{cohort.description}</p>
-        )}
-        {cohort.course_title && (
+        ) : null}
+        {cohort.course_title && !engineering && (
           <p className="text-sm text-muted-foreground">{cohort.course_title}</p>
         )}
       </CardHeader>
       <CardContent className="space-y-4">
+        {engineering && (
+          <div className="space-y-3">
+            <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+              <p>
+                <span className="font-medium text-foreground">Duration:</span> {engineering.duration}
+              </p>
+              <p>
+                <span className="font-medium text-foreground">Time:</span> {engineering.timeCommitment}
+              </p>
+              <p className="sm:col-span-2">
+                <span className="font-medium text-foreground">Format:</span> {engineering.learningMode}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">What you will learn</p>
+              <ul className="mt-2 space-y-1.5 text-sm text-muted-foreground">
+                {engineering.curriculumPreview.map((item) => (
+                  <li key={item.range}>
+                    <span className="font-medium text-foreground">{item.range}.</span> {item.title}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
         <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-          {formatDate(cohort.registration_deadline) && (
+          {!waitlistOpen && formatDate(cohort.registration_deadline) && (
             <p>
               <span className="font-medium text-foreground">Registration deadline:</span>{" "}
               {formatDate(cohort.registration_deadline)}
@@ -350,13 +379,21 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
         </div>
         <div className="flex flex-wrap gap-3 pt-2">
           {waitlistOpen && waitlistHref ? (
-            <ButtonLink
-              href={waitlistHref}
-              className={cn("bg-brand-orange text-white hover:bg-brand-orange/90")}
-            >
-              Join Waitlist
-              <ArrowRight className="ml-1 size-4" />
-            </ButtonLink>
+            <>
+              {programHref ? (
+                <ButtonLink href={programHref} variant="outline">
+                  View programme
+                  <ArrowRight className="ml-1 size-4" />
+                </ButtonLink>
+              ) : null}
+              <ButtonLink
+                href={waitlistHref}
+                className={cn("bg-brand-orange text-white hover:bg-brand-orange/90")}
+              >
+                Join the waitlist
+                <ArrowRight className="ml-1 size-4" />
+              </ButtonLink>
+            </>
           ) : programHref ? (
             <ButtonLink
               href={programHref}
