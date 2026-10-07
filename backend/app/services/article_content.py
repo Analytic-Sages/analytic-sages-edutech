@@ -46,7 +46,9 @@ MAX_BLOCKS = 500
 MAX_TEXT = 20000
 PARAGRAPH_LIMIT = 200_000
 ABSOLUTE_TEXT_LIMIT = 2_000_000
-MAX_TABLE_CELLS = 400
+MAX_TABLE_CELLS = 2000
+MAX_LIST_ITEMS = 200
+MAX_TAKEAWAYS = 30
 
 
 def extract_youtube_id(value: str) -> str | None:
@@ -92,14 +94,14 @@ def reading_minutes(body: dict[str, Any]) -> int:
     return max(1, round(words / 200)) if words else 1
 
 
-def _clean_text(value: Any, *, limit: int = MAX_TEXT) -> str:
+def _clean_text(value: Any, *, limit: int = MAX_TEXT, label: str = "Text") -> str:
     if value is None:
         return ""
     if not isinstance(value, str):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Text must be a string")
     text = value.replace("\x00", "").strip()
     if len(text) > limit:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Text is too long")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"{label} is too long")
     lowered = text.lower()
     if "<script" in lowered or "javascript:" in lowered:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported markup")
@@ -130,7 +132,7 @@ def _split_long_text(text: str, limit: int) -> list[str]:
 
 
 def _clean_image_src(value: Any) -> str:
-    src = _clean_text(value, limit=1024)
+    src = _clean_text(value, limit=2048, label="An image URL")
     if not src:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Image URL is required")
     if src.startswith("/") and not src.startswith("//"):
@@ -151,13 +153,13 @@ def _clean_block(raw: Any) -> dict[str, Any] | list[dict[str, Any]]:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported content block")
 
     if block_type == "paragraph":
-        text = _clean_text(raw.get("text"), limit=ABSOLUTE_TEXT_LIMIT)
+        text = _clean_text(raw.get("text"), limit=ABSOLUTE_TEXT_LIMIT, label="A paragraph")
         return [{"type": "paragraph", "text": part} for part in _split_long_text(text, PARAGRAPH_LIMIT)]
     if block_type == "heading":
         level = raw.get("level", 2)
         if level not in (1, 2, 3, 4):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Heading level must be 1-4")
-        text = _clean_text(raw.get("text"), limit=300)
+        text = _clean_text(raw.get("text"), limit=5_000, label="A heading")
         if not text:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Heading cannot be empty")
         return {"type": "heading", "level": level, "text": text}
@@ -165,14 +167,16 @@ def _clean_block(raw: Any) -> dict[str, Any] | list[dict[str, Any]]:
         items = raw.get("items") or []
         if not isinstance(items, list) or not items:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="List needs at least one item")
-        cleaned = [_clean_text(item, limit=2000) for item in items[:50]]
+        cleaned = [
+            _clean_text(item, limit=PARAGRAPH_LIMIT, label="A list item") for item in items[:MAX_LIST_ITEMS]
+        ]
         return {
             "type": "list",
             "ordered": bool(raw.get("ordered")),
             "items": [item for item in cleaned if item],
         }
     if block_type == "quote":
-        text = _clean_text(raw.get("text"), limit=ABSOLUTE_TEXT_LIMIT)
+        text = _clean_text(raw.get("text"), limit=ABSOLUTE_TEXT_LIMIT, label="A quote")
         return [{"type": "quote", "text": part} for part in _split_long_text(text, PARAGRAPH_LIMIT)]
     if block_type == "divider":
         return {"type": "divider"}
@@ -186,7 +190,7 @@ def _clean_block(raw: Any) -> dict[str, Any] | list[dict[str, Any]]:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Code block is too long")
         return {"type": "code", "language": language, "code": code}
     if block_type == "image":
-        alt = _clean_text(raw.get("alt"), limit=300)
+        alt = _clean_text(raw.get("alt"), limit=2_000, label="Image alt text")
         if not alt:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Image alt text is required")
         width = raw.get("width") or "full"
@@ -199,8 +203,8 @@ def _clean_block(raw: Any) -> dict[str, Any] | list[dict[str, Any]]:
             "type": "image",
             "src": _clean_image_src(raw.get("src")),
             "alt": alt,
-            "caption": _clean_text(raw.get("caption"), limit=500),
-            "credit": _clean_text(raw.get("credit"), limit=300),
+            "caption": _clean_text(raw.get("caption"), limit=5_000, label="An image caption"),
+            "credit": _clean_text(raw.get("credit"), limit=1_000, label="An image credit"),
             "width": width,
             "aspect": aspect,
         }
@@ -214,14 +218,16 @@ def _clean_block(raw: Any) -> dict[str, Any] | list[dict[str, Any]]:
         rows = raw.get("rows") or []
         if not isinstance(headers, list) or not isinstance(rows, list) or not headers:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Tables need headers and rows")
-        clean_headers = [_clean_text(item, limit=200) for item in headers[:12]]
+        clean_headers = [_clean_text(item, limit=1_000, label="A table header") for item in headers[:12]]
         width = len(clean_headers)
         clean_rows: list[list[str]] = []
         cells = width
-        for row in rows[:40]:
+        for row in rows[:100]:
             if not isinstance(row, list):
                 continue
-            cleaned = [_clean_text(cell, limit=200) for cell in (row + [""] * width)[:width]]
+            cleaned = [
+                _clean_text(cell, limit=5_000, label="A table cell") for cell in (row + [""] * width)[:width]
+            ]
             clean_rows.append(cleaned)
             cells += width
             if cells > MAX_TABLE_CELLS:
@@ -238,9 +244,9 @@ def _clean_block(raw: Any) -> dict[str, Any] | list[dict[str, Any]]:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Charts need at least two labels and matching values",
             )
-        if len(labels) != len(values) or len(labels) > 40:
+        if len(labels) != len(values) or len(labels) > 80:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Chart labels and values must match")
-        clean_labels = [_clean_text(label, limit=80) for label in labels]
+        clean_labels = [_clean_text(label, limit=500, label="A chart label") for label in labels]
         clean_values: list[float] = []
         for value in values:
             try:
@@ -252,16 +258,18 @@ def _clean_block(raw: Any) -> dict[str, Any] | list[dict[str, Any]]:
         return {
             "type": "chart",
             "chartType": chart_type,
-            "title": _clean_text(raw.get("title"), limit=200),
+            "title": _clean_text(raw.get("title"), limit=500, label="A chart title"),
             "labels": clean_labels,
             "values": clean_values,
-            "source": _clean_text(raw.get("source"), limit=300),
-            "caption": _clean_text(raw.get("caption"), limit=500),
+            "source": _clean_text(raw.get("source"), limit=2_000, label="A chart source"),
+            "caption": _clean_text(raw.get("caption"), limit=2_000, label="A chart caption"),
         }
     items = raw.get("items") or []
     if not isinstance(items, list) or not items:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Add at least one takeaway")
-    cleaned = [_clean_text(item, limit=400) for item in items[:8]]
+    cleaned = [
+        _clean_text(item, limit=PARAGRAPH_LIMIT, label="A takeaway") for item in items[:MAX_TAKEAWAYS]
+    ]
     return {"type": "takeaways", "items": [item for item in cleaned if item]}
 
 
