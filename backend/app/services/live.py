@@ -129,8 +129,11 @@ class LiveLearningService:
         if user.role in {UserRole.ADMIN, UserRole.OPERATIONS}:
             return
         member = self._cohort_enrollment(user, cohort_id)
-        if not member or member.role not in {CohortMemberRole.INSTRUCTOR, CohortMemberRole.TA}:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not an instructor for this cohort")
+        if user.role == UserRole.INSTRUCTOR and member is not None:
+            return
+        if member and member.role in {CohortMemberRole.INSTRUCTOR, CohortMemberRole.TA}:
+            return
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not an instructor for this cohort")
 
     def _is_staff_preview(self, user: User) -> bool:
         """Admins/ops can browse any cohort's student view as a read-only preview."""
@@ -163,19 +166,15 @@ class LiveLearningService:
         )
 
     def my_live_enrollments(self, user: User) -> list[MyLiveEnrollmentPublic]:
-        if self._is_staff_preview(user):
-            return self._preview_enrollments(user)
-
         memberships = list(
             self.db.scalars(
                 select(CohortMember)
                 .options(selectinload(CohortMember.cohort).joinedload(Cohort.programme))
-                .where(
-                    CohortMember.user_id == user.id,
-                    CohortMember.role == CohortMemberRole.STUDENT,
-                )
+                .where(CohortMember.user_id == user.id)
             ).all()
         )
+        if not memberships and self._is_staff_preview(user):
+            return self._preview_enrollments(user)
         results: list[MyLiveEnrollmentPublic] = []
         for member in memberships:
             cohort = member.cohort
@@ -248,10 +247,11 @@ class LiveLearningService:
         return results
 
     def get_cohort_for_student(self, user: User, cohort_id: UUID) -> CohortStudentDetailPublic:
-        if self._is_staff_preview(user):
+        member = self._cohort_enrollment(user, cohort_id)
+        if member is None and self._is_staff_preview(user):
             return self._preview_cohort(user, cohort_id)
-
-        member = self._require_student_enrollment(user, cohort_id)
+        if member is None:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enrolled in this cohort")
         cohort = self._get_cohort(cohort_id)
         sessions = self._sessions(cohort_id)
         recordings = self.classroom._recordings_for([s.id for s in sessions])
@@ -307,7 +307,8 @@ class LiveLearningService:
         )
 
     def my_attendance(self, user: User, cohort_id: UUID) -> list[AttendanceRecordPublic]:
-        self._require_student_enrollment(user, cohort_id)
+        if self._cohort_enrollment(user, cohort_id) is None:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enrolled in this cohort")
         sessions = self._sessions(cohort_id)
         session_by_id = {s.id: s for s in sessions}
         rows = list(
@@ -341,14 +342,12 @@ class LiveLearningService:
         if user.role in {UserRole.ADMIN, UserRole.OPERATIONS}:
             cohorts = list(self.db.scalars(select(Cohort).order_by(Cohort.starts_at.desc().nulls_last())).all())
         else:
-            memberships = list(
-                self.db.scalars(
-                    select(CohortMember).where(
-                        CohortMember.user_id == user.id,
-                        CohortMember.role.in_([CohortMemberRole.INSTRUCTOR, CohortMemberRole.TA]),
-                    )
-                ).all()
-            )
+            filters = [CohortMember.user_id == user.id]
+            if user.role != UserRole.INSTRUCTOR:
+                filters.append(
+                    CohortMember.role.in_([CohortMemberRole.INSTRUCTOR, CohortMemberRole.TA])
+                )
+            memberships = list(self.db.scalars(select(CohortMember).where(*filters)).all())
             cohort_ids = [m.cohort_id for m in memberships]
             cohorts = (
                 list(self.db.scalars(select(Cohort).where(Cohort.id.in_(cohort_ids))).all())

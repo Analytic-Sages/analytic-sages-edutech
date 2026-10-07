@@ -301,8 +301,8 @@ class AdminService:
             )
         )
         if existing:
-            if existing.role == CohortMemberRole.STUDENT:
-                existing.role = CohortMemberRole.INSTRUCTOR
+            # A paid student seat stays a student seat. Teaching access comes from
+            # the user role, so a staff invite cannot remove the learner portal.
             return
         self.db.add(
             CohortMember(

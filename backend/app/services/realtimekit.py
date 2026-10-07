@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from typing import Any
 
@@ -9,6 +10,25 @@ import httpx
 from app.core.config import Settings
 
 logger = logging.getLogger(__name__)
+
+
+def stale_participant_ids(
+    participants: list[dict[str, Any]],
+    custom_participant_id: str,
+    *,
+    keep_id: str | None,
+) -> list[str]:
+    """Ids for this person that are not the seat we just created."""
+    stale: list[str] = []
+    for row in participants:
+        custom_id = str(row.get("custom_participant_id") or row.get("customParticipantId") or "")
+        participant_id = str(row.get("id") or "")
+        if custom_id != custom_participant_id or not participant_id:
+            continue
+        if keep_id and participant_id == keep_id:
+            continue
+        stale.append(participant_id)
+    return stale
 
 
 class RealtimeKitError(Exception):
@@ -279,6 +299,81 @@ class RealtimeKitService:
             logger.exception("RealtimeKit start_recording failed")
             return False
 
+    def list_meeting_participants(self, meeting_id: str) -> list[dict[str, Any]]:
+        """Participants currently attached to a meeting (empty in mock mode)."""
+        if not self.configured or not meeting_id or str(meeting_id).startswith("mock-"):
+            return []
+        data = self._get_json(f"{self._meetings_url(meeting_id)}/participants")
+        body = data.get("data") if isinstance(data.get("data"), dict) else data
+        if isinstance(body, dict):
+            raw = body.get("participants")
+            if isinstance(raw, list):
+                return [row for row in raw if isinstance(row, dict)]
+        if isinstance(body, list):
+            return [row for row in body if isinstance(row, dict)]
+        return []
+
+    def kick_active_participants(self, meeting_id: str, participant_ids: list[str]) -> None:
+        """Drop live media for these seats without touching the replacement seat."""
+        if not self.configured or not participant_ids or str(meeting_id).startswith("mock-"):
+            return
+        url = f"{self._meetings_url(meeting_id)}/active-session/kick"
+        try:
+            with httpx.Client(timeout=30.0) as client:
+                response = client.post(
+                    url,
+                    headers=self._headers(),
+                    json={"participant_ids": participant_ids},
+                )
+                if response.status_code >= 400:
+                    logger.warning(
+                        "RealtimeKit kick participants failed: %s %s",
+                        response.status_code,
+                        response.text,
+                    )
+        except httpx.HTTPError:
+            logger.warning("RealtimeKit kick participants failed for %s", participant_ids)
+
+    def delete_participant(self, meeting_id: str, participant_id: str) -> None:
+        """Remove one participant so a dropped client cannot keep publishing."""
+        if not self.configured or not participant_id or str(meeting_id).startswith("mock-"):
+            return
+        url = f"{self._meetings_url(meeting_id)}/participants/{participant_id}"
+        try:
+            with httpx.Client(timeout=30.0) as client:
+                response = client.delete(url, headers=self._headers())
+                if response.status_code in {404, 410}:
+                    return
+                if response.status_code >= 400:
+                    logger.warning(
+                        "RealtimeKit delete_participant failed: %s %s",
+                        response.status_code,
+                        response.text,
+                    )
+        except httpx.HTTPError:
+            logger.warning("RealtimeKit delete_participant failed for %s", participant_id)
+
+    def _kick_stale_participants(
+        self,
+        meeting_id: str,
+        custom_participant_id: str,
+        *,
+        keep_id: str | None,
+    ) -> None:
+        try:
+            current = self.list_meeting_participants(meeting_id)
+        except RealtimeKitError:
+            logger.warning("Could not list participants before replacing %s", custom_participant_id)
+            return
+        stale = stale_participant_ids(current, custom_participant_id, keep_id=keep_id)
+        if not stale:
+            return
+        # Kick drops the live microphone and screen. Delete revokes the old token
+        # so that seat cannot reconnect.
+        self.kick_active_participants(meeting_id, stale)
+        for participant_id in stale:
+            self.delete_participant(meeting_id, participant_id)
+
     def add_participant(
         self,
         *,
@@ -294,6 +389,52 @@ class RealtimeKitService:
                 "preset_name": preset_name,
             }
 
+        # A rejoining person must replace their previous seat. Creating a second
+        # participant leaves the old microphone and screen share in the room.
+        body = self._post_participant(
+            meeting_id=meeting_id,
+            custom_participant_id=custom_participant_id,
+            name=name,
+            preset_name=preset_name,
+        )
+        if body is None:
+            self._kick_stale_participants(meeting_id, custom_participant_id, keep_id=None)
+            body = self._post_participant(
+                meeting_id=meeting_id,
+                custom_participant_id=custom_participant_id,
+                name=name,
+                preset_name=preset_name,
+            )
+        if not body or not body.get("token"):
+            raise RealtimeKitError("Failed to add RealtimeKit participant")
+        keep_id = str(body.get("id") or "")
+        if keep_id:
+            # The new token is returned before the old seat is removed, so the
+            # replacement can connect while a host is still in the meeting.
+            threading.Thread(
+                target=self._drop_previous_seat,
+                args=(meeting_id, custom_participant_id, keep_id),
+                daemon=True,
+            ).start()
+        return body
+
+    def _drop_previous_seat(
+        self, meeting_id: str, custom_participant_id: str, keep_id: str
+    ) -> None:
+        time.sleep(8)
+        self._kick_stale_participants(
+            meeting_id, custom_participant_id, keep_id=keep_id
+        )
+
+    def _post_participant(
+        self,
+        *,
+        meeting_id: str,
+        custom_participant_id: str,
+        name: str,
+        preset_name: str,
+    ) -> dict[str, Any] | None:
+        """Create a participant. Returns None when that custom id is already in the meeting."""
         payload = {
             "name": name,
             "preset_name": preset_name,
@@ -303,8 +444,8 @@ class RealtimeKitService:
         try:
             with httpx.Client(timeout=30.0) as client:
                 response = client.post(url, headers=self._headers(), json=payload)
-                # If participant already exists, try refresh via list+token is complex;
-                # surface a clear error for now.
+                if response.status_code == 409:
+                    return None
                 if response.status_code >= 400:
                     logger.error(
                         "RealtimeKit add_participant failed: %s %s",
@@ -322,7 +463,7 @@ class RealtimeKitService:
 
         body = data.get("data") if isinstance(data.get("data"), dict) else data
         token = body.get("token") if isinstance(body, dict) else None
-        if not token:
+        if not isinstance(body, dict) or not token:
             raise RealtimeKitError(f"Unexpected add_participant response: {data}")
         return body
 

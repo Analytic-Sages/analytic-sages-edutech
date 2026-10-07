@@ -58,7 +58,7 @@ class ClassroomService:
         )
 
     def _is_staff(self, user: User) -> bool:
-        return user.role in {UserRole.ADMIN, UserRole.INSTRUCTOR}
+        return user.role in {UserRole.ADMIN, UserRole.INSTRUCTOR, UserRole.OPERATIONS}
 
     def _is_admin(self, user: User) -> bool:
         return user.role == UserRole.ADMIN
@@ -67,8 +67,8 @@ class ClassroomService:
         member = self._member_for(user, session.cohort_id)
         if member:
             return member
-        if self._is_admin(user):
-            # Admins can observe any session; treat as instructor for presets.
+        if self._is_staff(user):
+            # Staff can enter a class even when they are not on the student roster.
             return None
         return None
 
@@ -309,30 +309,41 @@ class ClassroomService:
         )
         return {row.session_id: row for row in rows}
 
+    def _all_sessions_for_staff(self, user: User) -> list[LiveSessionPublic]:
+        sessions = list(
+            self.db.scalars(
+                select(LiveSession)
+                .options(
+                    joinedload(LiveSession.cohort).joinedload(Cohort.course),
+                    joinedload(LiveSession.instructor_user),
+                )
+                .order_by(LiveSession.starts_at.asc())
+            )
+            .unique()
+            .all()
+        )
+        recordings = self._recordings_for([s.id for s in sessions])
+        return [
+            self._to_public(
+                s,
+                member=self._member_for(user, s.cohort_id),
+                staff=True,
+                user=user,
+                recordings=recordings,
+            )
+            for s in sessions
+        ]
+
     def list_my_sessions(self, user: User) -> list[LiveSessionPublic]:
         if self._is_admin(user):
-            sessions = list(
-                self.db.scalars(
-                    select(LiveSession)
-                    .options(
-                        joinedload(LiveSession.cohort).joinedload(Cohort.course),
-                        joinedload(LiveSession.instructor_user),
-                    )
-                    .order_by(LiveSession.starts_at.asc())
-                )
-                .unique()
-                .all()
-            )
-            recordings = self._recordings_for([s.id for s in sessions])
-            return [
-                self._to_public(s, member=None, staff=True, user=user, recordings=recordings)
-                for s in sessions
-            ]
+            return self._all_sessions_for_staff(user)
 
         memberships = list(
             self.db.scalars(select(CohortMember).where(CohortMember.user_id == user.id)).all()
         )
         if not memberships:
+            if self._is_staff(user):
+                return self._all_sessions_for_staff(user)
             return []
 
         cohort_ids = [m.cohort_id for m in memberships]
@@ -411,7 +422,7 @@ class ClassroomService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
 
         member = self._can_access(user, session)
-        staff = self._is_admin(user)
+        staff = self._is_staff(user)
         if member is None and not staff:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -429,7 +440,7 @@ class ClassroomService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
 
         member = self._can_access(user, session)
-        staff = self._is_admin(user)
+        staff = self._is_staff(user)
         if member is None and not staff:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

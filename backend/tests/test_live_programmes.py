@@ -248,3 +248,40 @@ def test_instructor_records_attendance_and_is_scoped():
     assert len(students.json()) == 2
     _cleanup()
 
+
+def test_staff_keep_a_real_enrollment_when_they_are_also_students():
+    _cleanup()
+    _seed()
+    operations = _make_user("live-test-ops", UserRole.OPERATIONS)
+    teaching_student = _make_user("live-test-teaching-student", UserRole.INSTRUCTOR)
+    db = SessionLocal()
+    try:
+        cohort = db.scalar(select(Cohort).where(Cohort.slug == COHORT_SLUG))
+        db.add(CohortMember(cohort_id=cohort.id, user_id=operations.id, role=CohortMemberRole.STUDENT))
+        db.add(
+            CohortMember(cohort_id=cohort.id, user_id=teaching_student.id, role=CohortMemberRole.STUDENT)
+        )
+        db.commit()
+        cohort_id = str(cohort.id)
+    finally:
+        db.close()
+
+    mine = client.get("/api/v1/me/live", headers=_auth(operations))
+    assert mine.status_code == 200
+    rows = mine.json()
+    assert len(rows) == 1
+    assert rows[0]["cohort_slug"] == COHORT_SLUG
+    assert rows[0]["is_preview"] is False
+
+    detail = client.get(f"/api/v1/cohorts/{cohort_id}", headers=_auth(operations))
+    assert detail.status_code == 200
+    assert detail.json()["is_preview"] is False
+
+    taught = client.get("/api/v1/me/live", headers=_auth(teaching_student))
+    assert taught.status_code == 200
+    assert taught.json()[0]["is_preview"] is False
+    assert client.get(
+        f"/api/v1/instructor/cohorts/{cohort_id}/students", headers=_auth(teaching_student)
+    ).status_code == 200
+    _cleanup()
+

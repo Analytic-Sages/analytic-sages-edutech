@@ -24,7 +24,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatAdminDate } from "@/components/admin/admin-format";
 import {
   ApiError,
   cancelAdminClassroomSession,
@@ -45,6 +44,52 @@ import {
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
+const WAT = "Africa/Lagos";
+
+/** Class times are always West Africa Time, never the computer's timezone. */
+function toWatInput(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: WAT,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
+}
+
+function fromWatInput(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(value);
+  if (!match) return new Date(value).toISOString();
+  const [, year, month, day, hour, minute] = match;
+  // Africa/Lagos is UTC+1 all year.
+  return new Date(
+    Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour) - 1, Number(minute))
+  ).toISOString();
+}
+
+function formatWatDate(iso: string) {
+  try {
+    const formatted = new Intl.DateTimeFormat("en-GB", {
+      timeZone: WAT,
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).format(new Date(iso));
+    return `${formatted} WAT`;
+  } catch {
+    return iso;
+  }
+}
+
 type FormState = {
   cohort_id: string;
   title: string;
@@ -60,27 +105,11 @@ type FormState = {
   ends_at: string;
 };
 
-/** ISO timestamp → value for an <input type="datetime-local">. */
-function toLocalInput(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
-    date.getHours()
-  )}:${pad(date.getMinutes())}`;
-}
-
-/** datetime-local value → ISO string (with timezone). */
-function fromLocalInput(value: string): string {
-  return new Date(value).toISOString();
-}
-
 function defaultForm(cohortId: string): FormState {
-  const start = new Date();
-  start.setDate(start.getDate() + 14);
-  start.setHours(18, 0, 0, 0);
-  const end = new Date(start);
-  end.setHours(20, 0, 0, 0);
+  const watNow = new Date(Date.now() + 60 * 60 * 1000);
+  watNow.setUTCDate(watNow.getUTCDate() + 14);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const day = `${watNow.getUTCFullYear()}-${pad(watNow.getUTCMonth() + 1)}-${pad(watNow.getUTCDate())}`;
   return {
     cohort_id: cohortId,
     title: "",
@@ -92,8 +121,8 @@ function defaultForm(cohortId: string): FormState {
     status: "scheduled",
     recording_url: "",
     meeting_url: "",
-    starts_at: toLocalInput(start.toISOString()),
-    ends_at: toLocalInput(end.toISOString()),
+    starts_at: `${day}T18:00`,
+    ends_at: `${day}T20:00`,
   };
 }
 
@@ -207,8 +236,8 @@ export function AdminClassroomContent() {
       status: row.status,
       recording_url: row.recording_url ?? "",
       meeting_url: row.meeting_url ?? "",
-      starts_at: toLocalInput(row.starts_at),
-      ends_at: toLocalInput(row.ends_at),
+      starts_at: toWatInput(row.starts_at),
+      ends_at: toWatInput(row.ends_at),
     });
     setFormError(null);
     resetImport();
@@ -307,8 +336,9 @@ export function AdminClassroomContent() {
         .filter(Boolean),
       assignment_summary: form.assignment_summary.trim() || null,
       meeting_url: form.meeting_url.trim() || null,
-      starts_at: fromLocalInput(form.starts_at),
-      ends_at: fromLocalInput(form.ends_at),
+      timezone: WAT,
+      starts_at: fromWatInput(form.starts_at),
+      ends_at: fromWatInput(form.ends_at),
     };
     if (editing) {
       payload.status = form.status;
@@ -487,7 +517,7 @@ export function AdminClassroomContent() {
                   </TableCell>
                   <TableCell className="text-sm">{row.cohort_name}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {formatAdminDate(row.starts_at)}
+                    {formatWatDate(row.starts_at)}
                   </TableCell>
                   <TableCell>
                     <Badge className={phaseClass(row.phase)}>{row.phase}</Badge>
@@ -749,7 +779,7 @@ export function AdminClassroomContent() {
             )}
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
-                <Label htmlFor="s-start">Starts</Label>
+                <Label htmlFor="s-start">Starts (West Africa Time)</Label>
                 <Input
                   id="s-start"
                   type="datetime-local"
@@ -758,7 +788,7 @@ export function AdminClassroomContent() {
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="s-end">Ends</Label>
+                <Label htmlFor="s-end">Ends (West Africa Time)</Label>
                 <Input
                   id="s-end"
                   type="datetime-local"

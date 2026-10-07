@@ -2,15 +2,19 @@ from __future__ import annotations
 
 import uuid
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
+from app.core.admin import FEATURED_COHORT_SLUG
 from app.core.config import get_settings
 from app.core.roles import UserRole
 from app.core.security import SecurityService
 from app.db.session import SessionLocal
 from app.main import app
+from app.models.classroom import Cohort, CohortMember, CohortMemberRole
 from app.models.user import User
+from app.services.admin import AdminService
 
 client = TestClient(app)
 
@@ -183,3 +187,35 @@ def test_admin_can_remove_partnerships_access_without_deleting_user():
     finally:
         _cleanup_user(staff_email)
         _cleanup_user(admin_email)
+
+
+def test_instructor_invite_does_not_replace_a_student_seat():
+    email = f"student-seat-{uuid.uuid4()}@example.com"
+    student = _make_user(email, UserRole.STUDENT)
+    db = SessionLocal()
+    member_id = None
+    try:
+        cohort = db.scalar(select(Cohort).where(Cohort.slug == FEATURED_COHORT_SLUG))
+        if cohort is None:
+            pytest.skip("featured cohort is not seeded")
+        member = CohortMember(
+            cohort_id=cohort.id,
+            user_id=student.id,
+            role=CohortMemberRole.STUDENT,
+        )
+        db.add(member)
+        db.commit()
+        db.refresh(member)
+        member_id = member.id
+        AdminService(db).add_instructor_to_featured_cohort(student)
+        kept = db.scalar(select(CohortMember).where(CohortMember.id == member_id))
+        assert kept is not None
+        assert kept.role == CohortMemberRole.STUDENT
+    finally:
+        if member_id is not None:
+            row = db.scalar(select(CohortMember).where(CohortMember.id == member_id))
+            if row is not None:
+                db.delete(row)
+                db.commit()
+        db.close()
+        _cleanup_user(email)

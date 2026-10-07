@@ -23,12 +23,28 @@ const BRAND = {
  * Live RealtimeKit meeting surface.
  * Init once per token; let RtkMeeting own join (avoids concurrent meeting.join).
  */
+function leaveMeeting(meeting: unknown) {
+  const room = meeting as {
+    leaveRoom?: () => Promise<void> | void;
+    leave?: () => Promise<void> | void;
+  };
+  try {
+    void room.leaveRoom?.();
+    void room.leave?.();
+  } catch {
+    // The room may already be gone. A later rejoin still replaces the old seat.
+  }
+}
+
 export function RealtimeKitRoom({ authToken, theme = "light", onLeft }: Props) {
   const [meeting, initMeeting] = useRealtimeKitClient();
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const initTokenRef = useRef<string | null>(null);
   const hostRef = useRef<HTMLDivElement>(null);
+  const meetingRef = useRef(meeting);
+  const leavingRef = useRef(false);
+  meetingRef.current = meeting;
 
   useEffect(() => {
     if (!authToken) return;
@@ -66,6 +82,14 @@ export function RealtimeKitRoom({ authToken, theme = "light", onLeft }: Props) {
   }, [authToken]);
 
   useEffect(() => {
+    return () => {
+      if (leavingRef.current) return;
+      leavingRef.current = true;
+      if (meetingRef.current) leaveMeeting(meetingRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
     const el = hostRef.current;
     if (!el || !ready) return;
     provideRtkDesignSystem(el, {
@@ -89,7 +113,13 @@ export function RealtimeKitRoom({ authToken, theme = "light", onLeft }: Props) {
       on?: (e: string, cb: () => void) => void;
       off?: (e: string, cb: () => void) => void;
     };
-    const onRoomLeft = () => onLeft?.();
+    const onRoomLeft = () => {
+      if (!leavingRef.current) {
+        leavingRef.current = true;
+        leaveMeeting(meeting);
+      }
+      onLeft?.();
+    };
     self.on?.("roomLeft", onRoomLeft);
     return () => {
       self.off?.("roomLeft", onRoomLeft);

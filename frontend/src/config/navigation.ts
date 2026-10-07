@@ -83,6 +83,8 @@ export const adminNav: NavItem[] = [
 ];
 
 export const operationsNav: NavItem[] = [
+  { title: "My learning", href: "/dashboard", icon: "dashboard" },
+  { title: "Join class", href: "/classroom", icon: "classroom" },
   { title: "Events", href: "/admin/events", icon: "events" },
   { title: "Courses", href: "/admin/courses", icon: "courses" },
   { title: "Live sessions", href: "/admin/classroom", icon: "classroom" },
@@ -110,6 +112,8 @@ export const studioNav: NavItem[] = [
 
 export const staffNav: NavItem[] = [
   { title: "Classroom", href: "/staff", icon: "classroom" },
+  { title: "My learning", href: "/dashboard", icon: "dashboard" },
+  { title: "Join class", href: "/classroom", icon: "classroom" },
 ];
 
 export function publicMarketingNav() {
