@@ -302,7 +302,7 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
           <span className="rounded-md bg-brand-orange/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-brand-orange">
             {waitlistOpen ? "Waitlist open" : "Open for registration"}
           </span>
-          {isLive && (
+          {isLive && !waitlistOpen && (
             <span className="inline-flex items-center gap-1.5 rounded-md bg-red-500/15 px-2 py-0.5 text-xs font-semibold uppercase text-red-600 dark:text-red-300">
               <span className="size-1.5 animate-pulse rounded-full bg-red-500" />
               Session live now
@@ -320,63 +320,48 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
         )}
       </CardHeader>
       <CardContent className="space-y-4">
-        {engineering && (
-          <div className="space-y-3">
-            <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-              <p>
-                <span className="font-medium text-foreground">Duration:</span> {engineering.duration}
-              </p>
-              <p>
-                <span className="font-medium text-foreground">Time:</span> {engineering.timeCommitment}
-              </p>
-              <p className="sm:col-span-2">
-                <span className="font-medium text-foreground">Format:</span> {engineering.learningMode}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">What you will learn</p>
-              <ul className="mt-2 space-y-1.5 text-sm text-muted-foreground">
-                {engineering.curriculumPreview.map((item) => (
-                  <li key={item.range}>
-                    <span className="font-medium text-foreground">{item.range}.</span> {item.title}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+        {cohort.price > 0 && (
+          <p className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">Tuition:</span>{" "}
+            {formatPrice(cohort.price, cohort.currency)}
+          </p>
         )}
-        <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-          {!waitlistOpen && formatDate(cohort.registration_deadline) && (
-            <p>
-              <span className="font-medium text-foreground">Registration deadline:</span>{" "}
-              {formatDate(cohort.registration_deadline)}
-            </p>
-          )}
-          {formatDate(cohort.starts_at) && (
-            <p>
-              <span className="font-medium text-foreground">Start date:</span>{" "}
-              {formatDate(cohort.starts_at)}
-            </p>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5">
-            <Users className="size-3.5" />
-            {cohort.sessions_count} session{cohort.sessions_count === 1 ? "" : "s"}
-          </span>
-          {when && (
-            <span className="inline-flex items-center gap-1.5">
-              <Calendar className="size-3.5" />
-              {isLive ? "Live now" : `Next: ${when}`}
-            </span>
-          )}
-          {cohort.next_session_title && (
-            <span className="inline-flex items-center gap-1.5">
-              <Radio className="size-3.5" />
-              {cohort.next_session_title}
-            </span>
-          )}
-        </div>
+        {!waitlistOpen && (
+          <>
+            <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+              {formatDate(cohort.registration_deadline) && (
+                <p>
+                  <span className="font-medium text-foreground">Registration deadline:</span>{" "}
+                  {formatDate(cohort.registration_deadline)}
+                </p>
+              )}
+              {formatDate(cohort.starts_at) && (
+                <p>
+                  <span className="font-medium text-foreground">Start date:</span>{" "}
+                  {formatDate(cohort.starts_at)}
+                </p>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5">
+                <Users className="size-3.5" />
+                {cohort.sessions_count} session{cohort.sessions_count === 1 ? "" : "s"}
+              </span>
+              {when && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Calendar className="size-3.5" />
+                  {isLive ? "Live now" : `Next: ${when}`}
+                </span>
+              )}
+              {cohort.next_session_title && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Radio className="size-3.5" />
+                  {cohort.next_session_title}
+                </span>
+              )}
+            </div>
+          </>
+        )}
         <div className="flex flex-wrap gap-3 pt-2">
           {waitlistOpen && waitlistHref ? (
             <>

@@ -102,7 +102,7 @@ export function BlockchainDataEngineeringLanding({
               ) : (
                 <>
                   <p className="font-heading text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                    {showWaitlist ? "Next cohort waitlist" : priceLabel}
+                    {priceLabel}
                   </p>
                   {showWaitlist ? (
                     <>
@@ -110,12 +110,9 @@ export function BlockchainDataEngineeringLanding({
                         Waitlist now open
                       </p>
                       <p className="mt-2 text-sm leading-relaxed text-white/80">
-                        The current cohort has started. Join the waitlist to be first in line for
-                        the next Blockchain Data Engineering intake.
+                        Join the waitlist to be first in line for the next Blockchain Data
+                        Engineering intake.
                       </p>
-                      {startDate ? (
-                        <p className="mt-2 text-xs text-white/55">Current cohort began {startDate}</p>
-                      ) : null}
                     </>
                   ) : open ? (
                     <>
@@ -365,24 +362,18 @@ export function BlockchainDataEngineeringLanding({
       {/* 11. Pricing */}
       <section id="register" className="scroll-mt-24 border-t border-border/60 bg-[#F7F9FC] dark:bg-transparent">
         <div className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6 sm:py-20">
-          <h2 className="font-heading text-3xl font-bold sm:text-4xl">
-            {showWaitlist ? "Next cohort" : "Pricing & payment"}
-          </h2>
+          <h2 className="font-heading text-3xl font-bold sm:text-4xl">Pricing & payment</h2>
           <div className="mt-10 border border-border/70 bg-background px-6 py-8 sm:px-10">
             <p className="font-heading text-4xl font-bold text-[#0B1F3A] dark:text-foreground">
-              {showWaitlist ? "Join the waitlist" : priceLabel}
+              {priceLabel}
             </p>
             <p className="mt-2 text-sm font-medium text-brand-orange">
               {showWaitlist ? "Waitlist now open" : "Open for registration"}
             </p>
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-              {showWaitlist
-                ? "The current cohort has started. Join the waitlist to be first in line for the next intake. The modules on this page are what that cohort covers."
-                : program.tuitionSummary}
+              {program.tuitionSummary}
             </p>
-            {!showWaitlist ? (
-              <p className="mt-2 text-sm text-muted-foreground">{program.paymentOptions}</p>
-            ) : null}
+            <p className="mt-2 text-sm text-muted-foreground">{program.paymentOptions}</p>
             {(deadline || startDate) && !showWaitlist && (
               <p className="mt-4 text-sm text-muted-foreground">
                 {[
@@ -393,9 +384,6 @@ export function BlockchainDataEngineeringLanding({
                   .join(" · ")}
               </p>
             )}
-            {showWaitlist && startDate ? (
-              <p className="mt-4 text-sm text-muted-foreground">Current cohort began {startDate}</p>
-            ) : null}
             <ButtonLink
               href={primaryHref}
               size="lg"

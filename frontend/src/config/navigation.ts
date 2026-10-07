@@ -61,6 +61,7 @@ export const studentNav: NavItem[] = [
 export const adminNav: NavItem[] = [
   { title: "Dashboard", href: "/admin", icon: "dashboard" },
   { title: "Featured cohort", href: "/admin/cohort", icon: "classroom" },
+  { title: "Waitlists", href: "/admin/waitlists", icon: "users" },
   { title: "Live sessions", href: "/admin/classroom", icon: "classroom" },
   { title: "Attendance", href: "/admin/attendance", icon: "classroom" },
   { title: "Assignments", href: "/admin/assignments", icon: "courses" },
