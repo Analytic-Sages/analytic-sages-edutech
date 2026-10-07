@@ -48,12 +48,35 @@ function removeAt<T>(list: T[], index: number) {
   return list.filter((_, i) => i !== index);
 }
 
-/** Splits pasted text on blank lines so large research drafts don't land in a single paragraph block. */
+/** Splits pasted text on blank lines, then chunks any section that is still report-length. */
+const PARAGRAPH_CHUNK = 20000;
+
 function splitIntoParagraphs(text: string): string[] {
-  return text
+  const sections = text
     .split(/\n\s*\n+/)
     .map((chunk) => chunk.trim())
     .filter(Boolean);
+  return sections.flatMap((section) => chunkLongText(section, PARAGRAPH_CHUNK));
+}
+
+function chunkLongText(text: string, limit: number): string[] {
+  if (text.length <= limit) return [text];
+  const parts: string[] = [];
+  let rest = text;
+  while (rest) {
+    if (rest.length <= limit) {
+      parts.push(rest);
+      break;
+    }
+    const window = rest.slice(0, limit);
+    let cut = Math.max(window.lastIndexOf("\n"), window.lastIndexOf(". "), window.lastIndexOf(" "));
+    if (cut < limit / 2) cut = limit;
+    else if (window.slice(cut, cut + 2) === ". ") cut += 1;
+    const chunk = rest.slice(0, cut).trim();
+    rest = rest.slice(cut).trim();
+    if (chunk) parts.push(chunk);
+  }
+  return parts;
 }
 
 export function ArticleEditor({ blocks, onChange }: Props) {
@@ -84,18 +107,18 @@ export function ArticleEditor({ blocks, onChange }: Props) {
     block: Extract<ArticleBlock, { type: "paragraph" }>
   ) {
     const pasted = event.clipboardData.getData("text");
-    const parts = splitIntoParagraphs(pasted);
-    if (parts.length <= 1) return;
-    event.preventDefault();
     const textarea = event.currentTarget;
     const before = block.text.slice(0, textarea.selectionStart);
     const after = block.text.slice(textarea.selectionEnd);
-    const trailing: ArticleBlock[] = parts.slice(1).map((text) => ({ type: "paragraph", text }));
-    const last = trailing[trailing.length - 1] as Extract<ArticleBlock, { type: "paragraph" }> | undefined;
-    if (last) last.text = `${last.text}${after}`;
+    const parts = splitIntoParagraphs(`${before}${pasted}${after}`);
+    if (parts.length <= 1) return;
+    event.preventDefault();
     const next = [...blocks];
-    next[index] = { ...block, text: `${before}${parts[0]}${trailing.length ? "" : after}` };
-    next.splice(index + 1, 0, ...trailing);
+    next.splice(
+      index,
+      1,
+      ...parts.map((text) => ({ type: "paragraph" as const, text }))
+    );
     onChange(next);
   }
 

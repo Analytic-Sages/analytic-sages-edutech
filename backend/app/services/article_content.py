@@ -40,8 +40,12 @@ YOUTUBE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
 YOUTUBE_URL_RE = re.compile(
     r"(?:youtube\.com/(?:watch\?v=|embed/|shorts/)|youtu\.be/)([A-Za-z0-9_-]{11})"
 )
-MAX_BLOCKS = 200
+MAX_BLOCKS = 500
+# Short fields (headings, captions, table cells) still use their own limits.
+# A research report can be one long paragraph, so body text is much higher.
 MAX_TEXT = 20000
+PARAGRAPH_LIMIT = 200_000
+ABSOLUTE_TEXT_LIMIT = 2_000_000
 MAX_TABLE_CELLS = 400
 
 
@@ -102,6 +106,29 @@ def _clean_text(value: Any, *, limit: int = MAX_TEXT) -> str:
     return text
 
 
+def _split_long_text(text: str, limit: int) -> list[str]:
+    """Break a report-length field into blocks instead of rejecting the article."""
+    if len(text) <= limit:
+        return [text]
+    parts: list[str] = []
+    rest = text
+    while rest:
+        if len(rest) <= limit:
+            parts.append(rest)
+            break
+        window = rest[:limit]
+        cut = max(window.rfind("\n\n"), window.rfind("\n"), window.rfind(". "), window.rfind(" "))
+        if cut < limit // 2:
+            cut = limit
+        elif window[cut : cut + 2] == ". ":
+            cut += 1
+        chunk = rest[:cut].strip()
+        rest = rest[cut:].strip()
+        if chunk:
+            parts.append(chunk)
+    return parts
+
+
 def _clean_image_src(value: Any) -> str:
     src = _clean_text(value, limit=1024)
     if not src:
@@ -116,7 +143,7 @@ def _clean_image_src(value: Any) -> str:
     )
 
 
-def _clean_block(raw: Any) -> dict[str, Any]:
+def _clean_block(raw: Any) -> dict[str, Any] | list[dict[str, Any]]:
     if not isinstance(raw, dict):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid content block")
     block_type = raw.get("type")
@@ -124,7 +151,8 @@ def _clean_block(raw: Any) -> dict[str, Any]:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported content block")
 
     if block_type == "paragraph":
-        return {"type": "paragraph", "text": _clean_text(raw.get("text"))}
+        text = _clean_text(raw.get("text"), limit=ABSOLUTE_TEXT_LIMIT)
+        return [{"type": "paragraph", "text": part} for part in _split_long_text(text, PARAGRAPH_LIMIT)]
     if block_type == "heading":
         level = raw.get("level", 2)
         if level not in (1, 2, 3, 4):
@@ -144,7 +172,8 @@ def _clean_block(raw: Any) -> dict[str, Any]:
             "items": [item for item in cleaned if item],
         }
     if block_type == "quote":
-        return {"type": "quote", "text": _clean_text(raw.get("text"))}
+        text = _clean_text(raw.get("text"), limit=ABSOLUTE_TEXT_LIMIT)
+        return [{"type": "quote", "text": part} for part in _split_long_text(text, PARAGRAPH_LIMIT)]
     if block_type == "divider":
         return {"type": "divider"}
     if block_type == "code":
@@ -153,7 +182,7 @@ def _clean_block(raw: Any) -> dict[str, Any]:
             language = "text"
         code = raw.get("code") if isinstance(raw.get("code"), str) else ""
         code = code.replace("\x00", "")
-        if len(code) > MAX_TEXT:
+        if len(code) > PARAGRAPH_LIMIT:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Code block is too long")
         return {"type": "code", "language": language, "code": code}
     if block_type == "image":
@@ -244,6 +273,15 @@ def validate_body(raw: Any) -> dict[str, Any]:
     blocks = raw.get("blocks")
     if not isinstance(blocks, list) or not blocks:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Article needs at least one block")
-    if len(blocks) > MAX_BLOCKS:
+    cleaned: list[dict[str, Any]] = []
+    for block in blocks:
+        result = _clean_block(block)
+        if isinstance(result, list):
+            cleaned.extend(result)
+        else:
+            cleaned.append(result)
+    if not cleaned:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Article needs at least one block")
+    if len(cleaned) > MAX_BLOCKS:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Article has too many blocks")
-    return {"version": 1, "blocks": [_clean_block(block) for block in blocks]}
+    return {"version": 1, "blocks": cleaned}
