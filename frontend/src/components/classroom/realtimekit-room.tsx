@@ -44,7 +44,10 @@ export function RealtimeKitRoom({ authToken, theme = "light", onLeft }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const meetingRef = useRef(meeting);
   const leavingRef = useRef(false);
-  meetingRef.current = meeting;
+
+  useEffect(() => {
+    meetingRef.current = meeting;
+  }, [meeting]);
 
   useEffect(() => {
     if (!authToken) return;

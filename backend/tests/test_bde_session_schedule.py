@@ -56,12 +56,12 @@ def test_first_session_is_monday_5_october_2026_at_18_wat():
     assert first.starts_at.isoformat() == "2026-10-05T17:00:00+00:00"
 
 
-def test_office_hour_is_one_hour_and_teaching_is_two():
+def test_teaching_is_four_hours_and_office_hour_is_three():
     schedule = bde_session_schedule()
     teaching = next(s for s in schedule if s.session_type is LiveSessionType.TEACHING)
     office = next(s for s in schedule if s.session_type is LiveSessionType.OFFICE_HOUR)
-    assert (teaching.ends_at - teaching.starts_at).total_seconds() == 2 * 3600
-    assert (office.ends_at - office.starts_at).total_seconds() == 1 * 3600
+    assert (teaching.ends_at - teaching.starts_at).total_seconds() == 4 * 3600
+    assert (office.ends_at - office.starts_at).total_seconds() == 3 * 3600
 
 
 def test_each_teaching_session_carries_its_summary_and_week_objectives():
