@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.opportunity import (
@@ -46,7 +46,11 @@ from app.schemas.opportunities import (
     OpportunitySyncRunPublic,
     OpportunitySyncRunList,
 )
+from app.services.bounty_dates import BountyPhase
+from app.services.bounty_details import refresh_derived_phase as refresh_bounty_phase
 from app.services.bounty_details import upsert_bounty_details
+from app.services.hackathon_dates import HackathonPhase
+from app.services.hackathon_details import refresh_derived_phase
 from app.services.hackathon_details import upsert_hackathon_details
 from app.services.opportunity_extract import (
     extract_from_page_text,
@@ -67,7 +71,7 @@ from app.services.opportunity_relevance import (
 from app.services.opportunity_risk import detect_risk_flags
 from app.services.opportunity_sources import RawOpportunity, get_connector
 from app.services.opportunity_urls import validate_http_url
-from app.services.opportunities import OpportunityService, _enum_value
+from app.services.opportunities import UNDATED_LISTING_DAYS, OpportunityService, _enum_value
 from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -89,6 +93,46 @@ CONNECTOR_SOURCE_TYPES = {
 
 def _utcnow() -> datetime:
     return datetime.now(UTC)
+
+
+def _aware(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
+
+
+def _listing_is_past(row: Opportunity, *, now: datetime, undated_cutoff: datetime) -> bool:
+    """True when this hub listing should be deleted.
+
+    The earliest close date wins. A published listing with no date is removed
+    after it has been up for the undated window. Drafts with no date stay so
+    an editor can still finish them.
+    """
+    hackathon = row.hackathon_details
+    bounty = row.bounty_details
+    if hackathon is not None and hackathon.derived_phase == HackathonPhase.ENDED.value:
+        return True
+    if bounty is not None and bounty.derived_phase == BountyPhase.ENDED.value:
+        return True
+    if row.status == OpportunityStatus.EXPIRED:
+        return True
+    dates = [
+        _aware(row.deadline),
+        _aware(row.expires_at),
+        _aware(hackathon.registration_deadline) if hackathon is not None else None,
+        _aware(hackathon.submission_deadline) if hackathon is not None else None,
+        _aware(hackathon.end_at) if hackathon is not None else None,
+        _aware(bounty.deadline) if bounty is not None else None,
+    ]
+    present = [item for item in dates if item is not None]
+    if present:
+        return min(present) < now
+    if row.status != OpportunityStatus.PUBLISHED:
+        return False
+    anchor = _aware(row.published_at) or _aware(row.created_at)
+    return anchor is not None and anchor < undated_cutoff
 
 
 def _content_hash(raw: RawOpportunity) -> str:
@@ -775,24 +819,41 @@ class OpportunityIngestionService:
             select(Opportunity).where(Opportunity.canonical_application_url == canonical)
         )
 
-    def expire_past_deadlines(self, *, stale_days: int = 30) -> dict[str, int]:
-        """Mark published opportunities past deadline as expired. Never deletes."""
+    def expire_past_deadlines(self, *, stale_days: int = UNDATED_LISTING_DAYS) -> dict[str, int]:
+        """Delete opportunities that are no longer open. Rows are removed, not archived."""
         now = _utcnow()
-        expired = 0
+        cutoff = now - timedelta(days=stale_days)
         rows = list(
             self.db.scalars(
-                select(Opportunity).where(
-                    Opportunity.status == OpportunityStatus.PUBLISHED,
-                    Opportunity.deadline.is_not(None),
-                    Opportunity.deadline < now,
+                select(Opportunity).options(
+                    selectinload(Opportunity.hackathon_details),
+                    selectinload(Opportunity.bounty_details),
                 )
             ).all()
         )
+        stale_ids: list[UUID] = []
         for row in rows:
-            row.status = OpportunityStatus.EXPIRED
-            expired += 1
+            if row.hackathon_details is not None:
+                refresh_derived_phase(row.hackathon_details, now=now)
+            if row.bounty_details is not None:
+                refresh_bounty_phase(row.bounty_details, now=now)
+            if _listing_is_past(row, now=now, undated_cutoff=cutoff):
+                stale_ids.append(row.id)
+        if not stale_ids:
+            self.db.commit()
+            return {"deleted": 0, "expired": 0}
+        self.db.execute(
+            update(Opportunity)
+            .where(Opportunity.duplicate_of_id.in_(stale_ids))
+            .values(duplicate_of_id=None)
+        )
+        for row in rows:
+            if row.id in stale_ids:
+                self.db.delete(row)
         self.db.commit()
-        return {"expired": expired, "stale_flagged": 0}
+        deleted = len(stale_ids)
+        logger.info("Purged %s past opportunities from the hub", deleted)
+        return {"deleted": deleted, "expired": deleted}
 
     def _find_possible_duplicate(self, title: str, organization_name: str) -> Opportunity | None:
         org = organization_name.strip().lower()

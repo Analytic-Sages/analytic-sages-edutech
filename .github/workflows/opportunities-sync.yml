@@ -1,14 +1,15 @@
-# Weekly sync for Opportunities Hub (plus manual run via workflow_dispatch).
+# Daily sync for Opportunities Hub (plus manual run via workflow_dispatch).
 # Requires OPPORTUNITY_SYNC_TOKEN and PUBLIC_API_URL repository secrets.
 # Without those secrets the job exits 0 and skips the API call.
+# The same call deletes listings whose close date has passed.
 
 name: Opportunities sync
 
 on:
   workflow_dispatch:
   schedule:
-    # Mondays 09:00 UTC — connector sync into drafts (no auto-publish).
-    - cron: "0 9 * * 1"
+    # 09:00 UTC every day — pull new drafts and delete listings that have closed.
+    - cron: "0 9 * * *"
 
 jobs:
   sync:

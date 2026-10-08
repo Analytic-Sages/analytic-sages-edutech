@@ -75,6 +75,8 @@ from app.services.opportunity_urls import validate_http_url
 
 logger = logging.getLogger(__name__)
 
+UNDATED_LISTING_DAYS = 30
+
 HTML_RE = re.compile(r"<[^>]+>")
 RESERVED_SLUGS = {
     "jobs",
@@ -193,24 +195,79 @@ class OpportunityService:
             suffix += 1
 
     def _visible_now(self, now: datetime | None = None):
+        """Published listings that are still open.
+
+        A listing drops off the hub when the earliest close date has passed, when
+        a hackathon or bounty phase is ended, or when a published listing has no
+        date and has been up for 30 days. The daily purge deletes those rows.
+        """
         current = now or self._utcnow()
-        not_ended_hackathon = ~exists(
+        cutoff = current - timedelta(days=UNDATED_LISTING_DAYS)
+        past_hackathon = exists(
             select(OpportunityHackathonDetails.opportunity_id).where(
                 OpportunityHackathonDetails.opportunity_id == Opportunity.id,
-                OpportunityHackathonDetails.derived_phase == HackathonPhase.ENDED.value,
+                or_(
+                    OpportunityHackathonDetails.derived_phase == HackathonPhase.ENDED.value,
+                    and_(
+                        OpportunityHackathonDetails.registration_deadline.is_not(None),
+                        OpportunityHackathonDetails.registration_deadline < current,
+                    ),
+                    and_(
+                        OpportunityHackathonDetails.submission_deadline.is_not(None),
+                        OpportunityHackathonDetails.submission_deadline < current,
+                    ),
+                    and_(
+                        OpportunityHackathonDetails.end_at.is_not(None),
+                        OpportunityHackathonDetails.end_at < current,
+                    ),
+                ),
             )
         )
-        not_ended_bounty = ~exists(
+        past_bounty = exists(
             select(OpportunityBountyDetails.opportunity_id).where(
                 OpportunityBountyDetails.opportunity_id == Opportunity.id,
-                OpportunityBountyDetails.derived_phase == BountyPhase.ENDED.value,
+                or_(
+                    OpportunityBountyDetails.derived_phase == BountyPhase.ENDED.value,
+                    and_(
+                        OpportunityBountyDetails.deadline.is_not(None),
+                        OpportunityBountyDetails.deadline < current,
+                    ),
+                ),
             )
+        )
+        has_hackathon_date = exists(
+            select(OpportunityHackathonDetails.opportunity_id).where(
+                OpportunityHackathonDetails.opportunity_id == Opportunity.id,
+                or_(
+                    OpportunityHackathonDetails.registration_deadline.is_not(None),
+                    OpportunityHackathonDetails.submission_deadline.is_not(None),
+                    OpportunityHackathonDetails.end_at.is_not(None),
+                ),
+            )
+        )
+        has_bounty_date = exists(
+            select(OpportunityBountyDetails.opportunity_id).where(
+                OpportunityBountyDetails.opportunity_id == Opportunity.id,
+                OpportunityBountyDetails.deadline.is_not(None),
+            )
+        )
+        undated_and_old = and_(
+            Opportunity.deadline.is_(None),
+            Opportunity.expires_at.is_(None),
+            ~has_hackathon_date,
+            ~has_bounty_date,
+            or_(
+                and_(Opportunity.published_at.is_not(None), Opportunity.published_at < cutoff),
+                and_(Opportunity.published_at.is_(None), Opportunity.created_at < cutoff),
+            ),
         )
         return and_(
             Opportunity.status == OpportunityStatus.PUBLISHED,
             or_(Opportunity.deadline.is_(None), Opportunity.deadline >= current),
-            not_ended_hackathon,
-            not_ended_bounty,
+            or_(Opportunity.expires_at.is_(None), Opportunity.expires_at >= current),
+            ~past_hackathon,
+            ~past_bounty,
+            ~undated_and_old,
         )
 
     def _detail_load(self):

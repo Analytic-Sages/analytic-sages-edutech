@@ -11,8 +11,16 @@ from app.core.roles import UserRole
 from app.core.security import SecurityService
 from app.db.session import SessionLocal
 from app.main import app
-from app.models.opportunity import CareerPath, Opportunity, OpportunityStatus, Skill
+from app.models.opportunity import (
+    CareerPath,
+    Opportunity,
+    OpportunityHackathonDetails,
+    OpportunityStatus,
+    OpportunityType,
+    Skill,
+)
 from app.models.user import User
+from app.services.opportunity_ingestion import OpportunityIngestionService
 from app.services.seed_opportunities import seed_opportunity_taxonomy
 
 client = TestClient(app)
@@ -420,3 +428,85 @@ def test_public_hub_is_hidden_until_go_live(monkeypatch):
         _cleanup_slug(slug)
         _cleanup_user(admin_email)
         _cleanup_user(student_email)
+
+
+def test_past_opportunities_leave_the_hub_and_the_database():
+    suffix = uuid.uuid4().hex[:8]
+    past_slug = f"purge-past-{suffix}"
+    closed_slug = f"purge-closed-{suffix}"
+    old_slug = f"purge-old-{suffix}"
+    fresh_slug = f"purge-fresh-{suffix}"
+    draft_slug = f"purge-draft-{suffix}"
+    slugs = (past_slug, closed_slug, old_slug, fresh_slug, draft_slug)
+    for slug in slugs:
+        _cleanup_slug(slug)
+    now = datetime.now(UTC)
+    db = SessionLocal()
+    try:
+        past = Opportunity(
+            slug=past_slug,
+            title="Closed analyst role",
+            organization_name="Purge Test",
+            application_url=f"https://example.com/purge/{past_slug}",
+            status=OpportunityStatus.PUBLISHED,
+            published_at=now,
+            deadline=now - timedelta(days=1),
+        )
+        closed = Opportunity(
+            slug=closed_slug,
+            title="Closed hackathon",
+            organization_name="Purge Test",
+            application_url=f"https://example.com/purge/{closed_slug}",
+            opportunity_type=OpportunityType.HACKATHON,
+            status=OpportunityStatus.PUBLISHED,
+            published_at=now,
+        )
+        closed.hackathon_details = OpportunityHackathonDetails(
+            registration_deadline=now - timedelta(days=2),
+            derived_phase="open",
+            tags=[],
+            tracks=[],
+        )
+        old = Opportunity(
+            slug=old_slug,
+            title="Undated listing",
+            organization_name="Purge Test",
+            application_url=f"https://example.com/purge/{old_slug}",
+            status=OpportunityStatus.PUBLISHED,
+            published_at=now - timedelta(days=31),
+        )
+        fresh = Opportunity(
+            slug=fresh_slug,
+            title="Open analyst role",
+            organization_name="Purge Test",
+            application_url=f"https://example.com/purge/{fresh_slug}",
+            status=OpportunityStatus.PUBLISHED,
+            published_at=now,
+            deadline=now + timedelta(days=14),
+        )
+        draft = Opportunity(
+            slug=draft_slug,
+            title="Draft listing",
+            organization_name="Purge Test",
+            application_url=f"https://example.com/purge/{draft_slug}",
+            status=OpportunityStatus.DRAFT,
+        )
+        db.add_all([past, closed, old, fresh, draft])
+        db.commit()
+
+        assert client.get(f"/api/v1/opportunities/{past_slug}").status_code == 404
+        assert client.get(f"/api/v1/opportunities/{closed_slug}").status_code == 404
+        assert client.get(f"/api/v1/opportunities/{old_slug}").status_code == 404
+        assert client.get(f"/api/v1/opportunities/{fresh_slug}").status_code == 200
+
+        result = OpportunityIngestionService(db).expire_past_deadlines()
+        assert result["deleted"] >= 3
+
+        for slug in (past_slug, closed_slug, old_slug):
+            assert db.scalar(select(Opportunity).where(Opportunity.slug == slug)) is None
+        assert db.scalar(select(Opportunity).where(Opportunity.slug == fresh_slug)) is not None
+        assert db.scalar(select(Opportunity).where(Opportunity.slug == draft_slug)) is not None
+    finally:
+        db.close()
+        for slug in slugs:
+            _cleanup_slug(slug)
