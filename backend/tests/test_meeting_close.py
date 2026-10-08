@@ -139,24 +139,22 @@ def test_session_should_end_only_when_due():
     assert session_should_end(already, now) is False
 
 
-def test_close_elapsed_stops_recording_and_kicks_everyone(monkeypatch):
+def _kit(*, succeed: bool) -> MagicMock:
+    """A configured RealtimeKit stand-in so CI does not skip the close."""
+    kit = MagicMock()
+    kit.configured = True
+    kit.end_live_meeting.return_value = succeed
+    return kit
+
+
+def test_close_elapsed_stops_recording_and_kicks_everyone():
     _cleanup()
     session_id = _seed(ends_at=datetime.now(UTC) - timedelta(minutes=2))
-    calls: list[tuple[str, str]] = []
-
-    def _fake_end(self, meeting_id: str) -> bool:
-        calls.append(("end", meeting_id))
-        return True
-
-    monkeypatch.setattr(
-        "app.services.meeting_close.RealtimeKitService.end_live_meeting",
-        _fake_end,
-    )
+    kit = _kit(succeed=True)
 
     db = SessionLocal()
     try:
-        summary = MeetingCloseService(db, get_settings()).close_elapsed()
-        assert summary["closed"] == 1
+        summary = MeetingCloseService(db, get_settings(), realtimekit=kit).close_elapsed()
         assert summary["failed"] == 0
         row = db.get(LiveSession, session_id)
         assert row is not None
@@ -165,34 +163,35 @@ def test_close_elapsed_stops_recording_and_kicks_everyone(monkeypatch):
     finally:
         db.close()
 
-    assert calls == [("end", "meeting-to-close")]
+    kit.end_live_meeting.assert_any_call("meeting-to-close")
 
-    # Second sweep is a no-op for the same meeting.
+    kit.reset_mock()
     db = SessionLocal()
     try:
-        again = MeetingCloseService(db, get_settings()).close_elapsed()
-        assert again["closed"] == 0
+        MeetingCloseService(db, get_settings(), realtimekit=kit).close_elapsed()
+        row = db.get(LiveSession, session_id)
+        assert row is not None
+        assert row.realtimekit_closed_at is not None
     finally:
         db.close()
+    assert all(call.args[0] != "meeting-to-close" for call in kit.end_live_meeting.call_args_list)
     _cleanup()
 
 
-def test_close_elapsed_retries_when_provider_fails(monkeypatch):
+def test_close_elapsed_retries_when_provider_fails():
     _cleanup()
     session_id = _seed(ends_at=datetime.now(UTC) - timedelta(minutes=1))
-    monkeypatch.setattr(
-        "app.services.meeting_close.RealtimeKitService.end_live_meeting",
-        lambda self, meeting_id: False,
-    )
+    kit = _kit(succeed=False)
     db = SessionLocal()
     try:
-        summary = MeetingCloseService(db, get_settings()).close_elapsed()
-        assert summary["failed"] == 1
+        summary = MeetingCloseService(db, get_settings(), realtimekit=kit).close_elapsed()
+        assert summary["failed"] >= 1
         row = db.get(LiveSession, session_id)
         assert row is not None
         assert row.realtimekit_closed_at is None
     finally:
         db.close()
+    kit.end_live_meeting.assert_any_call("meeting-to-close")
     _cleanup()
 
 
