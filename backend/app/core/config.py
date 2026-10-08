@@ -91,6 +91,10 @@ class Settings(BaseSettings):
     # can sync their recording URL automatically. Requires recording enabled on the
     # Cloudflare account.
     realtimekit_record_on_start: bool = True
+    # When a class passes ends_at (or is marked ended/cancelled), kick the live
+    # room and stop the recording even if every browser has already disconnected.
+    classroom_close_enabled: bool = True
+    classroom_close_interval_seconds: int = 15
     # Shared secret for POST /api/v1/webhooks/realtimekit. Unsigned calls are rejected.
     realtimekit_webhook_secret: str | None = None
 

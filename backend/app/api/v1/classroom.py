@@ -27,6 +27,7 @@ from app.schemas.classroom import (
 )
 from app.services.classroom import ClassroomService
 from app.services.attendance import AttendanceSyncService
+from app.services.meeting_close import MeetingCloseService
 from app.services.recordings import RecordingsService
 from app.services.seed_bde_classroom import seed_bde_classroom
 
@@ -218,3 +219,26 @@ def internal_sync_classroom_attendance(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid classroom sync token"
         )
     return AttendanceSyncService(db, settings).sync_all().model_dump()
+
+
+@internal_router.post("/internal/classroom/close-elapsed")
+def internal_close_elapsed_meetings(
+    settings: Settings = Depends(get_settings),
+    db: Session = Depends(get_db),
+    x_classroom_sync_token: str | None = Header(default=None),
+) -> dict[str, int]:
+    """Cron/ops hook: end RealtimeKit rooms whose class time has passed.
+
+    Stops any recording that is still capturing, then kicks the active session
+    so a disconnected browser cannot keep the file running. Idempotent.
+    Token-protected (CLASSROOM_SYNC_TOKEN, falling back to OPPORTUNITY_SYNC_TOKEN).
+    """
+    expected = (settings.classroom_sync_token or settings.opportunity_sync_token or "").strip()
+    if not expected:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    provided = (x_classroom_sync_token or "").strip()
+    if len(provided) != len(expected) or not hmac.compare_digest(provided, expected):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid classroom sync token"
+        )
+    return MeetingCloseService(db, settings).close_elapsed()

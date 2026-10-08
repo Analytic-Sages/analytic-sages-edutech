@@ -1,8 +1,9 @@
-# Post-class sync for live cohorts: reconcile RealtimeKit attendance and hand
-# recordings off to permanent storage. Both endpoints are idempotent and retry-safe,
-# and they are independent (one failing never blocks the other). Requires
-# PUBLIC_API_URL plus CLASSROOM_SYNC_TOKEN (or OPPORTUNITY_SYNC_TOKEN) repository
-# secrets. Without those secrets the job exits 0 and skips the API calls.
+# Post-class sync for live cohorts: end any RealtimeKit room that has passed
+# its scheduled finish, then reconcile attendance and hand recordings off to
+# permanent storage. The API also closes elapsed meetings every few seconds;
+# this job is the backup when that process is not running. Requires
+# PUBLIC_API_URL plus CLASSROOM_SYNC_TOKEN (or OPPORTUNITY_SYNC_TOKEN).
+# Without those secrets the job exits 0 and skips the API calls.
 #
 # RealtimeKit recordings expire (~7 days), so a frequent cadence matters: this runs
 # every 30 minutes so a recording is copied to Cloudflare Stream soon after a class.
@@ -30,6 +31,14 @@ jobs:
             echo "Secrets PUBLIC_API_URL / CLASSROOM_SYNC_TOKEN not set; skipping."
             exit 0
           fi
+
+          # Close the live room and stop the recording before attendance and the
+          # file copy, so a class that already ended cannot keep recording.
+          curl -fsS -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-Classroom-Sync-Token: ${token}" \
+            "${PUBLIC_API_URL%/}/api/v1/internal/classroom/close-elapsed" \
+            || echo "::warning::close elapsed meetings failed"
 
           # Attendance and recordings are independent operations — sync each, and
           # never let one failure abort the other.

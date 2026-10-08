@@ -31,6 +31,7 @@ from app.schemas.classroom import (
 )
 from app.services.calendar_ics import CalendarEvent, build_calendar
 from app.services.instructors import InstructorService
+from app.services.meeting_close import MeetingCloseService
 from app.services.realtimekit import RealtimeKitError, RealtimeKitService
 from app.services.waitlist import WaitlistService
 
@@ -122,8 +123,6 @@ class ClassroomService:
             return "cancelled"
         if session.status == LiveSessionStatus.ENDED:
             return "ended"
-        if session.status == LiveSessionStatus.LIVE:
-            return "live"
 
         now = self._utcnow()
         starts = session.starts_at
@@ -133,11 +132,23 @@ class ClassroomService:
         if ends.tzinfo is None:
             ends = ends.replace(tzinfo=timezone.utc)
 
-        if now > ends:
+        # The scheduled end wins over a status that was left on "live".
+        if now >= ends:
             return "ended"
+        if session.status == LiveSessionStatus.LIVE:
+            return "live"
         if now >= starts - timedelta(minutes=EARLY_JOIN_MINUTES):
             return "live"
         return "upcoming"
+
+    def _close_provider_meeting(self, session: LiveSession) -> None:
+        """Stop the recorder and end the live room once the class is over."""
+        try:
+            MeetingCloseService(
+                self.db, self.settings, realtimekit=self.realtimekit
+            ).close_session(session)
+        except Exception:
+            logger.exception("Could not close RealtimeKit meeting for session %s", session.id)
 
     def _can_join(self, phase: str) -> bool:
         return phase == "live"
@@ -456,11 +467,14 @@ class ClassroomService:
         display_name = user.full_name or user.email.split("@")[0]
 
         if phase != "live":
+            meeting_id = session.realtimekit_meeting_id
+            if phase in {"ended", "cancelled"}:
+                self._close_provider_meeting(session)
             return ClassroomJoinResponse(
                 session_id=session.id,
                 mode=self.realtimekit.mode,  # type: ignore[arg-type]
                 auth_token=None,
-                meeting_id=session.realtimekit_meeting_id,
+                meeting_id=meeting_id,
                 preset=preset,
                 display_name=display_name,
                 phase=phase,  # type: ignore[arg-type]
@@ -480,6 +494,7 @@ class ClassroomService:
             if not meeting_id:
                 meeting_id = self.realtimekit.create_meeting(title=session.title)
                 session.realtimekit_meeting_id = meeting_id
+                session.realtimekit_closed_at = None
                 self.db.commit()
 
             try:
@@ -499,6 +514,7 @@ class ClassroomService:
                     )
                     meeting_id = self.realtimekit.create_meeting(title=session.title)
                     session.realtimekit_meeting_id = meeting_id
+                    session.realtimekit_closed_at = None
                     self.db.commit()
                     participant = self.realtimekit.add_participant(
                         meeting_id=meeting_id,

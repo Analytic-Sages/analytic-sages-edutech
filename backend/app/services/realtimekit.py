@@ -12,6 +12,24 @@ from app.core.config import Settings
 logger = logging.getLogger(__name__)
 
 
+# A recording in one of these states is still capturing. Uploaded and uploading
+# files are left alone so a later close cannot restart or replace them.
+OPEN_RECORDING_STATUSES = frozenset({"INVOKED", "RECORDING"})
+
+
+def recording_ids_to_stop(recordings: list[dict[str, Any]]) -> list[str]:
+    """RealtimeKit recording ids that are still capturing."""
+    ids: list[str] = []
+    for item in recordings:
+        status_name = str(item.get("status") or "").upper()
+        if status_name not in OPEN_RECORDING_STATUSES:
+            continue
+        recording_id = item.get("id") or item.get("recordingId") or item.get("recording_id")
+        if recording_id:
+            ids.append(str(recording_id))
+    return ids
+
+
 def stale_participant_ids(
     participants: list[dict[str, Any]],
     custom_participant_id: str,
@@ -274,6 +292,77 @@ class RealtimeKitService:
             if url:
                 return str(url)
         return None
+
+    def end_live_meeting(self, meeting_id: str) -> bool:
+        """Stop open recordings, then remove everyone from the active session.
+
+        Kick-all ends the live room, including seats whose browsers already
+        disconnected. Stopping the recording is separate: a session can show as
+        ended while the recorder is still running. Returns True when both steps
+        finished or there was nothing left to close. Returns False when a call
+        failed and the caller should retry. Does not change attendance or the
+        stored meeting id.
+        """
+        if not meeting_id or str(meeting_id).startswith("mock-"):
+            return True
+        if not self.configured:
+            return False
+
+        stopped = True
+        try:
+            recordings = self._list_recordings_for_close(meeting_id)
+        except RealtimeKitError:
+            logger.warning("Could not list recordings before closing meeting %s", meeting_id)
+            stopped = False
+            recordings = []
+
+        for recording_id in recording_ids_to_stop(recordings):
+            url = self._recordings_url(recording_id)
+            if not self._mutate("PUT", url, {"action": "stop"}):
+                stopped = False
+
+        kicked = self._mutate(
+            "POST",
+            f"{self._meetings_url(meeting_id)}/active-session/kick-all",
+            {},
+        )
+        if stopped and kicked:
+            logger.info("Closed RealtimeKit meeting %s", meeting_id)
+        return stopped and kicked
+
+    def _list_recordings_for_close(self, meeting_id: str) -> list[dict[str, Any]]:
+        collected: list[dict[str, Any]] = []
+        page = 1
+        while page <= 5:
+            data = self._get_json(
+                self._recordings_url(),
+                params={"meeting_id": str(meeting_id), "page_no": page, "per_page": 100},
+            )
+            items = self._recording_items(data)
+            collected.extend(items)
+            if len(items) < 100:
+                break
+            page += 1
+        return collected
+
+    def _mutate(self, method: str, url: str, payload: dict[str, Any]) -> bool:
+        """PUT/POST that treats an already-finished meeting or recording as success."""
+        try:
+            with httpx.Client(timeout=30.0) as client:
+                response = client.request(method, url, headers=self._headers(), json=payload)
+        except httpx.HTTPError:
+            logger.warning("RealtimeKit %s %s failed", method, url)
+            return False
+        if response.status_code < 400 or response.status_code in {404, 409, 410}:
+            return True
+        logger.warning(
+            "RealtimeKit %s %s returned %s %s",
+            method,
+            url,
+            response.status_code,
+            response.text[:200],
+        )
+        return False
 
     def start_recording(self, *, meeting_id: str) -> bool:
         """Explicitly start recording a meeting (idempotent best-effort)."""

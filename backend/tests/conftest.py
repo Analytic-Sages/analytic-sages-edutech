@@ -19,3 +19,9 @@ def disable_opportunity_ai_extraction(monkeypatch):
     developer keys are present in the environment (CI has none).
     """
     monkeypatch.setattr(get_settings(), "opportunity_ai_extraction_enabled", False)
+
+
+@pytest.fixture(autouse=True)
+def disable_classroom_close_loop(monkeypatch):
+    """Tests close meetings explicitly; the background loop must stay off."""
+    monkeypatch.setattr(get_settings(), "classroom_close_enabled", False)

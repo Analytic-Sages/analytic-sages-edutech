@@ -53,6 +53,19 @@ def test_phase_ended_after_ends_at():
     assert _service()._effective_phase(session) == "ended"
 
 
+def test_phase_ended_when_status_is_still_live_past_ends_at():
+    now = datetime.now(timezone.utc)
+    session = LiveSession(
+        id=uuid4(),
+        cohort_id=uuid4(),
+        title="Stuck live",
+        starts_at=now - timedelta(hours=3),
+        ends_at=now - timedelta(minutes=1),
+        status=LiveSessionStatus.LIVE,
+    )
+    assert _service()._effective_phase(session) == "ended"
+
+
 def test_phase_respects_cancelled_status():
     now = datetime.now(timezone.utc)
     session = LiveSession(

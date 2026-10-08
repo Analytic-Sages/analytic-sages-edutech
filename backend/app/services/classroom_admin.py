@@ -6,6 +6,7 @@ reusing the classroom models and the same phase rules students see.
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import HTTPException, status
@@ -39,6 +40,7 @@ from app.schemas.attendance import (
 from app.models.user import User
 from app.services.attendance import AttendanceSyncService
 from app.services.classroom import ClassroomService
+from app.services.meeting_close import MeetingCloseService
 from app.services.recordings import RecordingsService
 
 
@@ -252,8 +254,19 @@ class ClassroomAdminService:
         if "recording_url" in data:
             session.recording_url = data["recording_url"]
 
+        now = datetime.now(timezone.utc)
+        ends_at = session.ends_at
+        if ends_at.tzinfo is None:
+            ends_at = ends_at.replace(tzinfo=timezone.utc)
+        reopened = session.status in {LiveSessionStatus.SCHEDULED, LiveSessionStatus.LIVE} and ends_at > now
+        if reopened:
+            session.realtimekit_closed_at = None
+
         self.db.commit()
         self.db.refresh(session)
+        if not reopened:
+            self._close_provider_meeting(session)
+            self.db.refresh(session)
         return self._row(session)
 
     def cancel_session(self, session_id: UUID) -> AdminLiveSessionRow:
@@ -263,7 +276,14 @@ class ClassroomAdminService:
         session.status = LiveSessionStatus.CANCELLED
         self.db.commit()
         self.db.refresh(session)
+        self._close_provider_meeting(session)
+        self.db.refresh(session)
         return self._row(session)
+
+    def _close_provider_meeting(self, session: LiveSession) -> None:
+        MeetingCloseService(
+            self.db, self.classroom.settings, realtimekit=self.classroom.realtimekit
+        ).close_session(session)
 
     def delete_session(self, session_id: UUID) -> None:
         session = self.db.get(LiveSession, session_id)

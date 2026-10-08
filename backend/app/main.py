@@ -19,6 +19,7 @@ from app.services.seed_insights import seed_insights_articles
 from app.services.seed_opportunities import seed_opportunity_taxonomy
 from app.services.seed_self_paced import seed_dune_course
 from app.services.attendance import AttendanceSyncService
+from app.services.meeting_close import MeetingCloseService
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +100,39 @@ async def _billing_reminders_loop(stop: asyncio.Event) -> None:
             await asyncio.wait_for(stop.wait(), timeout=interval)
 
 
+def _run_close_elapsed_sweep() -> None:
+    """Stop recordings and end live rooms whose class time has passed."""
+    settings = get_settings()
+    if not settings.classroom_close_enabled:
+        return
+    db = SessionLocal()
+    try:
+        MeetingCloseService(db, settings).close_elapsed()
+    except Exception:
+        logger.exception("Classroom close sweep failed")
+    finally:
+        db.close()
+
+
+async def _close_elapsed_loop(stop: asyncio.Event) -> None:
+    """End RealtimeKit at the scheduled finish, even when no browser is open."""
+    settings = get_settings()
+    if not settings.classroom_close_enabled:
+        return
+    interval = max(15, settings.classroom_close_interval_seconds)
+
+    with suppress(asyncio.TimeoutError):
+        await asyncio.wait_for(stop.wait(), timeout=10)
+
+    while not stop.is_set():
+        try:
+            await asyncio.to_thread(_run_close_elapsed_sweep)
+        except Exception:
+            logger.exception("Classroom close loop iteration failed")
+        with suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(stop.wait(), timeout=interval)
+
+
 def _run_attendance_sync_sweep() -> None:
     """Sync worker: reconcile RealtimeKit attendance for recent sessions.
 
@@ -169,6 +203,7 @@ async def lifespan(_app: FastAPI):
     reconcile_task = asyncio.create_task(_payments_reconcile_loop(stop))
     reminders_task = asyncio.create_task(_billing_reminders_loop(stop))
     attendance_task = asyncio.create_task(_attendance_sync_loop(stop))
+    close_task = asyncio.create_task(_close_elapsed_loop(stop))
     try:
         yield
     finally:
@@ -176,12 +211,15 @@ async def lifespan(_app: FastAPI):
         reconcile_task.cancel()
         reminders_task.cancel()
         attendance_task.cancel()
+        close_task.cancel()
         with suppress(asyncio.CancelledError):
             await reconcile_task
         with suppress(asyncio.CancelledError):
             await reminders_task
         with suppress(asyncio.CancelledError):
             await attendance_task
+        with suppress(asyncio.CancelledError):
+            await close_task
 
 
 def create_app() -> FastAPI:
