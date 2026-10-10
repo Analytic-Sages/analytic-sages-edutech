@@ -187,7 +187,15 @@ export function CurrencyPreferenceProvider({ children }: { children: ReactNode }
   );
 
   const isConverted = useCallback(
-    (baseCurrency = "USD") => baseCurrency.toUpperCase() !== currency && Boolean(rates?.[currency]),
+    (baseCurrency = "USD") => {
+      const source = baseCurrency.toUpperCase();
+      return (
+        source !== currency &&
+        isDisplayCurrency(source) &&
+        Boolean(rates?.[source]) &&
+        Boolean(rates?.[currency])
+      );
+    },
     [currency, rates],
   );
 
