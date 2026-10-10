@@ -126,18 +126,27 @@ export function CurrencyPreferenceProvider({ children }: { children: ReactNode }
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
 
   useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(STORAGE_KEY);
-      if (saved && isDisplayCurrency(saved)) {
-        setCurrencyState(saved);
-      } else {
-        setCurrencyState(inferCurrencyFromLocale(window.navigator.language));
-      }
-    } catch {
-      setCurrencyState(inferCurrencyFromLocale(window.navigator.language));
-    }
-
     let cancelled = false;
+
+    // Read browser-only preferences after mount to avoid server/client hydration mismatches.
+    // Deferring the state update also keeps it out of the synchronous effect body.
+    Promise.resolve().then(() => {
+      if (cancelled) return;
+
+      let preferredCurrency = DEFAULT_CURRENCY;
+      try {
+        const saved = window.localStorage.getItem(STORAGE_KEY);
+        preferredCurrency =
+          saved && isDisplayCurrency(saved)
+            ? saved
+            : inferCurrencyFromLocale(window.navigator.language);
+      } catch {
+        preferredCurrency = inferCurrencyFromLocale(window.navigator.language);
+      }
+
+      if (!cancelled) setCurrencyState(preferredCurrency);
+    });
+
     fetch("/currency-rates", { headers: { Accept: "application/json" } })
       .then(async (response) => {
         if (!response.ok) throw new Error("Exchange rates unavailable");
