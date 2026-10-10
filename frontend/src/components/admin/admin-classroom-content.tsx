@@ -719,7 +719,7 @@ export function AdminClassroomContent() {
                       onChange={(event) => setReplaceExistingRecording(event.target.checked)}
                     />
                     <span>
-                      Replace the currently linked recording with this one. Verify the new recording is the correct lesson first. The old provider file will not be deleted, but it will no longer be the class's primary recording.
+                      Replace the currently linked recording with this one. Verify the new recording is the correct lesson first. The old provider file will not be deleted, but it will no longer be the class&apos;s primary recording.
                     </span>
                   </label>
                 )}
