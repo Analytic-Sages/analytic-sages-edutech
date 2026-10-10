@@ -109,6 +109,7 @@ export function BlockchainDataEngineeringLanding({
                       amount={displayTuitionAmount}
                       baseCurrency={displayTuitionCurrency}
                       className="text-white"
+                      tone="inverse"
                     />
                   </p>
                   {showWaitlist ? (
