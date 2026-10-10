@@ -210,7 +210,7 @@ function OpenEngineeringProgramCard() {
             <span className="font-medium text-foreground">Time:</span> {program.timeCommitment}
           </p>
           <p>
-            <span className="font-medium text-foreground">Tuition:</span>{" "}
+            <span className="font-medium text-foreground">Tuition:</span> From{" "}
             <CurrencyPrice amount={200} baseCurrency="USD" />
           </p>
           <p>
