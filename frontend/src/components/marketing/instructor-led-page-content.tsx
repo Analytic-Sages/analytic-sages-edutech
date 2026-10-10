@@ -13,7 +13,7 @@ import {
   blockchainDataEngineeringProgram,
   getEngineeringProgramPage,
 } from "@/lib/blockchain-data-engineering-program";
-import { formatPrice } from "@/lib/mock-data";
+import { CurrencyPrice } from "@/components/marketing/currency-price";
 import {
   comingSoonCohortSlugs,
   getProgramPageHref,
@@ -210,7 +210,8 @@ function OpenEngineeringProgramCard() {
             <span className="font-medium text-foreground">Time:</span> {program.timeCommitment}
           </p>
           <p>
-            <span className="font-medium text-foreground">Tuition:</span> From $200
+            <span className="font-medium text-foreground">Tuition:</span>{" "}
+            <CurrencyPrice amount={200} baseCurrency="USD" />
           </p>
           <p>
             <span className="font-medium text-foreground">Format:</span> {program.learningMode}
@@ -323,7 +324,7 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
         {cohort.price > 0 && (
           <p className="text-sm text-muted-foreground">
             <span className="font-medium text-foreground">Tuition:</span>{" "}
-            {formatPrice(cohort.price, cohort.currency)}
+            <CurrencyPrice amount={cohort.price} baseCurrency={cohort.currency} />
           </p>
         )}
         {!waitlistOpen && (
@@ -392,7 +393,7 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
               href={`/checkout/cohort/${cohort.slug}`}
               className={cn("bg-brand-orange text-white hover:bg-brand-orange/90")}
             >
-              Register · {formatPrice(cohort.price, cohort.currency)}
+              Register
               <ArrowRight className="ml-1 size-4" />
             </ButtonLink>
           ) : (
