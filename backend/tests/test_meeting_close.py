@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from app.core.config import get_settings
+from app.core.roles import UserRole
 from app.db.session import SessionLocal
 from app.main import app
 from app.models.classroom import (
@@ -21,7 +22,7 @@ from app.models.classroom import (
 )
 from app.models.user import User
 from app.services.meeting_close import MeetingCloseService, session_should_end
-from app.services.realtimekit import RealtimeKitService, recording_ids_to_stop
+from app.services.realtimekit import RealtimeKitError, RealtimeKitService, recording_ids_to_stop
 
 client = TestClient(app)
 
@@ -144,6 +145,8 @@ def _kit(*, succeed: bool) -> MagicMock:
     kit = MagicMock()
     kit.configured = True
     kit.end_live_meeting.return_value = succeed
+    kit.find_session_for_meeting.return_value = None
+    kit.list_all_session_participants.return_value = []
     return kit
 
 
@@ -175,6 +178,121 @@ def test_close_elapsed_stops_recording_and_kicks_everyone():
     finally:
         db.close()
     assert all(call.args[0] != "meeting-to-close" for call in kit.end_live_meeting.call_args_list)
+    _cleanup()
+
+
+def test_close_elapsed_keeps_room_open_while_instructor_is_present():
+    _cleanup()
+    session_id = _seed(ends_at=datetime.now(UTC) - timedelta(minutes=2))
+    instructor_id = uuid.uuid4()
+    kit = _kit(succeed=True)
+    kit.find_session_for_meeting.return_value = {
+        "id": "provider-session-live",
+        "status": "LIVE",
+    }
+    kit.list_all_session_participants.return_value = [
+        {"custom_participant_id": str(instructor_id), "left_at": None}
+    ]
+
+    db = SessionLocal()
+    try:
+        db.add(
+            User(
+                id=instructor_id,
+                email=f"{EMAIL_PREFIX}instructor@example.com",
+                full_name="Test Instructor",
+                role=UserRole.INSTRUCTOR,
+                is_active=True,
+            )
+        )
+        db.commit()
+
+        summary = MeetingCloseService(db, get_settings(), realtimekit=kit).close_elapsed()
+        row = db.get(LiveSession, session_id)
+        assert summary["failed"] == 0
+        assert row is not None
+        assert row.realtimekit_closed_at is None
+        kit.end_live_meeting.assert_not_called()
+    finally:
+        db.close()
+    _cleanup()
+
+
+def test_close_elapsed_closes_when_only_students_remain():
+    _cleanup()
+    session_id = _seed(ends_at=datetime.now(UTC) - timedelta(minutes=2))
+    student_id = uuid.uuid4()
+    kit = _kit(succeed=True)
+    kit.find_session_for_meeting.return_value = {
+        "id": "provider-session-live",
+        "status": "LIVE",
+    }
+    kit.list_all_session_participants.return_value = [
+        {"custom_participant_id": str(student_id), "left_at": None}
+    ]
+
+    db = SessionLocal()
+    try:
+        db.add(
+            User(
+                id=student_id,
+                email=f"{EMAIL_PREFIX}student@example.com",
+                full_name="Test Student",
+                role=UserRole.STUDENT,
+                is_active=True,
+            )
+        )
+        db.commit()
+
+        MeetingCloseService(db, get_settings(), realtimekit=kit).close_elapsed()
+        row = db.get(LiveSession, session_id)
+        assert row is not None
+        assert row.realtimekit_closed_at is not None
+        kit.end_live_meeting.assert_called_once_with("meeting-to-close")
+    finally:
+        db.close()
+    _cleanup()
+
+
+def test_close_elapsed_fails_open_when_staff_presence_cannot_be_checked():
+    _cleanup()
+    session_id = _seed(ends_at=datetime.now(UTC) - timedelta(minutes=2))
+    kit = _kit(succeed=True)
+    kit.find_session_for_meeting.side_effect = RealtimeKitError("provider unavailable")
+
+    db = SessionLocal()
+    try:
+        summary = MeetingCloseService(db, get_settings(), realtimekit=kit).close_elapsed()
+        row = db.get(LiveSession, session_id)
+        assert summary["failed"] >= 1
+        assert row is not None
+        assert row.realtimekit_closed_at is None
+        kit.end_live_meeting.assert_not_called()
+    finally:
+        db.close()
+    _cleanup()
+
+
+def test_explicitly_ended_session_closes_even_if_staff_presence_is_unknown():
+    _cleanup()
+    session_id = _seed(
+        ends_at=datetime.now(UTC) + timedelta(hours=1),
+        status=LiveSessionStatus.ENDED,
+    )
+    kit = _kit(succeed=True)
+    kit.find_session_for_meeting.side_effect = RealtimeKitError("should not be called")
+
+    db = SessionLocal()
+    try:
+        summary = MeetingCloseService(db, get_settings(), realtimekit=kit).close_elapsed()
+        row = db.get(LiveSession, session_id)
+        assert summary["closed"] >= 1
+        assert row is not None
+        assert row.realtimekit_closed_at is not None
+        kit.find_session_for_meeting.assert_not_called()
+        kit.end_live_meeting.assert_called_once_with("meeting-to-close")
+    finally:
+        db.close()
     _cleanup()
 
 
