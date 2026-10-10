@@ -10,13 +10,16 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
+from uuid import UUID
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
+from app.core.roles import UserRole
 from app.models.classroom import LiveSession, LiveSessionStatus
-from app.services.realtimekit import RealtimeKitService
+from app.models.user import User
+from app.services.realtimekit import RealtimeKitError, RealtimeKitService
 
 logger = logging.getLogger(__name__)
 
@@ -48,8 +51,85 @@ class MeetingCloseService:
         self.settings = settings
         self.realtimekit = realtimekit or RealtimeKitService(settings)
 
+    def _authorized_staff_present(self, session: LiveSession) -> bool | None:
+        """Whether an authorized staff member is currently in this live room.
+
+        Returns None when RealtimeKit presence cannot be verified. In that case,
+        the close sweep fails open so a transient provider/API failure cannot cut
+        off a class that may still have an instructor present.
+        """
+        meeting_id = str(session.realtimekit_meeting_id or "").strip()
+        try:
+            provider_session = self.realtimekit.find_session_for_meeting(meeting_id)
+            if not provider_session:
+                return False
+
+            provider_status = str(provider_session.get("status") or "").upper()
+            if provider_status == "ENDED":
+                return False
+            if provider_status != "LIVE":
+                logger.warning(
+                    "Cannot verify active RealtimeKit session %s for LMS session %s "
+                    "(provider status=%r); leaving room open",
+                    meeting_id,
+                    session.id,
+                    provider_status or None,
+                )
+                return None
+
+            provider_session_id = str(provider_session.get("id") or "").strip()
+            if not provider_session_id:
+                logger.warning(
+                    "RealtimeKit returned a live session without an id for LMS session %s; "
+                    "leaving room open",
+                    session.id,
+                )
+                return None
+
+            participants = self.realtimekit.list_all_session_participants(
+                provider_session_id, include_peer_events=False
+            )
+        except RealtimeKitError:
+            logger.exception(
+                "Could not verify staff presence for RealtimeKit meeting %s; leaving it open",
+                meeting_id,
+            )
+            return None
+
+        staff_ids: set[UUID] = set()
+        for participant in participants:
+            # Session participant history includes people who have already left.
+            # Only count participants whose current session interval is still open.
+            if participant.get("left_at"):
+                continue
+            raw_id = participant.get("custom_participant_id") or participant.get(
+                "customParticipantId"
+            )
+            if not raw_id:
+                continue
+            try:
+                staff_ids.add(UUID(str(raw_id)))
+            except (ValueError, TypeError, AttributeError):
+                continue
+
+        if not staff_ids:
+            return False
+
+        return (
+            self.db.scalar(
+                select(User.id).where(
+                    User.id.in_(staff_ids),
+                    User.is_active.is_(True),
+                    User.role.in_(
+                        {UserRole.ADMIN, UserRole.INSTRUCTOR, UserRole.OPERATIONS}
+                    ),
+                )
+            )
+            is not None
+        )
+
     def close_elapsed(self) -> dict[str, int]:
-        """Close every due meeting. Safe to run repeatedly."""
+        """Close due meetings unless an authorized staff member is still present."""
         now = datetime.now(timezone.utc)
         sessions = list(
             self.db.scalars(
@@ -65,6 +145,23 @@ class MeetingCloseService:
             if not session_should_end(session, now):
                 skipped += 1
                 continue
+
+            # An explicit end/cancel action always wins. For a session that only
+            # reached its scheduled end, keep it alive while authorized staff remain.
+            if session.status not in {LiveSessionStatus.ENDED, LiveSessionStatus.CANCELLED}:
+                staff_present = self._authorized_staff_present(session)
+                if staff_present is None:
+                    failed += 1
+                    continue
+                if staff_present:
+                    skipped += 1
+                    logger.info(
+                        "Keeping classroom session %s open past scheduled end: "
+                        "authorized staff still present",
+                        session.id,
+                    )
+                    continue
+
             meeting_id = str(session.realtimekit_meeting_id)
             if (
                 not meeting_id.startswith("mock-")
@@ -122,9 +219,17 @@ class MeetingCloseService:
             .values(realtimekit_closed_at=now)
         )
         self.db.commit()
+        if session.status == LiveSessionStatus.CANCELLED:
+            reason = "session_cancelled"
+        elif session.status == LiveSessionStatus.ENDED:
+            reason = "explicit_session_end"
+        else:
+            reason = "scheduled_end_without_authorized_staff"
+
         logger.info(
-            "Ended live room and recording for session %s meeting %s",
+            "Ended live room and recording for session %s meeting %s (reason=%s)",
             session.id,
             meeting_id,
+            reason,
         )
         return True
