@@ -273,6 +273,29 @@ def test_close_elapsed_fails_open_when_staff_presence_cannot_be_checked():
     _cleanup()
 
 
+def test_explicitly_ended_session_closes_even_if_staff_presence_is_unknown():
+    _cleanup()
+    session_id = _seed(
+        ends_at=datetime.now(UTC) + timedelta(hours=1),
+        status=LiveSessionStatus.ENDED,
+    )
+    kit = _kit(succeed=True)
+    kit.find_session_for_meeting.side_effect = RealtimeKitError("should not be called")
+
+    db = SessionLocal()
+    try:
+        summary = MeetingCloseService(db, get_settings(), realtimekit=kit).close_elapsed()
+        row = db.get(LiveSession, session_id)
+        assert summary["closed"] >= 1
+        assert row is not None
+        assert row.realtimekit_closed_at is not None
+        kit.find_session_for_meeting.assert_not_called()
+        kit.end_live_meeting.assert_called_once_with("meeting-to-close")
+    finally:
+        db.close()
+    _cleanup()
+
+
 def test_close_elapsed_retries_when_provider_fails():
     _cleanup()
     session_id = _seed(ends_at=datetime.now(UTC) - timedelta(minutes=1))
