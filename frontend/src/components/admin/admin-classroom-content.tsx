@@ -151,6 +151,7 @@ export function AdminClassroomContent() {
   const [importPreview, setImportPreview] = useState<RecordingImportPreview | null>(null);
   const [importDownloadUrl, setImportDownloadUrl] = useState("");
   const [importReason, setImportReason] = useState("");
+  const [replaceExistingRecording, setReplaceExistingRecording] = useState(false);
   const [importBusy, setImportBusy] = useState(false);
   const [importMessage, setImportMessage] = useState<string | null>(null);
 
@@ -212,6 +213,7 @@ export function AdminClassroomContent() {
     setImportPreview(null);
     setImportDownloadUrl("");
     setImportReason("");
+    setReplaceExistingRecording(false);
     setImportMessage(null);
   }
 
@@ -279,6 +281,7 @@ export function AdminClassroomContent() {
         recording_id: importRecordingId.trim(),
         download_url: importDownloadUrl.trim() || null,
         reason: importReason.trim() || null,
+        replace_existing: replaceExistingRecording,
       });
       setSessions((prev) => prev.map((row) => (row.id === updated.id ? updated : row)));
       setEditing(updated);
@@ -707,6 +710,19 @@ export function AdminClassroomContent() {
                     placeholder="fff4d97c-b29d-4a88-8fb6-0d46e13ee11c"
                   />
                 </div>
+                {editing && (editing.recording_url || editing.recording_status === "ready" || editing.recording_status === "processing") && (
+                  <label className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      checked={replaceExistingRecording}
+                      onChange={(event) => setReplaceExistingRecording(event.target.checked)}
+                    />
+                    <span>
+                      Replace the currently linked recording with this one. Verify the new recording is the correct lesson first. The old provider file will not be deleted, but it will no longer be the class's primary recording.
+                    </span>
+                  </label>
+                )}
                 <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
@@ -722,7 +738,7 @@ export function AdminClassroomContent() {
                     type="button"
                     size="sm"
                     className="bg-brand-navy text-white hover:bg-brand-navy/90"
-                    disabled={importBusy || !canImport}
+                    disabled={importBusy || !canImport || ((Boolean(editing?.recording_url) || editing?.recording_status === "ready" || editing?.recording_status === "processing") && !replaceExistingRecording && importPreview?.already_linked_session_id !== editing?.id)}
                     onClick={handleImportRecording}
                   >
                     Import onto this session
