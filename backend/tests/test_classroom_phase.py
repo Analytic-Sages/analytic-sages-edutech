@@ -11,6 +11,7 @@ def _service() -> ClassroomService:
     settings = MagicMock(spec=Settings)
     settings.realtimekit_host_preset = "webinar_host"
     settings.realtimekit_participant_preset = "webinar_participant"
+    settings.classroom_close_enabled = True
     return ClassroomService(MagicMock(), settings)
 
 
