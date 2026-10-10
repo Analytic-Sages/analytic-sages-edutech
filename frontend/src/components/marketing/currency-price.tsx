@@ -16,7 +16,7 @@ export function CurrencyPrice({
   className,
   showBasePrice = true,
 }: CurrencyPriceProps) {
-  const { currency, updatedAt, formatDisplayPrice, formatBasePrice, isConverted } =
+  const { updatedAt, formatDisplayPrice, formatBasePrice, isConverted } =
     useCurrencyPreference();
   const converted = isConverted(baseCurrency);
   const displayPrice = formatDisplayPrice(amount, baseCurrency);
@@ -48,7 +48,6 @@ export function CurrencyPrice({
           Exchange-rate source: <a href="https://www.exchangerate-api.com" target="_blank" rel="noreferrer" className="underline underline-offset-2">ExchangeRate-API</a>
         </span>
       ) : null}
-      {currency === baseCurrency ? null : null}
     </span>
   );
 }
