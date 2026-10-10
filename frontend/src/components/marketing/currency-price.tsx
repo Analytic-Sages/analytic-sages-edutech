@@ -8,6 +8,7 @@ type CurrencyPriceProps = {
   baseCurrency?: string;
   className?: string;
   showBasePrice?: boolean;
+  tone?: "default" | "inverse";
 };
 
 export function CurrencyPrice({
@@ -15,12 +16,14 @@ export function CurrencyPrice({
   baseCurrency = "USD",
   className,
   showBasePrice = true,
+  tone = "default",
 }: CurrencyPriceProps) {
   const { updatedAt, formatDisplayPrice, formatBasePrice, isConverted } =
     useCurrencyPreference();
   const converted = isConverted(baseCurrency);
   const displayPrice = formatDisplayPrice(amount, baseCurrency);
   const basePrice = formatBasePrice(amount, baseCurrency);
+  const detailTextClass = tone === "inverse" ? "text-white/70" : "text-muted-foreground";
 
   return (
     <span className="inline-flex flex-col items-start gap-1">
@@ -29,7 +32,7 @@ export function CurrencyPrice({
         {displayPrice}
       </span>
       {converted && showBasePrice ? (
-        <span className="text-xs font-normal leading-relaxed text-muted-foreground">
+        <span className={cn("text-xs font-normal leading-relaxed", detailTextClass)}>
           Approximate conversion · Base tuition {basePrice}
           {updatedAt ? (
             <>
@@ -44,7 +47,7 @@ export function CurrencyPrice({
         </span>
       ) : null}
       {converted && showBasePrice ? (
-        <span className="text-[11px] text-muted-foreground">
+        <span className={cn("text-[11px]", detailTextClass)}>
           Exchange-rate source: <a href="https://www.exchangerate-api.com" target="_blank" rel="noreferrer" className="underline underline-offset-2">ExchangeRate-API</a>
         </span>
       ) : null}
