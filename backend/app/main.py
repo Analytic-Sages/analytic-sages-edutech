@@ -101,7 +101,7 @@ async def _billing_reminders_loop(stop: asyncio.Event) -> None:
 
 
 def _run_close_elapsed_sweep() -> None:
-    """Stop recordings and end live rooms whose class time has passed."""
+    """Close elapsed rooms only after authorized staff have left."""
     settings = get_settings()
     if not settings.classroom_close_enabled:
         return
@@ -115,7 +115,7 @@ def _run_close_elapsed_sweep() -> None:
 
 
 async def _close_elapsed_loop(stop: asyncio.Event) -> None:
-    """End RealtimeKit at the scheduled finish, even when no browser is open."""
+    """Keep elapsed rooms open while authorized staff remain; close them otherwise."""
     settings = get_settings()
     if not settings.classroom_close_enabled:
         return
