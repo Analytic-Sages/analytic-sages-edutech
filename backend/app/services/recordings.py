@@ -584,6 +584,7 @@ class RecordingsService:
         recording_id: str,
         download_url: str | None = None,
         reason: str | None = None,
+        replace_existing: bool = False,
     ) -> SessionRecording:
         """Attach an existing RealtimeKit recording to one session and persist it.
 
@@ -613,8 +614,9 @@ class RecordingsService:
         recording = self._get_recording(session.id)
         if (
             recording
-            and recording.realtimekit_recording_id
+            and (recording.provider_recording_id or recording.realtimekit_recording_id)
             and recording.realtimekit_recording_id != recording_id
+            and not replace_existing
         ):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -626,9 +628,8 @@ class RecordingsService:
             recording
             and recording.provider_recording_id
             and recording.status != RecordingStatus.FAILED
+            and recording.realtimekit_recording_id == recording_id
         ):
-            recording.realtimekit_recording_id = recording_id
-            self.db.commit()
             return self.reconcile(recording)
 
         merged = self._assert_import_target(
@@ -645,8 +646,9 @@ class RecordingsService:
                 detail="No downloadable URL is available for this recording yet.",
             )
 
-        recording = self.get_or_create(session.id)
-        recording.realtimekit_recording_id = recording_id
+        # Copy first; only switch the class's primary recording after the new
+        # asset has been accepted by permanent storage. A failed replacement
+        # must leave the current recording link untouched.
         try:
             uid = self.stream.copy_from_url(
                 url=download_url,
@@ -660,14 +662,18 @@ class RecordingsService:
                 require_signed=self.settings.cloudflare_stream_signing_configured,
             )
         except CloudflareStreamError as exc:
-            recording.status = RecordingStatus.FAILED
-            recording.error = str(exc)
-            self.db.commit()
+            if recording is None:
+                recording = self.get_or_create(session.id)
+                recording.status = RecordingStatus.FAILED
+                recording.error = str(exc)
+                self.db.commit()
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail=f"Cloudflare Stream could not fetch the recording: {exc}",
             ) from exc
 
+        recording = recording or self.get_or_create(session.id)
+        recording.realtimekit_recording_id = recording_id
         recording.provider = "cloudflare_stream"
         recording.provider_recording_id = uid
         recording.storage_provider = "cloudflare_stream"

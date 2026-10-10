@@ -2714,7 +2714,12 @@ export function backfillAdminClassroomRecording(recordingId: string, sessionId?:
 
 export function importAdminClassroomRecording(
   sessionId: string,
-  payload: { recording_id: string; download_url?: string | null; reason?: string | null }
+  payload: {
+    recording_id: string;
+    download_url?: string | null;
+    reason?: string | null;
+    replace_existing?: boolean;
+  }
 ) {
   return apiFetch<AdminLiveSessionRow>(
     `/api/v1/admin/classroom/sessions/${encodeURIComponent(sessionId)}/import-recording`,

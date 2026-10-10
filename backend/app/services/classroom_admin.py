@@ -324,6 +324,7 @@ class ClassroomAdminService:
             recording_id=payload.recording_id,
             download_url=payload.download_url,
             reason=payload.reason,
+            replace_existing=payload.replace_existing,
         )
         self.db.refresh(session)
         return self._row(session)

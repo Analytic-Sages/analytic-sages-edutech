@@ -119,6 +119,8 @@ class RecordingImportRequest(BaseModel):
     recording_id: str = Field(min_length=3, max_length=120)
     download_url: str | None = Field(default=None, max_length=2048)
     reason: str | None = Field(default=None, max_length=500)
+    # Explicit instructor confirmation; the previous provider asset is not deleted.
+    replace_existing: bool = False
 
 
 class AdminLiveSessionRow(BaseModel):
