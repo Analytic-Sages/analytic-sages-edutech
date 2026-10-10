@@ -738,7 +738,15 @@ export function AdminClassroomContent() {
                     type="button"
                     size="sm"
                     className="bg-brand-navy text-white hover:bg-brand-navy/90"
-                    disabled={importBusy || !canImport || ((Boolean(editing?.recording_url) || editing?.recording_status === "ready" || editing?.recording_status === "processing") && !replaceExistingRecording && importPreview?.already_linked_session_id !== editing?.id)}
+                    disabled={
+                      importBusy ||
+                      !canImport ||
+                      ((Boolean(editing?.recording_url) ||
+                        editing?.recording_status === "ready" ||
+                        editing?.recording_status === "processing") &&
+                        !replaceExistingRecording &&
+                        importPreview?.already_linked_session_id !== editing?.id)
+                    }
                     onClick={handleImportRecording}
                   >
                     Import onto this session

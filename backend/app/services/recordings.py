@@ -614,7 +614,7 @@ class RecordingsService:
         recording = self._get_recording(session.id)
         if (
             recording
-            and recording.realtimekit_recording_id
+            and (recording.provider_recording_id or recording.realtimekit_recording_id)
             and recording.realtimekit_recording_id != recording_id
             and not replace_existing
         ):
