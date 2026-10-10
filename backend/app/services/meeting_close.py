@@ -1,9 +1,9 @@
-"""Close RealtimeKit when a class is over.
+"""Close RealtimeKit rooms after scheduled time when no authorized staff remain.
 
-The LMS clock only stops new join tokens. RealtimeKit keeps the room and the
-recorder until this service kick-alls the active session and stops any recording
-that is still capturing. A later sweep does not touch an already closed meeting,
-and it never writes a recording id into ``realtimekit_meeting_id`` or edits attendance.
+The scheduled end is a soft boundary while an instructor/admin/operations user
+is present. Explicitly ended or cancelled sessions always close immediately.
+A later sweep does not touch an already closed meeting, and it never writes a
+recording id into ``realtimekit_meeting_id`` or edits attendance.
 """
 
 from __future__ import annotations
@@ -66,6 +66,12 @@ class MeetingCloseService:
 
             provider_status = str(provider_session.get("status") or "").upper()
             if provider_status == "ENDED":
+                logger.info(
+                    "RealtimeKit session %s for LMS session %s was already ended by "
+                    "the provider before the LMS close sweep",
+                    meeting_id,
+                    session.id,
+                )
                 return False
             if provider_status != "LIVE":
                 logger.warning(
