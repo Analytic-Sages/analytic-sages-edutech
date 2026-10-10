@@ -6,7 +6,7 @@ import { ArrowRight, Calendar, Loader2 } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BDE_COHORT_SLUG, blockchainDataEngineeringProgram } from "@/lib/blockchain-data-engineering-program";
-import { formatPrice } from "@/lib/mock-data";
+import { CurrencyPrice } from "@/components/marketing/currency-price";
 import {
   comingSoonCohortSlugs,
   getProgramPageHref,
@@ -227,7 +227,7 @@ export function HomeInstructorLedSection() {
                     )}
                     {cohort.price > 0 && (
                       <p className="font-medium text-foreground">
-                        {formatPrice(cohort.price, cohort.currency)}
+                        <CurrencyPrice amount={cohort.price} baseCurrency={cohort.currency} />
                       </p>
                     )}
                     <ButtonLink

@@ -1,10 +1,12 @@
 import { MarketingFooter } from "@/components/layout/marketing-footer";
 import { MarketingHeader } from "@/components/layout/marketing-header";
+import { CurrencyPreferenceProvider } from "@/components/providers/currency-preference-provider";
 import { ButtonLink } from "@/components/ui/button-link";
 
 export default function NotFound() {
   return (
-    <div className="flex min-h-screen flex-col">
+    <CurrencyPreferenceProvider>
+      <div className="flex min-h-screen flex-col">
       <MarketingHeader />
       <main className="flex flex-1 items-center justify-center px-4 py-20 sm:px-6">
         <div className="mx-auto max-w-lg text-center">
@@ -38,7 +40,8 @@ export default function NotFound() {
           </div>
         </div>
       </main>
-      <MarketingFooter />
-    </div>
+        <MarketingFooter />
+      </div>
+    </CurrencyPreferenceProvider>
   );
 }

@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { publicMarketingHeaderNav } from "@/config/navigation";
 import { useIsSignedIn } from "@/hooks/use-access-token";
 import { cn } from "@/lib/utils";
+import { CurrencySelector } from "@/components/marketing/currency-selector";
 
 export function MarketingHeader() {
   const pathname = usePathname();
@@ -47,6 +48,7 @@ export function MarketingHeader() {
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-4">
+          <CurrencySelector />
           <Button
             variant="ghost"
             size="icon"
