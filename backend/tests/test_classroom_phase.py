@@ -53,6 +53,40 @@ def test_phase_ended_after_ends_at():
     assert _service()._effective_phase(session) == "ended"
 
 
+def test_phase_continues_past_scheduled_end_while_room_is_open():
+    now = datetime.now(timezone.utc)
+    session = LiveSession(
+        id=uuid4(),
+        cohort_id=uuid4(),
+        title="Extended office hour",
+        starts_at=now - timedelta(hours=3),
+        ends_at=now - timedelta(minutes=1),
+        status=LiveSessionStatus.LIVE,
+        realtimekit_meeting_id="meeting-live",
+        realtimekit_closed_at=None,
+    )
+    service = _service()
+    service.settings.classroom_close_enabled = True
+    assert service._effective_phase(session) == "live"
+
+
+def test_phase_ends_after_room_was_closed():
+    now = datetime.now(timezone.utc)
+    session = LiveSession(
+        id=uuid4(),
+        cohort_id=uuid4(),
+        title="Closed office hour",
+        starts_at=now - timedelta(hours=3),
+        ends_at=now - timedelta(minutes=1),
+        status=LiveSessionStatus.LIVE,
+        realtimekit_meeting_id="meeting-closed",
+        realtimekit_closed_at=now,
+    )
+    service = _service()
+    service.settings.classroom_close_enabled = True
+    assert service._effective_phase(session) == "ended"
+
+
 def test_phase_ended_when_status_is_still_live_past_ends_at():
     now = datetime.now(timezone.utc)
     session = LiveSession(
