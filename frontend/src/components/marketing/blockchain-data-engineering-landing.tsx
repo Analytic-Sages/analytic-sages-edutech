@@ -11,6 +11,7 @@ import {
 import { ButtonLink } from "@/components/ui/button-link";
 import { BlockchainDataEngineeringStackExplorer } from "@/components/marketing/blockchain-data-engineering-stack-explorer";
 import { useCohortRegistration } from "@/hooks/use-cohort-registration";
+import { CurrencyPrice } from "@/components/marketing/currency-price";
 import type { EngineeringProgramPageContent } from "@/lib/blockchain-data-engineering-program";
 
 function formatDate(iso: string | null) {
@@ -36,7 +37,7 @@ export function BlockchainDataEngineeringLanding({
   enrollmentMode?: "cohort" | "self-paced-coming-soon";
 }) {
   const selfPacedComingSoon = enrollmentMode === "self-paced-coming-soon";
-  const { cohort, loading, open, waitlistOpen, checkoutHref, priceLabel, tuitionSummary } =
+  const { cohort, loading, open, waitlistOpen, checkoutHref, tuitionSummary } =
     useCohortRegistration(program.cohortSlug, {
       tuitionSummary: program.tuitionSummary,
       registrationLive: program.registrationLive,
@@ -61,7 +62,9 @@ export function BlockchainDataEngineeringLanding({
     ? "Explore Instructor-Led Cohort"
     : showWaitlist
       ? "Join the waitlist"
-      : `Join cohort · ${priceLabel}`;
+      : "Join the Next Cohort";
+  const displayTuitionAmount = cohort && cohort.price > 0 ? cohort.price : 200;
+  const displayTuitionCurrency = cohort && cohort.price > 0 ? cohort.currency : "USD";
 
   return (
     <div className="bg-background pb-24 text-foreground md:pb-0">
@@ -102,7 +105,11 @@ export function BlockchainDataEngineeringLanding({
               ) : (
                 <>
                   <p className="font-heading text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                    {priceLabel}
+                    <CurrencyPrice
+                      amount={displayTuitionAmount}
+                      baseCurrency={displayTuitionCurrency}
+                      className="text-white"
+                    />
                   </p>
                   {showWaitlist ? (
                     <>
@@ -365,7 +372,11 @@ export function BlockchainDataEngineeringLanding({
           <h2 className="font-heading text-3xl font-bold sm:text-4xl">Pricing & payment</h2>
           <div className="mt-10 border border-border/70 bg-background px-6 py-8 sm:px-10">
             <p className="font-heading text-4xl font-bold text-[#0B1F3A] dark:text-foreground">
-              {priceLabel}
+              <CurrencyPrice
+                amount={displayTuitionAmount}
+                baseCurrency={displayTuitionCurrency}
+                className="text-[#0B1F3A] dark:text-foreground"
+              />
             </p>
             <p className="mt-2 text-sm font-medium text-brand-orange">
               {showWaitlist ? "Waitlist now open" : "Open for registration"}
