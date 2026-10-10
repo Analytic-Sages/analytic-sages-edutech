@@ -132,9 +132,19 @@ class ClassroomService:
         if ends.tzinfo is None:
             ends = ends.replace(tzinfo=timezone.utc)
 
-        # The scheduled end wins over a status that was left on "live".
+        # A scheduled end is a soft boundary while the RealtimeKit room is still
+        # open. The close sweep checks for an active instructor/admin/operations
+        # user and closes the room only after none remain. An explicit ended or
+        # cancelled status is handled above and always closes immediately.
         if now >= ends:
-            return "ended"
+            room_can_continue = (
+                self.settings.classroom_close_enabled
+                and bool(session.realtimekit_meeting_id)
+                and session.realtimekit_closed_at is None
+            )
+            if not room_can_continue:
+                return "ended"
+            return "live"
         if session.status == LiveSessionStatus.LIVE:
             return "live"
         if now >= starts - timedelta(minutes=EARLY_JOIN_MINUTES):
