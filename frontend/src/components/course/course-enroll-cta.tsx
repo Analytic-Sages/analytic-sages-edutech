@@ -6,7 +6,8 @@ import { ButtonLink } from "@/components/ui/button-link";
 import { getAccessToken } from "@/lib/api";
 import { getContinueHref } from "@/lib/course-paths";
 import { fetchEnrolledCourses } from "@/lib/enrollments";
-import { formatPrice, getCourseBySlug, isCourseLive } from "@/lib/mock-data";
+import { getCourseBySlug, isCourseLive } from "@/lib/mock-data";
+import { CurrencyPrice } from "@/components/marketing/currency-price";
 import { siteConfig } from "@/config/site";
 import type { Course } from "@/types/course";
 
@@ -107,7 +108,7 @@ export function CourseEnrollCta({ slug, price, currency, comingSoon }: Props) {
   return (
     <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
       <span className="font-heading text-3xl font-bold text-brand-navy dark:text-brand-orange">
-        {formatPrice(price, currency)}
+        <CurrencyPrice amount={price} baseCurrency={currency} />
       </span>
       <ButtonLink
         href={`/checkout/${slug}`}
