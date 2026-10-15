@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Image from "next/image";
 import { ArrowRight, Check, ChevronUp, Database, FlaskConical, GraduationCap, Loader2, Users, X } from "lucide-react";
 import { ProgramDuneGrid } from "@/components/marketing/program-dune-grid";
@@ -63,7 +63,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
   const startDate = formatDate(cohort?.starts_at ?? null);
   const deadline = formatDate(cohort?.registration_deadline ?? null);
 
-  const details: [string, string | null][] = [
+  const details: [string, ReactNode][] = [
     ["Duration", program.duration],
     ["Registration Deadline", isComingSoon ? "Coming soon" : deadline],
     ["Start Date", isComingSoon ? "Coming soon" : startDate],
