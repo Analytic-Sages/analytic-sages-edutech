@@ -74,7 +74,8 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
   ];
 
   return (
-    <div className="bg-background pb-24 text-foreground md:pb-0">
+    <div className="min-h-screen bg-[#0A0F1B] pb-24 text-white md:pb-0">
+      <div className="bg-[linear-gradient(115deg,#102b4b_0%,#102744_55%,#3b3040_100%)]">
       <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
         <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="text-center lg:text-left">
@@ -154,6 +155,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
           </div>
         </div>
       </section>
+      </div>
 
       <InstructorRoster instructors={cohort?.instructors} />
 
@@ -165,7 +167,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
           {program.learnTopics.map((topic) => (
             <div
               key={topic.title}
-              className="rounded-xl border border-brand-navy/25 px-6 py-8 text-center dark:border-white/15"
+              className="rounded-xl border border-white/10 bg-[#111C2D] px-6 py-8 text-center"
             >
               <h3 className="font-heading text-lg font-bold">{topic.title}</h3>
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{topic.body}</p>
@@ -186,7 +188,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
               const icons = [Database, Users, FlaskConical, GraduationCap];
               const Icon = icons[index] ?? Database;
               return (
-                <div key={pathway.title} className="relative rounded-2xl border border-brand-navy/15 bg-card p-6 shadow-sm dark:border-white/10">
+                <div key={pathway.title} className="relative rounded-2xl border border-white/10 bg-[#111C2D] p-6 shadow-sm">
                   <div className="flex size-11 items-center justify-center rounded-xl bg-brand-orange/10 text-brand-orange">
                     <Icon className="size-5" />
                   </div>
@@ -204,7 +206,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
       <section className="mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
         <h2 className="text-center font-heading text-3xl font-bold sm:text-4xl">Who This Is For</h2>
         <div className="mt-10 grid gap-6 md:grid-cols-2">
-          <div className="rounded-2xl border border-brand-navy/20 p-6 sm:p-8 dark:border-white/15">
+          <div className="rounded-2xl border border-white/10 bg-[#111C2D] p-6 sm:p-8">
             <h3 className="font-heading text-xl font-bold">This is for you if..</h3>
             <ul className="mt-6 space-y-4">
               {program.audienceFor.map((item) => (
@@ -217,7 +219,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
               ))}
             </ul>
           </div>
-          <div className="rounded-2xl border border-brand-navy/20 p-6 sm:p-8 dark:border-white/15">
+          <div className="rounded-2xl border border-white/10 bg-[#111C2D] p-6 sm:p-8">
             <h3 className="font-heading text-xl font-bold">Not for you if..</h3>
             <ul className="mt-6 space-y-4">
               {program.audienceNotFor.map((item) => (
@@ -276,17 +278,17 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
         </div>
       </section>
 
-      <section id="pricing" className="scroll-mt-24 border-t border-border/60 bg-[#F7F9FC] dark:bg-transparent">
+      <section id="pricing" className="scroll-mt-24 border-t border-white/10 bg-[#0D1727]">
         <div className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6 sm:py-20">
           <h2 className="font-heading text-3xl font-bold sm:text-4xl">Tuition & Payment Options</h2>
           <p className="mt-3 text-muted-foreground">Registration is LIVE. Choose the payment option that works best for you.</p>
           <div className="mt-10 grid gap-4 text-left sm:grid-cols-2">
-            <div className="rounded-xl border border-border/70 bg-background p-6 shadow-sm">
+            <div className="rounded-xl border border-white/10 bg-[#111C2D] p-6 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-orange">Pay in Full</p>
               <CurrencyPrice amount={50} className="mt-2 font-heading text-3xl font-bold text-[#0B1F3A] dark:text-foreground" />
               <p className="mt-2 text-sm text-muted-foreground">Single payment. Full programme access is secured at registration.</p>
             </div>
-            <div className="rounded-xl border border-brand-orange/40 bg-brand-orange/5 p-6 shadow-sm">
+            <div className="rounded-xl border border-brand-orange/40 bg-[#17243A] p-6 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-orange">Flexible Payment</p>
               <CurrencyPrice amount={28} className="mt-2 font-heading text-3xl font-bold text-[#0B1F3A] dark:text-foreground" />
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Secure your seat with the initial payment, followed by <CurrencyPrice amount={28} showBasePrice={false} /> in Week 3.</p>
@@ -369,7 +371,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
         <ChevronUp className="size-5" />
       </button>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-3 backdrop-blur md:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#0A0F1B]/95 p-3 backdrop-blur md:hidden">
         <ButtonLink
           href={primaryHref}
           className="h-12 w-full rounded-full bg-brand-orange text-white hover:bg-brand-orange/90"
