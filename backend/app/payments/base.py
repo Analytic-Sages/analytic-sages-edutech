@@ -36,6 +36,8 @@ class WebhookEvent:
     status: PaymentStatus
     crypto_currency: str | None = None
     crypto_amount: str | None = None
+    charge_amount: float | None = None
+    charge_currency: str | None = None
     raw: dict[str, Any] = field(default_factory=dict)
 
 
