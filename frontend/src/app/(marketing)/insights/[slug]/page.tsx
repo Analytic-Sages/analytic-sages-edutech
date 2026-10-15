@@ -142,6 +142,7 @@ export default async function InsightArticlePage({ params }: Props) {
           Back to Insights
         </ButtonLink>
       </div>
+      </div>
       <aside className="w-full lg:sticky lg:top-24">
         <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
           <div className="relative aspect-[16/9] bg-muted">
