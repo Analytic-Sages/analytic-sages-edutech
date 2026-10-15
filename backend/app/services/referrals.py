@@ -548,6 +548,9 @@ class ReferralCommissionService:
             reporting_usd_equivalent=usd_eq,
         )
         self.db.add(ledger)
+        # autoflush is disabled for application sessions; make the ledger row visible
+        # to subsequent queries in this transaction without committing it.
+        self.db.flush()
         logger.info(
             "referral_commission payment=%s partner=%s amount=%s %s usd_est=%s",
             payment.id,
