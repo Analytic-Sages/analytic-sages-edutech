@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -55,6 +56,13 @@ class Payment(Base):
     provider_payment_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     amount: Mapped[int] = mapped_column(Integer, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    # Catalog price is stored in amount/currency. charge_* is the authoritative
+    # provider-side amount/currency actually requested at checkout.
+    charge_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    charge_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    # settled_* records what the provider reported as actually paid.
+    settled_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    settled_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
     crypto_currency: Mapped[str | None] = mapped_column(String(20), nullable=True)
     crypto_amount: Mapped[str | None] = mapped_column(String(64), nullable=True)
     status: Mapped[PaymentStatus] = mapped_column(

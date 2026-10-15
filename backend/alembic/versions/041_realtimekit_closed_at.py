@@ -14,7 +14,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "041_realtimekit_closed_at"
-down_revision: Union[str, None] = "040_recording_import"
+down_revision: Union[str, None] = "042_payment_amount_integrity"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

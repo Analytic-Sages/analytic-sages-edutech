@@ -209,6 +209,8 @@ class PaystackProvider:
             provider=self.name,
             provider_payment_id=str(ref),
             checkout_url=str(auth_url),
+            charge_amount=charge_amount,
+            charge_currency=currency,
             metadata={
                 "mode": "live",
                 "reference": str(ref),
@@ -268,10 +270,14 @@ class PaystackProvider:
         return WebhookEvent(
             provider=self.name,
             order_id=order_id,
-            provider_payment_id=str(verified.get("id") or reference),
+            # Keep our stable checkout reference as the canonical provider ID.\n            # Paystack transaction IDs are stored inside the raw verified payload.\n            provider_payment_id=reference,
             status=payment_status,
             crypto_currency=None,
             crypto_amount=None,
+            charge_amount=from_paystack_subunit(
+                verified.get("amount"), str(verified.get("currency") or "").upper()
+            ) if verified.get("amount") is not None else None,
+            charge_currency=str(verified.get("currency") or "").upper() or None,
             raw={
                 "event": event,
                 "webhook": payload,

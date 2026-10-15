@@ -49,6 +49,8 @@ def create_mock_checkout(
         checkout_url=checkout_url,
         crypto_currency=crypto_currency,
         crypto_amount=crypto_amount,
+        charge_amount=float(request.amount),
+        charge_currency=request.currency.upper(),
         metadata={"mode": "mock"},
     )
 
@@ -104,6 +106,8 @@ def parse_mock_webhook(
         status=payment_status,
         crypto_currency=payload.get("crypto_currency"),
         crypto_amount=payload.get("crypto_amount"),
+        charge_amount=float(payload["amount"]) if payload.get("amount") is not None else None,
+        charge_currency=str(payload.get("currency") or "").upper() or None,
         raw=payload if payload else json.loads(body or b"{}"),
     )
 

@@ -220,9 +220,9 @@ const cohort9: ProgramPageContent = {
         "Recordings are provided so you can catch up. You are still expected to complete the practice and projects.",
     },
     {
-      question: "Is the certificate recognised?",
+      question: "Will I receive a certificate?",
       answer:
-        "Platform certificates are not issued yet. Completing Cohort 9 still gives you the dashboards, report, and classroom work you can show.",
+        "Yes. Learners who successfully complete the programme and its required projects will receive a certificate of completion from Analytic Sages.",
     },
     {
       question: "When does the programme start and what does it cost?",

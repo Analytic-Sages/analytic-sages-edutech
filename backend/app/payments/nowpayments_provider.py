@@ -350,6 +350,8 @@ class NOWPaymentsProvider:
             checkout_url=str(invoice_url),
             crypto_currency=_as_optional_str(data.get("pay_currency")),
             crypto_amount=_as_optional_str(data.get("pay_amount")),
+            charge_amount=float(body["price_amount"]),
+            charge_currency=price_currency.upper(),
             metadata={
                 "mode": "live",
                 "invoice_id": str(invoice_id),
@@ -415,8 +417,20 @@ class NOWPaymentsProvider:
             status=payment_status,
             crypto_currency=_as_optional_str(payload.get("pay_currency")),
             crypto_amount=_as_optional_str(payload.get("pay_amount")),
+            charge_amount=_as_optional_float(payload.get("price_amount")),
+            charge_currency=_as_optional_str(payload.get("price_currency"))
+            and str(payload.get("price_currency")).upper(),
             raw=payload,
         )
+
+
+def _as_optional_float(value: Any) -> float | None:
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _as_optional_str(value: Any) -> str | None:

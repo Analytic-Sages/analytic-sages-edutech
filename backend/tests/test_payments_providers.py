@@ -410,6 +410,10 @@ def test_live_paystack_initialize():
         session = provider.create_checkout(_checkout_request())
 
     assert session.checkout_url == "https://checkout.paystack.com/abc"
+    assert session.metadata["charge_amount"] == 56000.0
+    assert session.metadata["charge_currency"] == "NGN"
+    assert session.charge_amount == 56000.0
+    assert session.charge_currency == "NGN"
     assert session.metadata["mode"] == "live"
     assert session.metadata["charge_currency"] == "NGN"
     args, kwargs = mock_client.post.call_args
@@ -469,6 +473,8 @@ def test_live_paystack_webhook_success():
 
     assert event.order_id == "ord-test123"
     assert event.status == PaymentStatus.CONFIRMED
+    assert event.charge_amount == 35.0
+    assert event.charge_currency == "USD"
 
 
 def test_live_paystack_webhook_bad_signature():
