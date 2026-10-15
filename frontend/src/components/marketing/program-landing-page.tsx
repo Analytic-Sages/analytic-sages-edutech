@@ -6,6 +6,8 @@ import { ArrowRight, Check, ChevronUp, Database, FlaskConical, GraduationCap, Lo
 import { ProgramDuneGrid } from "@/components/marketing/program-dune-grid";
 import { InstructorRoster } from "@/components/marketing/instructor-roster";
 import { ProgramTestimonialCarousel } from "@/components/marketing/program-testimonial-carousel";
+import { CurrencyPrice } from "@/components/marketing/currency-price";
+import { CurrencySelector } from "@/components/marketing/currency-selector";
 import {
   Accordion,
   AccordionContent,
@@ -14,7 +16,6 @@ import {
 } from "@/components/ui/accordion";
 import { ButtonLink } from "@/components/ui/button-link";
 import { listPublicCohorts, type PublicCohortCard } from "@/lib/api";
-import { formatPrice } from "@/lib/mock-data";
 import type { ProgramPageContent } from "@/lib/program-pages";
 
 function formatDate(iso: string | null) {
@@ -58,8 +59,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
   const isComingSoon = Boolean(program.comingSoon);
   const primaryHref = isComingSoon ? "/contact" : checkoutHref;
   const primaryLabel = isComingSoon ? "Get notified" : "Register now";
-  const priceLabel = program.priceLabel ??
-    (cohort && cohort.price > 0 ? formatPrice(cohort.price, cohort.currency) : null);
+  const priceLabel = program.priceLabel ?? (cohort && cohort.price > 0 ? `${cohort.price}` : null);
   const startDate = formatDate(cohort?.starts_at ?? null);
   const deadline = formatDate(cohort?.registration_deadline ?? null);
 
@@ -107,9 +107,9 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
               </p>
             )}
             <div className="mt-8 max-w-md rounded-lg border border-white/15 bg-white/5 px-4 py-4 backdrop-blur-sm">
-              <p className="font-heading text-3xl font-bold tracking-tight text-white sm:text-4xl">$50 / ₦70,000</p>
-              <p className="mt-1 text-sm font-medium text-brand-orange">Registration is LIVE</p>
-              <p className="mt-2 text-sm leading-relaxed text-white/80">Pay in full, or secure your seat with $28 / ₦40,000 now and complete the final $28 / ₦40,000 payment in Week 3.</p>
+              <CurrencyPrice amount={50} className="font-heading text-3xl font-bold tracking-tight text-white sm:text-4xl" tone="inverse" />
+              <div className="mt-3 flex flex-col gap-2 rounded-lg border border-brand-orange/30 bg-brand-orange/10 p-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-semibold text-white">Convert tuition to your currency</p><p className="text-xs text-white/65">Choose the currency you want to see across the course page.</p></div><CurrencySelector /></div><p className="mt-3 text-sm font-medium text-brand-orange">Registration is LIVE</p>
+              <p className="mt-2 text-sm leading-relaxed text-white/80">Pay in full, or secure your seat with <CurrencyPrice amount={28} className="font-semibold text-white" tone="inverse" showBasePrice={false} /> now and complete the final <CurrencyPrice amount={28} className="font-semibold text-white" tone="inverse" showBasePrice={false} /> payment in Week 3.</p>
             </div>
             <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row lg:justify-start">
               <ButtonLink
@@ -283,13 +283,13 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
           <div className="mt-10 grid gap-4 text-left sm:grid-cols-2">
             <div className="rounded-xl border border-border/70 bg-background p-6 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-orange">Pay in Full</p>
-              <p className="mt-2 font-heading text-3xl font-bold text-[#0B1F3A] dark:text-foreground">$50 / ₦70,000</p>
+              <CurrencyPrice amount={50} className="mt-2 font-heading text-3xl font-bold text-[#0B1F3A] dark:text-foreground" />
               <p className="mt-2 text-sm text-muted-foreground">Single payment. Full programme access is secured at registration.</p>
             </div>
             <div className="rounded-xl border border-brand-orange/40 bg-brand-orange/5 p-6 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-orange">Flexible Payment</p>
-              <p className="mt-2 font-heading text-3xl font-bold text-[#0B1F3A] dark:text-foreground">$28 / ₦40,000</p>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Secure your seat with the initial payment, followed by $28 / ₦40,000 in Week 3.</p>
+              <CurrencyPrice amount={28} className="mt-2 font-heading text-3xl font-bold text-[#0B1F3A] dark:text-foreground" />
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Secure your seat with the initial payment, followed by <CurrencyPrice amount={28} showBasePrice={false} /> in Week 3.</p>
             </div>
           </div>
           <p className="mt-6 text-sm text-muted-foreground">Select your preferred tuition option below to finalize registration. Seats are limited to ensure direct project reviews.</p>
