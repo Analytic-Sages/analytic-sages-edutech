@@ -38,9 +38,15 @@ class CheckoutResponse(BaseModel):
     checkout_url: str
     amount: int
     currency: str
+    charge_amount: float | None
+    charge_currency: str | None
+    settled_amount: float | None
+    settled_currency: str | None
     status: PaymentStatus
     crypto_currency: str | None = None
     crypto_amount: str | None = None
+    charge_amount: float | None = None
+    charge_currency: str | None = None
     mode: str
     cohort_id: UUID | None = None
     course_id: UUID | None = None
