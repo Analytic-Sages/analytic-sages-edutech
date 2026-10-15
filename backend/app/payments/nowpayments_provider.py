@@ -10,6 +10,7 @@ import hashlib
 import hmac
 import json
 import logging
+import time
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -148,6 +149,8 @@ class NOWPaymentsProvider:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self._mock = MockNOWPaymentsProvider(settings)
+        self._jwt_token: str | None = None
+        self._jwt_expires_at = 0.0
 
     @property
     def is_live(self) -> bool:
@@ -235,6 +238,51 @@ class NOWPaymentsProvider:
     _SCAN_PAGE_LIMIT = 100
     _SCAN_MAX_PAGES = 6  # up to 600 most-recent payments
 
+    def _get_list_jwt(self, client: httpx.Client, *, force_refresh: bool = False) -> str | None:
+        """Obtain the short-lived JWT required by NOWPayments' list-payments endpoint."""
+        if not force_refresh and self._jwt_token and time.monotonic() < self._jwt_expires_at:
+            return self._jwt_token
+
+        email = (self.settings.nowpayments_email or "").strip()
+        password = self.settings.nowpayments_password or ""
+        if not email or not password:
+            logger.warning(
+                "NOWPayments payment-list reconciliation is disabled: "
+                "NOWPAYMENTS_EMAIL and NOWPAYMENTS_PASSWORD are required for GET /payment/"
+            )
+            return None
+
+        url = f"{self.settings.nowpayments_api_url.rstrip('/')}/auth"
+        try:
+            response = client.post(
+                url,
+                headers={"Content-Type": "application/json"},
+                json={"email": email, "password": password},
+            )
+        except httpx.HTTPError:
+            logger.exception("NOWPayments JWT authentication request failed")
+            return None
+
+        if response.status_code >= 400:
+            # Never log credentials or the authentication response body.
+            logger.error("NOWPayments JWT authentication failed status=%s", response.status_code)
+            self._jwt_token = None
+            self._jwt_expires_at = 0.0
+            return None
+
+        try:
+            token = response.json().get("token")
+        except (ValueError, AttributeError):
+            token = None
+        if not isinstance(token, str) or not token.strip():
+            logger.error("NOWPayments JWT authentication response did not contain a token")
+            return None
+
+        self._jwt_token = token.strip()
+        # Provider tokens last 5 minutes; refresh early to avoid expiry during a request.
+        self._jwt_expires_at = time.monotonic() + 240
+        return self._jwt_token
+
     def _scan_payments(self, *, field: str, value: str) -> dict[str, Any] | None:
         """Find the payment record whose ``field`` (order_id / invoice_id) matches."""
         api_key = self.settings.nowpayments_api_key
@@ -247,10 +295,17 @@ class NOWPaymentsProvider:
         base = self.settings.nowpayments_api_url.rstrip("/")
         try:
             with httpx.Client(timeout=15.0) as client:
+                token = self._get_list_jwt(client)
+                if not token:
+                    return None
+
                 for page in range(self._SCAN_MAX_PAGES):
                     response = client.get(
                         f"{base}/payment/",
-                        headers={"x-api-key": api_key},
+                        headers={
+                            "x-api-key": api_key,
+                            "Authorization": f"Bearer {token}",
+                        },
                         params={
                             "limit": self._SCAN_PAGE_LIMIT,
                             "page": page,
@@ -258,6 +313,24 @@ class NOWPaymentsProvider:
                             "orderBy": "desc",
                         },
                     )
+                    if response.status_code == 401:
+                        # A token may be revoked early; refresh and retry this page once.
+                        token = self._get_list_jwt(client, force_refresh=True)
+                        if not token:
+                            return None
+                        response = client.get(
+                            f"{base}/payment/",
+                            headers={
+                                "x-api-key": api_key,
+                                "Authorization": f"Bearer {token}",
+                            },
+                            params={
+                                "limit": self._SCAN_PAGE_LIMIT,
+                                "page": page,
+                                "sortBy": "created_at",
+                                "orderBy": "desc",
+                            },
+                        )
                     if response.status_code >= 400:
                         logger.error(
                             "NOWPayments list payments error %s=%s status=%s body=%s",
