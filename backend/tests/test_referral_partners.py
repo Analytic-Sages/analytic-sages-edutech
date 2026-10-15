@@ -930,3 +930,75 @@ def test_refund_with_open_payout_requires_review_and_blocks_payout_transition():
         if cohort_id is not None:
             _cleanup_cohort(cohort_id=cohort_id)
         _cleanup_emails(partner_email, learner_email, admin_email)
+
+
+def test_registration_locks_cookie_attribution_to_account_for_later_other_device_payment():
+    """Registration transfers browser attribution to the account; payment needs no visitor cookie."""
+    partner_email = f"p-cookie-reg-{uuid.uuid4()}@example.com"
+    admin_email = f"a-cookie-reg-{uuid.uuid4()}@example.com"
+    learner_email = f"l-cookie-reg-{uuid.uuid4()}@example.com"
+    partner_id = None
+    learner_id = None
+    db = SessionLocal()
+    try:
+        partner_user = _make_user(partner_email, full_name="Cookie Partner")
+        admin = _make_user(admin_email, UserRole.ADMIN)
+        partner = ReferralPartnerService(db, get_settings()).apply(
+            user=partner_user, display_name="Cookie Partner",
+            social_handle=None, promotion_channels="X", terms_accepted=True,
+        )
+        partner = ReferralPartnerService(db, get_settings()).set_status(
+            partner_id=partner.id, status_value=ReferralPartnerStatus.ACTIVE, actor=admin,
+        )
+        partner_id = partner.id
+        code = partner.referral_code
+        assert code
+    finally:
+        db.close()
+
+    browser = TestClient(app)
+    try:
+        tracked = browser.post("/api/v1/referrals/track", json={"code": code})
+        assert tracked.status_code == 200
+        visitor_id = tracked.json()["anonymous_visitor_id"]
+        cookie_header = tracked.headers.get("set-cookie", "")
+        assert "as_ref_vid=" in cookie_header
+
+        registered = browser.post("/api/v1/auth/register", json={
+            "email": learner_email,
+            "password": "ReferralTest!123",
+            "full_name": "Cookie Referred Learner",
+            "phone_number": "+2348012345678",
+            "phone_country_code": "NG",
+            "country_of_residence": "NG",
+        })
+        assert registered.status_code == 201
+
+        db = SessionLocal()
+        try:
+            learner = db.scalar(select(User).where(User.email == learner_email))
+            assert learner is not None
+            learner_id = learner.id
+            attribution = db.scalar(select(ReferralAttribution).where(
+                ReferralAttribution.referred_user_id == learner.id,
+                ReferralAttribution.locked_at.is_not(None),
+            ))
+            assert attribution is not None
+            assert attribution.partner_id == partner_id
+            assert attribution.anonymous_visitor_id == visitor_id
+            # This account-level lock is what lets a later desktop payment qualify.
+            assert ReferralAttributionService(db, get_settings()).get_locked_for_user(learner.id) is not None
+        finally:
+            db.close()
+    finally:
+        db = SessionLocal()
+        try:
+            if learner_id:
+                for attr in db.scalars(select(ReferralAttribution).where(
+                    ReferralAttribution.referred_user_id == learner_id
+                )).all():
+                    db.delete(attr)
+                db.commit()
+        finally:
+            db.close()
+        _cleanup_emails(partner_email, admin_email, learner_email)
