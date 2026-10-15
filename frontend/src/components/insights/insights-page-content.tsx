@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Clock, Search } from "lucide-react";
 import { BlogLearnCta } from "@/components/blog/blog-learn-cta";
+import { CourseSidebar } from "@/components/marketing/course-sidebar";
 import { InsightsSubscribeCta } from "@/components/insights/insights-subscribe-cta";
 import { PageHeader } from "@/components/layout/page-header";
 import { Input } from "@/components/ui/input";
@@ -65,7 +66,7 @@ export function InsightsPageContent() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-10">
+    <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-10"><div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_300px]"><main className="min-w-0">
       <PageHeader title="Insights" description="Research, tutorials, case studies and ideas from Analytic Sages." />
       <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
         Practical thinking on blockchain data, DeFi, AI, quantitative finance, software engineering and Web3.
@@ -125,7 +126,7 @@ export function InsightsPageContent() {
       ) : null}
 
       <div className="mt-20 space-y-8"><InsightsSubscribeCta /><BlogLearnCta /></div>
-    </div>
+      </main><div className="lg:sticky lg:top-6"><CourseSidebar /></div></div></div>
   );
 }
 
