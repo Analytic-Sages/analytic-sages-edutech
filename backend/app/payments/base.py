@@ -23,6 +23,8 @@ class CheckoutSession:
     checkout_url: str
     crypto_currency: str | None = None
     crypto_amount: str | None = None
+    charge_amount: float | None = None
+    charge_currency: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
