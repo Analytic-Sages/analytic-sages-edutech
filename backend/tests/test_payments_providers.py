@@ -410,6 +410,8 @@ def test_live_paystack_initialize():
         session = provider.create_checkout(_checkout_request())
 
     assert session.checkout_url == "https://checkout.paystack.com/abc"
+    assert session.metadata["charge_amount"] == 56000.0
+    assert session.metadata["charge_currency"] == "NGN"
     assert session.charge_amount == 56000.0
     assert session.charge_currency == "NGN"
     assert session.metadata["mode"] == "live"
