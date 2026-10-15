@@ -346,11 +346,20 @@ class PaymentService:
             provider_payment_id=session.provider_payment_id,
             amount=amount,
             currency=currency,
+            charge_amount=session.charge_amount if session.charge_amount is not None else float(amount),
+            charge_currency=(session.charge_currency or currency).upper(),
             crypto_currency=session.crypto_currency,
             crypto_amount=session.crypto_amount,
             status=PaymentStatus.PENDING,
             checkout_url=session.checkout_url,
-            metadata_json={**(session.metadata or {}), **metadata},
+            metadata_json={
+                **(session.metadata or {}),
+                **metadata,
+                "catalog_amount": amount,
+                "catalog_currency": currency.upper(),
+                "expected_charge_amount": session.charge_amount if session.charge_amount is not None else amount,
+                "expected_charge_currency": (session.charge_currency or currency).upper(),
+            },
         )
         self.db.add(payment)
         if payment_obligation_id:
@@ -717,6 +726,11 @@ class PaymentService:
             payment.crypto_currency = event.crypto_currency
         if event.crypto_amount:
             payment.crypto_amount = event.crypto_amount
+        if event.charge_amount is not None:
+            from decimal import Decimal
+            payment.settled_amount = Decimal(str(event.charge_amount))
+        if event.charge_currency:
+            payment.settled_currency = event.charge_currency.upper()
 
         payment.status = event.status
         payment.metadata_json = {
@@ -725,39 +739,33 @@ class PaymentService:
         }
 
         if event.status == PaymentStatus.CONFIRMED:
-            if payment.provider == PaymentProviderName.NOWPAYMENTS:
-                from app.payments.nowpayments_provider import amounts_match
+            # Fulfilment is fail-closed: for live providers, the provider must
+            # report the same amount/currency we created the checkout for.
+            if payment.provider in {
+                PaymentProviderName.NOWPAYMENTS,
+                PaymentProviderName.PAYSTACK,
+            }:
+                from decimal import Decimal
 
-                reported = (event.raw or {}).get("price_amount")
-                if not amounts_match(expected=payment.amount, reported=reported):
-                    logger.error(
-                        "NOWPayments amount mismatch order=%s expected=%s reported=%s",
-                        payment.order_id,
-                        payment.amount,
-                        reported,
-                    )
+                expected_amount = payment.charge_amount
+                expected_currency = (payment.charge_currency or "").upper()
+                reported_amount = payment.settled_amount
+                reported_currency = (payment.settled_currency or "").upper()
+                if expected_amount is None or not expected_currency:
+                    logger.error("Payment missing authoritative expected charge order=%s", payment.order_id)
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Payment amount mismatch",
+                        detail="Payment is missing expected charge amount",
                     )
-
-            if payment.provider == PaymentProviderName.PAYSTACK:
-                from app.payments.paystack_provider import from_paystack_subunit
-
-                verified = (event.raw or {}).get("verified") or {}
-                meta = payment.metadata_json or {}
-                expected_currency = str(
-                    meta.get("charge_currency") or payment.currency or ""
-                ).upper()
-                expected_major = meta.get("charge_amount")
-                if expected_major is None:
-                    expected_major = payment.amount
-
-                reported_subunit = verified.get("amount")
-                reported_currency = str(verified.get("currency") or "").upper()
-                if reported_currency and expected_currency and reported_currency != expected_currency:
+                if reported_amount is None or not reported_currency:
+                    logger.error("Provider omitted settled amount/currency order=%s", payment.order_id)
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Provider did not report a settled amount",
+                    )
+                if reported_currency != expected_currency:
                     logger.error(
-                        "Paystack currency mismatch order=%s expected=%s reported=%s",
+                        "Payment currency mismatch order=%s expected=%s reported=%s",
                         payment.order_id,
                         expected_currency,
                         reported_currency,
@@ -766,21 +774,17 @@ class PaymentService:
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail="Payment currency mismatch",
                     )
-                if reported_subunit is not None:
-                    reported_major = from_paystack_subunit(
-                        reported_subunit, reported_currency or expected_currency
+                if abs(Decimal(str(expected_amount)) - Decimal(str(reported_amount))) > Decimal("0.01"):
+                    logger.error(
+                        "Payment amount mismatch order=%s expected=%s reported=%s",
+                        payment.order_id,
+                        expected_amount,
+                        reported_amount,
                     )
-                    if abs(float(expected_major) - float(reported_major)) > 0.01:
-                        logger.error(
-                            "Paystack amount mismatch order=%s expected=%s reported=%s",
-                            payment.order_id,
-                            expected_major,
-                            reported_major,
-                        )
-                        raise HTTPException(
-                            status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="Payment amount mismatch",
-                        )
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Payment amount mismatch",
+                    )
 
             payment.confirmed_at = datetime.now(UTC)
             billing_account = reconciliation.reconcile_confirmed_payment(payment)
