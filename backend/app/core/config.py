@@ -69,6 +69,9 @@ class Settings(BaseSettings):
     paystack_usd_to_ngn_rate: float = 1600.0
     nowpayments_api_key: str | None = None
     nowpayments_ipn_secret: str | None = None
+    # NOWPayments GET /payment/ requires a short-lived JWT in addition to the API key.
+    nowpayments_email: str | None = None
+    nowpayments_password: str | None = None
     nowpayments_api_url: str = "https://api.nowpayments.io/v1"
     nowpayments_price_currency: str = "USD"
 
