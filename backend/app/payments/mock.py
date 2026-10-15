@@ -49,6 +49,8 @@ def create_mock_checkout(
         checkout_url=checkout_url,
         crypto_currency=crypto_currency,
         crypto_amount=crypto_amount,
+        charge_amount=float(request.amount),
+        charge_currency=request.currency.upper(),
         metadata={"mode": "mock"},
     )
 
