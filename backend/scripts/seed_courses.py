@@ -17,7 +17,7 @@ from sqlalchemy import select
 from app.db.session import SessionLocal
 from app.models.course import Course
 
-# Live enrollable: SQL ($35) and Python ($150). Others: price 0 = launching soon.
+# Live enrollable: SQL ($50) and Python ($150). Others: price 0 = launching soon.
 COURSES = [
     {
         "slug": "applied-ai-for-blockchain",
