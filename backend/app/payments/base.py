@@ -32,8 +32,8 @@ class CheckoutSession:
 class WebhookEvent:
     provider: PaymentProviderName
     order_id: str
-    provider_payment_id: str
-    status: PaymentStatus
+    provider_payment_id: str = ""
+    status: PaymentStatus = PaymentStatus.PENDING
     crypto_currency: str | None = None
     crypto_amount: str | None = None
     charge_amount: float | None = None
