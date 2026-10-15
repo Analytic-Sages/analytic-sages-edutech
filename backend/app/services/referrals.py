@@ -593,6 +593,37 @@ class ReferralCommissionService:
             return
 
         if conversion.status == ReferralConversionStatus.AVAILABLE:
+            # A refund can arrive after a partner has requested a payout that
+            # reserves these funds. Do not silently reverse the commission while
+            # allowing the outstanding payout to move to processing/paid.
+            open_payout = self.db.scalar(
+                select(PartnerPayoutRequest).where(
+                    PartnerPayoutRequest.partner_id == conversion.partner_id,
+                    PartnerPayoutRequest.currency == conversion.currency,
+                    PartnerPayoutRequest.status.in_(
+                        [
+                            PartnerPayoutStatus.REQUESTED,
+                            PartnerPayoutStatus.APPROVED,
+                            PartnerPayoutStatus.PROCESSING,
+                        ]
+                    ),
+                )
+            )
+            if open_payout:
+                conversion.status = ReferralConversionStatus.REVIEW_REQUIRED
+                self.db.add(
+                    ReferralAuditEvent(
+                        action="conversion.review_required",
+                        entity_type="referral_conversion",
+                        entity_id=conversion.id,
+                        after_json={
+                            "reason": "refund_during_open_payout",
+                            "payout_request_id": str(open_payout.id),
+                        },
+                    )
+                )
+                return
+
             conversion.status = ReferralConversionStatus.REVERSED
             self.db.add(
                 PartnerLedgerEntry(
@@ -901,6 +932,26 @@ class ReferralPayoutService:
         )
         if not payout:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payout not found")
+
+        # Refunds that overlap an open payout are flagged for manual review.
+        # Prevent that payout from being marked processing/paid until an admin
+        # resolves the affected conversion(s).
+        if status_value in {PartnerPayoutStatus.PROCESSING, PartnerPayoutStatus.PAID}:
+            flagged_refund = self.db.scalar(
+                select(ReferralConversion.id).where(
+                    ReferralConversion.partner_id == payout.partner_id,
+                    ReferralConversion.currency == payout.currency,
+                    ReferralConversion.status == ReferralConversionStatus.REVIEW_REQUIRED,
+                ).limit(1)
+            )
+            if flagged_refund:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=(
+                        "Payout is blocked: a refunded commission in this currency "
+                        "requires admin review before payment can proceed"
+                    ),
+                )
 
         before = payout.status.value
         payout.status = status_value
