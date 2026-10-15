@@ -792,9 +792,11 @@ def test_payout_service_rejects_below_minimum_in_each_configured_currency():
             assert payouts.minimum_for("USD") is not None
             assert payouts.minimum_for("NGN") is not None
             for currency in ("USD", "NGN"):
+                minimum = payouts.minimum_for(currency)
+                assert minimum is not None and minimum > 0
                 try:
                     payouts.request_payout(
-                        partner=partner, amount=Decimal("1.96"), currency=currency,
+                        partner=partner, amount=minimum / Decimal("2"), currency=currency,
                     )
                 except HTTPException as exc:
                     assert exc.status_code == 400
