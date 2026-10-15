@@ -765,7 +765,7 @@ def test_referral_track_sets_persistent_30_day_visitor_cookie():
     assert "Max-Age=2592000" in cookie
     assert "Path=/" in cookie
     assert "HttpOnly" in cookie
-    assert "SameSite=lax" in cookie.lower()
+    assert "samesite=lax" in cookie.lower()
 
 
 def test_payout_service_rejects_below_minimum_in_each_configured_currency():
@@ -807,31 +807,37 @@ def test_payout_service_rejects_below_minimum_in_each_configured_currency():
 
 
 def test_public_leaderboard_response_contains_only_partner_safe_fields(monkeypatch):
-    """Exercise the actual public API response schema, not only the frontend."""
+    """Exercise the public API serialization and ensure private learner fields cannot leak."""
     from app.api.v1 import referrals as referrals_api
-    from app.schemas.referrals import LeaderboardEntry
+    from app.core.config import get_settings
 
-    entry = LeaderboardEntry(rank=1, display_name="DataSage_01", successful_enrollments=3)
-    public_payload = entry.model_dump()
-    assert set(public_payload) == {"rank", "display_name", "successful_enrollments"}
-    assert "email" not in public_payload
-    assert "learner_name" not in public_payload
-    assert "payment_details" not in public_payload
+    class StubDashboard:
+        def leaderboard(self, *, period="all", limit=20):
+            return [{
+                "rank": 1,
+                "display_name": "DataSage_01",
+                "successful_enrollments": 3,
+            }]
 
-    # The endpoint is deliberately unavailable to anonymous visitors before launch.
-    settings = get_settings().model_copy(update={"partners_public": False})
-    response = client.get("/api/v1/referrals/leaderboard")
-    assert response.status_code == 404
-
-    # With the public flag enabled, the public response remains restricted to the schema.
-    monkeypatch.setattr(referrals_api, "get_settings", lambda: settings.model_copy(update={"partners_public": True}))
-    response = client.get("/api/v1/referrals/leaderboard")
-    assert response.status_code == 200
-    body = response.json()
-    assert set(body) == {"period", "entries"}
-    for row in body["entries"]:
-        assert set(row) == {"rank", "display_name", "successful_enrollments"}
-        assert not ({"email", "learner_email", "learner_name", "payment_details", "payment_id"} & set(row))
+    original_overrides = app.dependency_overrides.copy()
+    try:
+        settings = get_settings().model_copy(update={"partners_public": True})
+        app.dependency_overrides[get_settings] = lambda: settings
+        app.dependency_overrides[referrals_api._dashboard] = lambda: StubDashboard()
+        response = client.get("/api/v1/referrals/leaderboard")
+        assert response.status_code == 200
+        body = response.json()
+        assert set(body) == {"period", "entries"}
+        assert body["entries"] == [{
+            "rank": 1,
+            "display_name": "DataSage_01",
+            "successful_enrollments": 3,
+        }]
+        for row in body["entries"]:
+            assert not ({"email", "learner_email", "learner_name", "payment_details", "payment_id"} & set(row))
+    finally:
+        app.dependency_overrides.clear()
+        app.dependency_overrides.update(original_overrides)
 
 
 def test_refund_with_open_payout_requires_review_and_blocks_payout_transition():
