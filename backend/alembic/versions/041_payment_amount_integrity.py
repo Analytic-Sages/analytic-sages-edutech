@@ -1,7 +1,7 @@
 """Track expected and settled provider payment amounts.
 
 Revision ID: 041_payment_amount_integrity
-Revises: 040_recording_import
+Revises: 039_realtimekit_attendance
 Create Date: 2026-10-15
 """
 
