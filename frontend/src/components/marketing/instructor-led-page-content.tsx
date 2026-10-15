@@ -329,10 +329,13 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
         )}
       </CardHeader>
       <CardContent className="space-y-4">
-        {cohort.price > 0 && (
+        {((program ? 50 : cohort.price) > 0) && (
           <p className="text-sm text-muted-foreground">
             <span className="font-medium text-foreground">Tuition:</span>{" "}
-            <CurrencyPrice amount={cohort.price} baseCurrency={cohort.currency} />
+            <CurrencyPrice
+              amount={program ? 50 : cohort.price}
+              baseCurrency={program ? "USD" : cohort.currency}
+            />
           </p>
         )}
         {!waitlistOpen && (
