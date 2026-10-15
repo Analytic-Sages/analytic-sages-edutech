@@ -16,6 +16,7 @@ import {
 import { CurrencyPrice } from "@/components/marketing/currency-price";
 import {
   comingSoonCohortSlugs,
+  getProgramPage,
   getProgramPageHref,
   getProgramPostcard,
   getProgramWaitlistHref,
@@ -282,8 +283,13 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
   const programHref = getProgramPageHref(cohort.slug);
   const waitlistHref = getProgramWaitlistHref(cohort.slug);
   const postcard = getProgramPostcard(cohort.slug);
-  const waitlistOpen = Boolean(cohort.waitlist_open);
+  const program = getProgramPage(cohort.slug);
+  const isProgramRegistrationLive = Boolean(program && !program.comingSoon);
+  // The public program page is authoritative for this course launch; do not let a stale
+  // cohort-level waitlist flag hide its live registration CTA.
+  const waitlistOpen = isProgramRegistrationLive ? false : Boolean(cohort.waitlist_open);
   const engineering = getEngineeringProgramPage(cohort.slug);
+  const displayName = program?.headline ?? cohort.name;
 
   return (
     <Card className="overflow-hidden shadow-card">
@@ -291,7 +297,7 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
         <div className="relative aspect-[16/10] bg-brand-surface">
           <Image
             src={postcard}
-            alt={`${cohort.name} postcard`}
+            alt={`${displayName} postcard`}
             fill
             className="object-cover"
             sizes="(max-width: 1024px) 100vw, 50vw"
@@ -310,13 +316,15 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
             </span>
           )}
         </div>
-        <CardTitle className="font-heading text-2xl">{cohort.name}</CardTitle>
-        {engineering ? (
+        <CardTitle className="font-heading text-2xl">{displayName}</CardTitle>
+        {program ? (
+          <p className="text-base font-medium text-foreground/80">{program.support}</p>
+        ) : engineering ? (
           <p className="text-base font-medium text-foreground/80">{engineering.support}</p>
         ) : cohort.description ? (
           <p className="text-base font-medium text-foreground/80">{cohort.description}</p>
         ) : null}
-        {cohort.course_title && !engineering && (
+        {cohort.course_title && !engineering && !program && (
           <p className="text-sm text-muted-foreground">{cohort.course_title}</p>
         )}
       </CardHeader>
@@ -329,6 +337,11 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
         )}
         {!waitlistOpen && (
           <>
+            {isProgramRegistrationLive ? (
+              <p className="text-sm font-semibold leading-relaxed text-brand-orange">
+                Registration closes: 31 October 2026 · Classes start: 2 November 2026 · Fully remote · Live sessions
+              </p>
+            ) : (
             <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
               {formatDate(cohort.registration_deadline) && (
                 <p>
@@ -343,6 +356,7 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
                 </p>
               )}
             </div>
+            )}
             <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
                 <Users className="size-3.5" />
@@ -381,13 +395,19 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
               </ButtonLink>
             </>
           ) : programHref ? (
-            <ButtonLink
-              href={programHref}
-              className={cn("bg-brand-orange text-white hover:bg-brand-orange/90")}
-            >
-              View program
-              <ArrowRight className="ml-1 size-4" />
-            </ButtonLink>
+            <>
+              <ButtonLink href={programHref} variant="outline">
+                View programme
+                <ArrowRight className="ml-1 size-4" />
+              </ButtonLink>
+              <ButtonLink
+                href={isProgramRegistrationLive ? `/checkout/cohort/${cohort.slug}` : programHref}
+                className={cn("bg-brand-orange text-white hover:bg-brand-orange/90")}
+              >
+                {isProgramRegistrationLive ? "Register now" : "View program"}
+                <ArrowRight className="ml-1 size-4" />
+              </ButtonLink>
+            </>
           ) : cohort.price > 0 ? (
             <ButtonLink
               href={`/checkout/cohort/${cohort.slug}`}
