@@ -307,6 +307,8 @@ export type CheckoutResponse = {
   checkout_url: string;
   amount: number;
   currency: string;
+  charge_amount: number | null;
+  charge_currency: string | null;
   status: string;
   crypto_currency: string | null;
   crypto_amount: string | null;
@@ -339,6 +341,10 @@ export type PaymentPublic = {
   status: string;
   crypto_currency: string | null;
   crypto_amount: string | null;
+  charge_amount: number | null;
+  charge_currency: string | null;
+  settled_amount: number | null;
+  settled_currency: string | null;
   confirmed_at: string | null;
   created_at: string;
 };
