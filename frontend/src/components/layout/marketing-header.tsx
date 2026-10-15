@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, Moon, Sun } from "lucide-react";
+import { ChevronDown, Menu, Moon, Sun } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { useTheme } from "@/components/providers/theme-provider";
 import { Button } from "@/components/ui/button";
@@ -10,12 +10,35 @@ import { ButtonLink } from "@/components/ui/button-link";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { publicMarketingHeaderNav } from "@/config/navigation";
 import { useIsSignedIn } from "@/hooks/use-access-token";
+import { isPartnersPublic } from "@/lib/feature-flags";
 import { cn } from "@/lib/utils";
+
+const partnershipHref = "/partner-with-us";
+const referralsHref = "/partners";
 
 export function MarketingHeader() {
   const pathname = usePathname();
   const { toggleTheme } = useTheme();
   const signedIn = useIsSignedIn();
+  const partnerMenuActive =
+    pathname === partnershipHref ||
+    pathname.startsWith(`${partnershipHref}/`) ||
+    pathname === referralsHref ||
+    pathname.startsWith(`${referralsHref}/`);
+
+  const partnerMenuLinks = [
+    { title: "Partnership", href: partnershipHref },
+    ...(isPartnersPublic() ? [{ title: "Referrals", href: referralsHref }] : []),
+  ];
+
+  const navLinkClass = (active: boolean) =>
+    cn(
+      "relative py-1 text-base font-medium transition-colors hover:text-brand-navy dark:hover:text-brand-orange",
+      "after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:w-full after:origin-left after:scale-x-0 after:rounded-full after:bg-brand-orange after:transition-transform after:duration-300 after:ease-out hover:after:scale-x-100",
+      active
+        ? "text-brand-navy after:scale-x-100 dark:text-brand-orange"
+        : "text-muted-foreground",
+    );
 
   return (
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -24,26 +47,50 @@ export function MarketingHeader() {
           <Logo size="xl" />
         </div>
 
-        <nav className="hidden items-center gap-10 lg:pointer-fine:flex">
-          {publicMarketingHeaderNav().map((item) => {
-            const active =
-              pathname === item.href || pathname.startsWith(`${item.href}/`);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "relative py-1 text-base font-medium transition-colors hover:text-brand-navy dark:hover:text-brand-orange",
-                  "after:absolute after:-bottom-1 after:left-0 after:h-0.5 after:w-full after:origin-left after:scale-x-0 after:rounded-full after:bg-brand-orange after:transition-transform after:duration-300 after:ease-out hover:after:scale-x-100",
-                  active
-                    ? "text-brand-navy after:scale-x-100 dark:text-brand-orange"
-                    : "text-muted-foreground"
-                )}
-              >
-                {item.title}
-              </Link>
-            );
-          })}
+        <nav className="hidden items-center gap-10 lg:pointer-fine:flex" aria-label="Main navigation">
+          {publicMarketingHeaderNav()
+            .filter((item) => item.href !== partnershipHref)
+            .map((item) => {
+              const active =
+                pathname === item.href || pathname.startsWith(`${item.href}/`);
+              return (
+                <Link key={item.href} href={item.href} className={navLinkClass(active)}>
+                  {item.title}
+                </Link>
+              );
+            })}
+          <details className="group relative">
+            <summary
+              className={cn(
+                "flex cursor-pointer list-none items-center gap-1 py-1 text-base font-medium transition-colors hover:text-brand-navy dark:hover:text-brand-orange",
+                partnerMenuActive
+                  ? "text-brand-navy dark:text-brand-orange"
+                  : "text-muted-foreground",
+              )}
+              aria-label="Partner With Us menu"
+            >
+              Partner With Us
+              <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden="true" />
+            </summary>
+            <div className="absolute right-0 top-full z-50 mt-3 min-w-52 rounded-xl border bg-background p-2 shadow-lg">
+              {partnerMenuLinks.map((item) => {
+                const active =
+                  pathname === item.href || pathname.startsWith(`${item.href}/`);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "block rounded-lg px-4 py-2.5 text-sm font-medium transition-colors hover:bg-muted",
+                      active ? "text-brand-navy dark:text-brand-orange" : "text-foreground",
+                    )}
+                  >
+                    {item.title}
+                  </Link>
+                );
+              })}
+            </div>
+          </details>
         </nav>
 
         <div className="flex items-center gap-2 sm:gap-4">
@@ -99,7 +146,7 @@ export function MarketingHeader() {
             <SheetTrigger
               className={cn(
                 "inline-flex size-10 items-center justify-center rounded-lg lg:pointer-fine:hidden",
-                "hover:bg-muted hover:text-foreground"
+                "hover:bg-muted hover:text-foreground",
               )}
             >
               <Menu className="size-6" />
@@ -112,25 +159,63 @@ export function MarketingHeader() {
               <div className="flex items-center border-b px-6 py-5 pr-14">
                 <Logo size="lg" />
               </div>
-              <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-6 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-                {publicMarketingHeaderNav().map((item) => {
-                  const active =
-                    pathname === item.href || pathname.startsWith(`${item.href}/`);
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={cn(
-                        "rounded-lg px-1 py-2.5 text-lg font-medium",
-                        active
-                          ? "text-brand-navy dark:text-brand-orange"
-                          : "text-foreground"
-                      )}
-                    >
-                      {item.title}
-                    </Link>
-                  );
-                })}
+              <nav
+                className="flex flex-1 flex-col gap-1 overflow-y-auto px-6 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+                aria-label="Mobile navigation"
+              >
+                {publicMarketingHeaderNav()
+                  .filter((item) => item.href !== partnershipHref)
+                  .map((item) => {
+                    const active =
+                      pathname === item.href || pathname.startsWith(`${item.href}/`);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={cn(
+                          "rounded-lg px-1 py-2.5 text-lg font-medium",
+                          active
+                            ? "text-brand-navy dark:text-brand-orange"
+                            : "text-foreground",
+                        )}
+                      >
+                        {item.title}
+                      </Link>
+                    );
+                  })}
+                <details className="group rounded-lg">
+                  <summary
+                    className={cn(
+                      "flex cursor-pointer list-none items-center justify-between rounded-lg px-1 py-2.5 text-lg font-medium",
+                      partnerMenuActive
+                        ? "text-brand-navy dark:text-brand-orange"
+                        : "text-foreground",
+                    )}
+                  >
+                    Partner With Us
+                    <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden="true" />
+                  </summary>
+                  <div className="ml-3 flex flex-col border-l pl-3">
+                    {partnerMenuLinks.map((item) => {
+                      const active =
+                        pathname === item.href || pathname.startsWith(`${item.href}/`);
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          className={cn(
+                            "rounded-lg px-3 py-2.5 text-base font-medium",
+                            active
+                              ? "text-brand-navy dark:text-brand-orange"
+                              : "text-muted-foreground hover:text-foreground",
+                          )}
+                        >
+                          {item.title}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </details>
                 <hr className="my-4" />
                 {signedIn ? (
                   <div className="flex flex-col gap-3">
