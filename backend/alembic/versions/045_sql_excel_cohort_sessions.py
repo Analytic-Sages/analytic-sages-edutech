@@ -50,6 +50,35 @@ def upgrade() -> None:
         """
     )
 
+    # Refresh the first launch session when an older seed already created it.
+    op.execute(
+        """
+        WITH target AS (
+            SELECT s.id
+            FROM live_sessions AS s
+            JOIN cohorts AS c ON c.id = s.cohort_id
+            WHERE c.slug = 'cohort-9-blockchain-data'
+              AND s.session_type = 'teaching'
+              AND s.session_number = 1
+            ORDER BY s.starts_at ASC
+            LIMIT 1
+        )
+        UPDATE live_sessions AS s
+        SET
+            title = 'Orientation, Workspace Setup & Blockchain Research Workflow',
+            week_label = 'Week 1',
+            objectives = '["Set up the analytics workspace","Understand the course workflow and project expectations","Connect blockchain data questions to research outputs"]'::jsonb,
+            assignment_summary = 'Set up your workspace and write down three research questions to investigate during the cohort.',
+            description = 'SQL & Excel Cohort 1 scheduled session',
+            timezone = 'Africa/Lagos',
+            starts_at = TIMESTAMPTZ '2026-11-02 17:00:00+00',
+            ends_at = TIMESTAMPTZ '2026-11-02 19:00:00+00',
+            status = 'scheduled'::live_session_status,
+            updated_at = now()
+        FROM target
+        WHERE s.id = target.id
+        """
+    )
     op.execute(
         """
         WITH schedule(
