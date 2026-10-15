@@ -569,9 +569,12 @@ class PaymentService:
         return summary
 
     def _reconcile_nowpayments_payment(self, payment: Payment, *, payment_id: str | None) -> Payment:
-        """Pull the live record from NOWPayments and feed it through the normal
-        webhook pipeline. With no payment_id supplied, the record is discovered
-        automatically by our order_id via the payments list endpoint."""
+        """Fetch a known NOWPayments payment and feed it through the normal webhook pipeline.
+
+        Payment status is normally delivered by signed IPN callbacks. The list-payments
+        endpoint requires separate account JWT credentials, so reconciliation does not
+        attempt list discovery or require merchant account login credentials.
+        """
         from app.payments.nowpayments_provider import NOWPaymentsProvider, map_nowpayments_status
 
         provider = get_payment_provider(PaymentProviderName.NOWPAYMENTS, self.settings)
@@ -589,28 +592,24 @@ class PaymentService:
                     detail="No NOWPayments payment found with that payment ID",
                 )
         else:
-            record = None
             meta = dict(payment.metadata_json or {})
-            # Fast path: an earlier lookup already resolved the real payment id.
             known_payment_id = str(meta.get("nowpayments_payment_id") or "").strip()
-            if known_payment_id:
-                try:
-                    record = provider.fetch_payment_by_id(known_payment_id)
-                except HTTPException:
-                    record = None
-            if not record:
-                record = provider.find_payment_for_order(payment.order_id)
-            if not record:
-                invoice_id = str(meta.get("invoice_id") or "").strip()
-                if invoice_id:
-                    record = provider.find_payment_by_invoice(invoice_id)
-            if not record:
+            if not known_payment_id and payment.provider_payment_id:
+                # The signed IPN stores the actual payment ID here.
+                known_payment_id = str(payment.provider_payment_id).strip()
+            if not known_payment_id:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail=(
-                        "No NOWPayments payment found for this order yet — the customer "
-                        "may not have sent funds"
+                        "No NOWPayments payment ID is recorded yet. The signed "
+                        "NOWPayments IPN will update the payment status automatically."
                     ),
+                )
+            record = provider.fetch_payment_by_id(known_payment_id)
+            if not record:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="No NOWPayments payment found with that payment ID",
                 )
         # Invoice payments do not always echo our order_id. Only reject a record
         # when it clearly belongs to a *different* order we set.
@@ -623,7 +622,7 @@ class PaymentService:
 
         resolved_payment_id = str(record.get("payment_id") or "").strip()
         if resolved_payment_id:
-            # Remember it so later reconciles skip the list scan.
+            # Remember the actual payment ID for later direct status lookups.
             payment.metadata_json = {
                 **(payment.metadata_json or {}),
                 "nowpayments_payment_id": resolved_payment_id,
