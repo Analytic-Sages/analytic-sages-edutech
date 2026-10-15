@@ -13,14 +13,28 @@ import {
 export function AdminAssignmentsContent() {
   const [cohorts, setCohorts] = useState<AdminCohortOption[]>([]);
   const [cohortId, setCohortId] = useState("");
+  const [loadingCohorts, setLoadingCohorts] = useState(true);
+  const [cohortError, setCohortError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     getAdminClassroomCohorts()
       .then((rows) => {
+        if (cancelled) return;
         setCohorts(rows);
         if (rows.length > 0) setCohortId(rows[0].id);
       })
-      .catch(() => {});
+      .catch((err) => {
+        if (!cancelled) {
+          setCohortError(err instanceof Error ? err.message : "Could not load cohorts. Please refresh and try again.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingCohorts(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -30,11 +44,21 @@ export function AdminAssignmentsContent() {
         description="Track submissions and review student work across a cohort."
       />
 
-      {cohorts.length === 0 ? (
+      {loadingCohorts ? (
+        <p className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" /> Loading cohorts…
+        </p>
+      ) : cohortError ? (
         <EmptyState
           icon={<Loader2 className="size-6" />}
-          title="No cohorts"
-          description="Create a cohort to start tracking assignments."
+          title="Could not load cohorts"
+          description={cohortError}
+        />
+      ) : cohorts.length === 0 ? (
+        <EmptyState
+          icon={<Loader2 className="size-6" />}
+          title="No cohorts available"
+          description="Create or activate a cohort to start tracking student assignment submissions."
         />
       ) : (
         <>

@@ -86,16 +86,34 @@ export function InstructorAssignmentsPanel({ cohortId }: { cohortId: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    listInstructorAssignments(cohortId)
-      .then((rows) => {
-        if (!cancelled) setAssignments(rows);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err instanceof ApiError ? err.detail : "Failed to load assignments");
-      })
-      .finally(() => {
+
+    async function loadAssignmentsAndSubmissions() {
+      try {
+        const rows = await listInstructorAssignments(cohortId);
+        if (cancelled) return;
+        setAssignments(rows);
+
+        // Open the first assignment automatically so this page lands on
+        // the submission/review view instead of looking like a create-only page.
+        const firstAssignment = rows[0];
+        if (firstAssignment) {
+          setSelectedId(firstAssignment.id);
+          const data = await getAssignmentTracking(firstAssignment.id);
+          if (!cancelled) setTracking(data);
+        } else {
+          setTracking(null);
+          setSelectedId(null);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof ApiError ? err.detail : "Failed to load assignments and submissions");
+        }
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    }
+
+    void loadAssignmentsAndSubmissions();
     return () => {
       cancelled = true;
     };
