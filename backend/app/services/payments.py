@@ -636,6 +636,8 @@ class PaymentService:
             crypto_amount=(
                 str(record["pay_amount"]) if record.get("pay_amount") is not None else None
             ),
+            charge_amount=float(record["price_amount"]) if record.get("price_amount") is not None else None,
+            charge_currency=str(record.get("price_currency") or "").upper() or None,
             raw={**record, "reconciled_by_admin": True},
         )
         return self.process_webhook_event(event)
@@ -665,6 +667,8 @@ class PaymentService:
             status=provider.map_status(event="charge.success", paystack_status=paystack_status),
             crypto_currency=None,
             crypto_amount=None,
+            charge_amount=float(verified["amount"]) / 100 if verified.get("amount") is not None else None,
+            charge_currency=str(verified.get("currency") or "").upper() or None,
             raw={"verified": verified, "reconciled_by_admin": True},
         )
         return self.process_webhook_event(event)
