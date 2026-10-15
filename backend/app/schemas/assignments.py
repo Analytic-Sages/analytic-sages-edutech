@@ -38,6 +38,10 @@ class SubmissionPublic(BaseModel):
     github_url: str | None = None
     live_url: str | None = None
     build_in_public_url: str | None = None
+    x_post_text: str | None = None
+    x_post_url: str | None = None
+    linkedin_post_text: str | None = None
+    linkedin_post_url: str | None = None
     documentation_url: str | None = None
     files: list[dict[str, Any]] = Field(default_factory=list)
     score: int | None = None
@@ -57,6 +61,10 @@ class SubmissionUpsert(BaseModel):
     github_url: str | None = Field(default=None, max_length=512)
     live_url: str | None = Field(default=None, max_length=512)
     build_in_public_url: str | None = Field(default=None, max_length=512)
+    x_post_text: str | None = Field(default=None, max_length=10000)
+    x_post_url: str | None = Field(default=None, max_length=512)
+    linkedin_post_text: str | None = Field(default=None, max_length=10000)
+    linkedin_post_url: str | None = Field(default=None, max_length=512)
     documentation_url: str | None = Field(default=None, max_length=512)
     files: list[dict[str, Any]] = Field(default_factory=list)
     status: str = Field(default="draft", pattern="^(draft|submitted)$")

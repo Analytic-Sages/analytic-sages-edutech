@@ -42,6 +42,10 @@ export function AssignmentDetailContent({ assignmentId }: { assignmentId: string
   const [github, setGithub] = useState("");
   const [live, setLive] = useState("");
   const [buildInPublic, setBuildInPublic] = useState("");
+  const [xPostText, setXPostText] = useState("");
+  const [xPostUrl, setXPostUrl] = useState("");
+  const [linkedinPostText, setLinkedinPostText] = useState("");
+  const [linkedinPostUrl, setLinkedinPostUrl] = useState("");
   const [docs, setDocs] = useState("");
 
   useEffect(() => {
@@ -55,6 +59,10 @@ export function AssignmentDetailContent({ assignmentId }: { assignmentId: string
         setGithub(sub?.github_url ?? "");
         setLive(sub?.live_url ?? "");
         setBuildInPublic(sub?.build_in_public_url ?? "");
+        setXPostText(sub?.x_post_text ?? "");
+        setXPostUrl(sub?.x_post_url ?? "");
+        setLinkedinPostText(sub?.linkedin_post_text ?? "");
+        setLinkedinPostUrl(sub?.linkedin_post_url ?? "");
         setDocs(sub?.documentation_url ?? "");
       })
       .catch((err) => {
@@ -80,6 +88,10 @@ export function AssignmentDetailContent({ assignmentId }: { assignmentId: string
         github_url: github,
         live_url: live,
         build_in_public_url: buildInPublic,
+        x_post_text: xPostText,
+        x_post_url: xPostUrl,
+        linkedin_post_text: linkedinPostText,
+        linkedin_post_url: linkedinPostUrl,
         documentation_url: docs,
         files: [],
       });
@@ -199,6 +211,31 @@ export function AssignmentDetailContent({ assignmentId }: { assignmentId: string
             <div className="space-y-2">
               <Label htmlFor="docs">Documentation URL</Label>
               <Input id="docs" value={docs} onChange={(e) => setDocs(e.target.value)} placeholder="https://docs.your-project.com" />
+            </div>
+          </div>
+
+          <div className="space-y-4 rounded-xl border border-brand-orange/30 bg-brand-orange/5 p-4 sm:p-5">
+            <div>
+              <h3 className="font-heading text-base font-semibold">Build in Public</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Prepare a platform-specific update and add its public URL after publishing. Save drafts here before posting.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="x-post-text">X post draft</Label>
+              <Textarea id="x-post-text" rows={4} maxLength={280} value={xPostText} onChange={(e) => setXPostText(e.target.value)} placeholder="Share what you built, what you learned, and one useful insight…" />
+              <p className="text-right text-xs text-muted-foreground">{xPostText.length}/280 characters</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="x-post-url">Published X post URL</Label>
+              <Input id="x-post-url" type="url" value={xPostUrl} onChange={(e) => setXPostUrl(e.target.value)} placeholder="https://x.com/you/status/…" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="linkedin-post-text">LinkedIn post draft</Label>
+              <Textarea id="linkedin-post-text" rows={6} maxLength={3000} value={linkedinPostText} onChange={(e) => setLinkedinPostText(e.target.value)} placeholder="Explain the problem, your approach, key learning, and project evidence…" />
+              <p className="text-right text-xs text-muted-foreground">{linkedinPostText.length}/3000 characters</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="linkedin-post-url">Published LinkedIn post URL</Label>
+              <Input id="linkedin-post-url" type="url" value={linkedinPostUrl} onChange={(e) => setLinkedinPostUrl(e.target.value)} placeholder="https://www.linkedin.com/posts/…" />
             </div>
           </div>
 
