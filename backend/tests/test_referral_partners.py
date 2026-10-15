@@ -12,6 +12,7 @@ from sqlalchemy import select
 from app.core.config import get_settings
 from app.core.payments import PaymentProviderName, PaymentStatus
 from app.core.referrals import (
+    PartnerLedgerEntryType,
     PartnerLedgerStatus,
     ReferralConversionStatus,
     ReferralPartnerStatus,
