@@ -272,6 +272,10 @@ class PaystackProvider:
             status=payment_status,
             crypto_currency=None,
             crypto_amount=None,
+            charge_amount=from_paystack_subunit(
+                verified.get("amount"), str(verified.get("currency") or "").upper()
+            ) if verified.get("amount") is not None else None,
+            charge_currency=str(verified.get("currency") or "").upper() or None,
             raw={
                 "event": event,
                 "webhook": payload,
