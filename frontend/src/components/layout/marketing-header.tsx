@@ -27,8 +27,8 @@ export function MarketingHeader() {
     pathname.startsWith(`${referralsHref}/`);
 
   const partnerMenuLinks = [
-    { title: "Partnership", href: partnershipHref },
-    ...(isPartnersPublic() ? [{ title: "Referrals", href: referralsHref }] : []),
+    { title: "Strategic Partnerships", href: partnershipHref },
+    ...(isPartnersPublic() ? [{ title: "Become a Referral Partner", href: referralsHref }] : []),
   ];
 
   const navLinkClass = (active: boolean) =>
