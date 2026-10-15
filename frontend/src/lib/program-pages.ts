@@ -41,6 +41,7 @@ export type ProgramPageContent = {
   audienceFor: string[];
   audienceNotFor: string[];
   learnTopics: { title: string; body: string }[];
+  pathways?: { title: string; kicker: string; body: string; output: string }[];
   outcomesIntro: string;
   outcomes: string[];
   outcomeBonus: string;
@@ -61,7 +62,7 @@ const cohort9: ProgramPageContent = {
   cohortSlug: COHORT_9_COHORT_SLUG,
   aliases: [COHORT_9_COHORT_SLUG],
   eyebrow: "Cohort 1 Launch · Instructor-Led",
-  headline: "SQL Blockchain Data Analytics",
+  headline: "SQL & Excel for Blockchain Data Analytics and Research",
   support:
     "Master SQL, Excel and AI for Web3 research in a six-week instructor-led bootcamp. Move from raw blockchain data to practical market intelligence, dashboards and research across DeFi, tokenized real-world assets and perpetual futures.",
   seoTitle: "SQL & Excel for Onchain Data and Research Analysis | Analytic Sages",
@@ -73,8 +74,8 @@ const cohort9: ProgramPageContent = {
   format: "Instructor-led training, practical labs, weekly projects and office hours",
   duration: "6 weeks",
   timeCommitment: "5–8 hours per week · Mondays and Wednesdays training, Fridays office hours",
-  paymentOptions: "Cohort 1 early-bird: $50 / ₦70,000 (50% off the $100 / ₦140,000 standard rate). Registration and payment availability will be confirmed before enrolment opens.",
-  comingSoon: true,
+  paymentOptions: "Cohort 1 launch price: $50 / ₦70,000. Registration closes 31 October 2026.",
+  comingSoon: false,
   audienceFor: [
     "You want practical SQL, Excel and AI skills for Web3 research",
     "You want to analyze DeFi, RWA tokenization or perpetual futures",
@@ -109,6 +110,32 @@ const cohort9: ProgramPageContent = {
     {
       title: "Portfolio-Ready Capstone",
       body: "Package SQL, an Excel workbook, a dashboard, research report and presentation.",
+    },
+  ],
+  pathways: [
+    {
+      title: "SQL Analytics Training",
+      kicker: "CORE CURRICULUM",
+      body: "Build the core workflow: extract data, validate metrics, analyze with SQL and Excel, and present findings clearly.",
+      output: "Output: SQL queries · Excel workbook · dashboard · research brief",
+    },
+    {
+      title: "Study Group",
+      kicker: "ONGOING PRACTICE",
+      body: "Keep your analytical skills sharp through short CoinGecko, Excel, protocol-metrics and SQL exercises.",
+      output: "Output: Weekly exercises · peer reviews · reusable templates",
+    },
+    {
+      title: "Research Lab",
+      kicker: "DEEPER INVESTIGATION",
+      body: "Turn analytical skills into deeper research across DeFi, RWA and tokenization, stablecoins, perpetual futures and ecosystem growth.",
+      output: "Output: Research reports · dashboards · datasets · analytical threads",
+    },
+    {
+      title: "Fellowship",
+      kicker: "TALENT DEVELOPMENT",
+      body: "Committed learners can progress into larger research briefs, mentorship, methodology documentation and community or industry presentations.",
+      output: "Output: Research ownership · portfolio evidence · mentorship · opportunities",
     },
   ],
   outcomesIntro: "By the end of this program…",
@@ -200,7 +227,7 @@ const cohort9: ProgramPageContent = {
     {
       question: "When does the programme start and what does it cost?",
       answer:
-        "The six-week programme is scheduled for 2 November to 11 December 2026. Cohort 1 launch pricing is $50 / ₦70,000, compared with the standard rate of $100 / ₦140,000. Registration and payment details will be confirmed when enrolment opens.",
+        "The six-week programme runs from 2 November to 11 December 2026. Cohort 1 launch pricing is $50 / ₦70,000. Registration closes on 31 October 2026.",
     },
     {
       question: "What do I need to start?",

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { ArrowRight, Check, ChevronUp, Database, Loader2, X } from "lucide-react";
+import { ArrowRight, Check, ChevronUp, Database, FlaskConical, GraduationCap, Loader2, Users, X } from "lucide-react";
 import { ProgramDuneGrid } from "@/components/marketing/program-dune-grid";
 import { InstructorRoster } from "@/components/marketing/instructor-roster";
 import { ProgramTestimonialCarousel } from "@/components/marketing/program-testimonial-carousel";
@@ -95,7 +95,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
             ) : (
               <p className="mt-6 text-sm text-muted-foreground sm:text-base">
                 {isComingSoon
-                  ? "Cohort 1 · Starts 2 November 2026 · Early-bird $50 / ₦70,000 · Fully remote · Live sessions"
+                  ? "Cohort 1 · Starts 2 November 2026 · $50 / ₦70,000 · Registration closes 31 October · Fully remote · Live sessions"
                   : [
                       deadline ? `Registration closes: ${deadline}` : null,
                       startDate ? `Classes start: ${startDate}` : null,
@@ -168,6 +168,33 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
           ))}
         </div>
       </section>
+
+      {program.pathways?.length ? (
+        <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-brand-orange">Beyond the classroom</p>
+            <h2 className="mt-2 font-heading text-3xl font-bold sm:text-4xl">Your Path From Learning to Research</h2>
+            <p className="mt-3 text-muted-foreground">The training is the foundation. Continue practising, go deeper into research, and build evidence of your analytical ability.</p>
+          </div>
+          <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+            {program.pathways.map((pathway, index) => {
+              const icons = [Database, Users, FlaskConical, GraduationCap];
+              const Icon = icons[index] ?? Database;
+              return (
+                <div key={pathway.title} className="relative rounded-2xl border border-brand-navy/15 bg-card p-6 shadow-sm dark:border-white/10">
+                  <div className="flex size-11 items-center justify-center rounded-xl bg-brand-orange/10 text-brand-orange">
+                    <Icon className="size-5" />
+                  </div>
+                  <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.14em] text-brand-orange">{pathway.kicker}</p>
+                  <h3 className="mt-2 font-heading text-xl font-bold">{pathway.title}</h3>
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{pathway.body}</p>
+                  <p className="mt-5 border-t border-border/60 pt-4 text-xs font-medium leading-relaxed">{pathway.output}</p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
 
       <section className="mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
         <h2 className="text-center font-heading text-3xl font-bold sm:text-4xl">Who This Is For</h2>

@@ -79,7 +79,7 @@ export function SqlBlockchainDataAnalyticsCurriculum() {
       <section className="border-b border-border/60 bg-[#0B1F3A] text-white">
         <div className="mx-auto max-w-5xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
           <p className="text-sm font-semibold uppercase tracking-[0.14em] text-brand-orange">Full curriculum · Instructor-led</p>
-          <h1 className="mt-3 font-heading text-4xl font-bold tracking-tight sm:text-5xl">SQL & Excel for Onchain Data and Research Analysis</h1>
+          <h1 className="mt-3 font-heading text-4xl font-bold tracking-tight sm:text-5xl">SQL & Excel for Blockchain Data Analytics and Research</h1>
           <p className="mt-4 max-w-2xl text-lg text-white/80">A six-week practical learning journey from blockchain data queries to market intelligence, dashboards and publishable research.</p>
           <p className="mt-6 text-sm font-medium tracking-wide text-brand-orange">2 November – 11 December 2026 · Mondays and Wednesdays training · Fridays office hours · Time to be confirmed (WAT, UTC+1)</p>
           <div className="mt-8 flex flex-wrap gap-3">
