@@ -75,7 +75,8 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
 
   return (
     <div className="min-h-screen bg-[#0A0F1B] pb-24 text-white md:pb-0">
-      <div className="bg-[linear-gradient(115deg,#102b4b_0%,#102744_55%,#3b3040_100%)]">\n      <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
+      <div className="bg-[linear-gradient(115deg,#102b4b_0%,#102744_55%,#3b3040_100%)]">
+      <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
         <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="text-center lg:text-left">
             <p className="text-sm font-semibold uppercase tracking-[0.14em] text-brand-orange">
@@ -154,6 +155,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
           </div>
         </div>
       </section>
+      </div>
 
       <InstructorRoster instructors={cohort?.instructors} />
 
@@ -165,7 +167,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
           {program.learnTopics.map((topic) => (
             <div
               key={topic.title}
-              className="rounded-xl border border-brand-navy/25 px-6 py-8 text-center dark:border-white/15"
+              className="rounded-xl border border-white/10 bg-[#111C2D] px-6 py-8 text-center"
             >
               <h3 className="font-heading text-lg font-bold">{topic.title}</h3>
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{topic.body}</p>
@@ -217,7 +219,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
               ))}
             </ul>
           </div>
-          <div className="rounded-2xl border border-brand-navy/20 p-6 sm:p-8 dark:border-white/15">
+          <div className="rounded-2xl border border-white/10 bg-[#111C2D] p-6 sm:p-8">
             <h3 className="font-heading text-xl font-bold">Not for you if..</h3>
             <ul className="mt-6 space-y-4">
               {program.audienceNotFor.map((item) => (
