@@ -232,49 +232,22 @@ class NOWPaymentsProvider:
         """
         return self._scan_payments(field="invoice_id", value=invoice_id)
 
-    _SCAN_PAGE_LIMIT = 100
-    _SCAN_MAX_PAGES = 6  # up to 600 most-recent payments
-
     def _scan_payments(self, *, field: str, value: str) -> dict[str, Any] | None:
-        """Find the payment record whose ``field`` (order_id / invoice_id) matches."""
-        api_key = self.settings.nowpayments_api_key
-        if not api_key:
+        """Skip list discovery because NOWPayments requires separate account JWT auth.
+
+        Invoice creation and signed IPN verification need only the API key and IPN
+        secret. We do not request or store the merchant's account login credentials.
+        """
+        if not self.settings.nowpayments_api_key:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="NOWPayments is not configured",
             )
-
-        base = self.settings.nowpayments_api_url.rstrip("/")
-        try:
-            with httpx.Client(timeout=15.0) as client:
-                for page in range(self._SCAN_MAX_PAGES):
-                    response = client.get(
-                        f"{base}/payment/",
-                        headers={"x-api-key": api_key},
-                        params={
-                            "limit": self._SCAN_PAGE_LIMIT,
-                            "page": page,
-                            "sortBy": "created_at",
-                            "orderBy": "desc",
-                        },
-                    )
-                    if response.status_code >= 400:
-                        logger.error(
-                            "NOWPayments list payments error %s=%s status=%s body=%s",
-                            field,
-                            value,
-                            response.status_code,
-                            response.text[:500],
-                        )
-                        return None
-                    items = response.json().get("data") or []
-                    for record in items:
-                        if str(record.get(field) or "") == value:
-                            return record
-                    if len(items) < self._SCAN_PAGE_LIMIT:
-                        return None
-        except httpx.HTTPError:
-            logger.exception("NOWPayments list payments failed %s=%s", field, value)
+        logger.info(
+            "NOWPayments list discovery skipped (separate account JWT required): field=%s value=%s",
+            field,
+            value,
+        )
         return None
 
     def _create_invoice(self, request: CheckoutRequest) -> CheckoutSession:

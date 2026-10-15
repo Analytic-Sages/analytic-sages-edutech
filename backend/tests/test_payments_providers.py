@@ -262,35 +262,12 @@ def test_fetch_payment_by_id_returns_record():
     assert kwargs["headers"]["x-api-key"] == "live-key"
 
 
-def test_find_payment_for_order_matches_order_id():
-    settings = _settings(
-        nowpayments_api_key="live-key",
-        nowpayments_ipn_secret="ipn-secret",
-        nowpayments_api_url="https://api.nowpayments.io/v1",
-    )
+def test_find_payment_for_order_skips_account_login_list_endpoint():
+    settings = _settings(nowpayments_api_key="live-key")
     provider = get_payment_provider(PaymentProviderName.NOWPAYMENTS, settings)
-
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {
-        "data": [
-            {"payment_id": 111, "order_id": "ord_other", "payment_status": "finished"},
-            {"payment_id": 987, "order_id": "ord_test123", "payment_status": "finished"},
-        ]
-    }
-
-    mock_client = MagicMock()
-    mock_client.__enter__.return_value = mock_client
-    mock_client.get.return_value = mock_response
-
-    with patch("app.payments.nowpayments_provider.httpx.Client", return_value=mock_client):
-        record = provider.find_payment_for_order("ord_test123")
-
-    assert record is not None
-    assert record["payment_id"] == 987
-    args, kwargs = mock_client.get.call_args
-    assert args[0] == "https://api.nowpayments.io/v1/payment/"
-    assert kwargs["headers"]["x-api-key"] == "live-key"
+    with patch("app.payments.nowpayments_provider.httpx.Client") as client:
+        assert provider.find_payment_for_order("ord_test123") is None
+        client.assert_not_called()
 
 
 def test_find_payment_for_order_returns_none_when_absent():
@@ -489,29 +466,12 @@ def test_live_paystack_webhook_bad_signature():
     assert exc.value.status_code == 401
 
 
-def test_find_payment_by_invoice_matches_record_without_order_id():
-    """Invoice payments can come back without our order_id — match on invoice_id."""
+def test_find_payment_by_invoice_skips_account_login_list_endpoint():
     settings = _settings(nowpayments_api_key="live-key")
     provider = get_payment_provider(PaymentProviderName.NOWPAYMENTS, settings)
-
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {
-        "data": [
-            {"payment_id": 111, "invoice_id": 999, "payment_status": "finished"},
-            {"payment_id": 222, "invoice_id": 555, "payment_status": "finished"},
-        ]
-    }
-    mock_client = MagicMock()
-    mock_client.__enter__.return_value = mock_client
-    mock_client.get.return_value = mock_response
-
-    with patch("app.payments.nowpayments_provider.httpx.Client", return_value=mock_client):
-        record = provider.find_payment_by_invoice("999")
-        assert record is not None
-        assert record["payment_id"] == 111
-        # The order_id scan does not match these records, proving invoice fallback matters.
-        assert provider.find_payment_for_order("999") is None
+    with patch("app.payments.nowpayments_provider.httpx.Client") as client:
+        assert provider.find_payment_by_invoice("999") is None
+        client.assert_not_called()
 
 
 def test_scan_payments_errors_when_list_endpoint_fails():
