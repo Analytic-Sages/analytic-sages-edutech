@@ -31,7 +31,7 @@ from app.models.referral import (
     ReferralConversion,
     ReferralPartner,
 )
-from app.models.user import User
+from app.models.user import EmailVerificationToken, User
 from app.payments.base import WebhookEvent
 from app.services.email import EmailService
 from app.services.payments import PaymentService
@@ -79,6 +79,11 @@ def _cleanup_emails(*emails: str) -> None:
             user = db.scalar(select(User).where(User.email == email))
             if not user:
                 continue
+            # Verification tokens reference users with a non-nullable foreign key.
+            for token in db.scalars(
+                select(EmailVerificationToken).where(EmailVerificationToken.user_id == user.id)
+            ).all():
+                db.delete(token)
             partner = db.scalar(select(ReferralPartner).where(ReferralPartner.user_id == user.id))
             if partner:
                 for conv in db.scalars(
@@ -960,6 +965,10 @@ def test_registration_locks_cookie_attribution_to_account_for_later_other_device
     finally:
         db.close()
 
+    # Keep this test independent of deployment cookie-domain/security settings.
+    original_overrides = app.dependency_overrides.copy()
+    test_settings = get_settings().model_copy(update={"cookie_secure": False, "cookie_domain": None})
+    app.dependency_overrides[get_settings] = lambda: test_settings
     browser = TestClient(app)
     try:
         tracked = browser.post("/api/v1/referrals/track", json={"code": code})
@@ -1005,4 +1014,8 @@ def test_registration_locks_cookie_attribution_to_account_for_later_other_device
                 db.commit()
         finally:
             db.close()
-        _cleanup_emails(partner_email, admin_email, learner_email)
+        try:
+            _cleanup_emails(partner_email, admin_email, learner_email)
+        finally:
+            app.dependency_overrides.clear()
+            app.dependency_overrides.update(original_overrides)
