@@ -128,7 +128,7 @@ export function ClassroomScheduleContent({
           title={isStaff ? "Staff classroom" : "Live Classroom"}
           description={
             isStaff
-              ? "Join Cohort 9 sessions as instructor. Student seats unlock after payment is confirmed."
+              ? "Manage live cohort sessions as an instructor. Student access unlocks after payment is confirmed."
               : "Expert-led sessions for your cohort. Join when class is live; review resources anytime."
           }
         />
@@ -143,7 +143,7 @@ export function ClassroomScheduleContent({
           title={isStaff ? "No sessions on the calendar yet" : "No cohort sessions yet"}
           description={
             isStaff
-              ? "When Cohort 9 sessions are scheduled, they will show here so you can join as instructor."
+              ? "When sessions are scheduled for your live cohorts, they will show here so you can join as instructor."
               : "You're signed in, but not enrolled in a live cohort yet. Ask an admin to add you, or for local dev run: python scripts/seed_classroom.py --email your@email.com"
           }
           action={
