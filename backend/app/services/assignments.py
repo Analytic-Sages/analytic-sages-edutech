@@ -75,6 +75,10 @@ class AssignmentService:
             github_url=sub.github_url,
             live_url=sub.live_url,
             build_in_public_url=sub.build_in_public_url,
+            x_post_text=sub.x_post_text,
+            x_post_url=sub.x_post_url,
+            linkedin_post_text=sub.linkedin_post_text,
+            linkedin_post_url=sub.linkedin_post_url,
             documentation_url=sub.documentation_url,
             files=list(sub.files or []),
             score=sub.score,
@@ -146,6 +150,10 @@ class AssignmentService:
             sub.github_url = payload.github_url
             sub.live_url = payload.live_url
             sub.build_in_public_url = payload.build_in_public_url
+            sub.x_post_text = payload.x_post_text
+            sub.x_post_url = payload.x_post_url
+            sub.linkedin_post_text = payload.linkedin_post_text
+            sub.linkedin_post_url = payload.linkedin_post_url
             sub.documentation_url = payload.documentation_url
             sub.files = list(payload.files)
             sub.status = resolved_status
@@ -160,6 +168,10 @@ class AssignmentService:
                 github_url=payload.github_url,
                 live_url=payload.live_url,
                 build_in_public_url=payload.build_in_public_url,
+                x_post_text=payload.x_post_text,
+                x_post_url=payload.x_post_url,
+                linkedin_post_text=payload.linkedin_post_text,
+                linkedin_post_url=payload.linkedin_post_url,
                 documentation_url=payload.documentation_url,
                 files=list(payload.files),
                 submitted_at=now if payload.status == "submitted" else None,
