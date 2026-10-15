@@ -262,8 +262,30 @@ export function InstructorAssignmentsPanel({ cohortId }: { cohortId: string }) {
                       Build in public <ExternalLink className="size-3" />
                     </a>
                   )}
+                  {row.submission.x_post_url && (
+                    <a href={row.submission.x_post_url} target="_blank" rel="noreferrer" className="ml-3 inline-flex items-center gap-1 text-sm text-brand-orange hover:underline">
+                      X post <ExternalLink className="size-3" />
+                    </a>
+                  )}
+                  {row.submission.linkedin_post_url && (
+                    <a href={row.submission.linkedin_post_url} target="_blank" rel="noreferrer" className="ml-3 inline-flex items-center gap-1 text-sm text-brand-orange hover:underline">
+                      LinkedIn post <ExternalLink className="size-3" />
+                    </a>
+                  )}
                   {row.submission.text_response && (
                     <p className="whitespace-pre-wrap text-sm text-muted-foreground">{row.submission.text_response}</p>
+                  )}
+                  {row.submission.x_post_text && (
+                    <div className="rounded-lg border p-3">
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">X post draft</p>
+                      <p className="whitespace-pre-wrap text-sm">{row.submission.x_post_text}</p>
+                    </div>
+                  )}
+                  {row.submission.linkedin_post_text && (
+                    <div className="rounded-lg border p-3">
+                      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">LinkedIn post draft</p>
+                      <p className="whitespace-pre-wrap text-sm">{row.submission.linkedin_post_text}</p>
+                    </div>
                   )}
 
                   <div className="flex flex-wrap items-end gap-2">
