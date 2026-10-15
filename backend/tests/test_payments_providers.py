@@ -32,8 +32,6 @@ def _settings(**overrides) -> Settings:
         paystack_secret_key=None,
         nowpayments_api_key=None,
         nowpayments_ipn_secret=None,
-        nowpayments_email="merchant@example.com",
-        nowpayments_password="merchant-password",
     )
     base.update(overrides)
     return Settings(**base)
@@ -252,10 +250,6 @@ def test_fetch_payment_by_id_returns_record():
 
     mock_client = MagicMock()
     mock_client.__enter__.return_value = mock_client
-    auth_response = MagicMock()
-    auth_response.status_code = 200
-    auth_response.json.return_value = {"token": "test-jwt-token"}
-    mock_client.post.return_value = auth_response
     mock_client.get.return_value = mock_response
 
     with patch("app.payments.nowpayments_provider.httpx.Client", return_value=mock_client):
