@@ -2024,7 +2024,7 @@ export type SubmissionPublic = {
   reviewer_name: string | null;
   reviewed_at: string | null;
   submitted_at: string | null;
-  updated_at: string;
+  updated_at: string | null;
 };
 
 export type AssignmentDetail = AssignmentPublic & {
