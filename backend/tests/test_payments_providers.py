@@ -32,6 +32,8 @@ def _settings(**overrides) -> Settings:
         paystack_secret_key=None,
         nowpayments_api_key=None,
         nowpayments_ipn_secret=None,
+        nowpayments_email="merchant@example.com",
+        nowpayments_password="merchant-password",
     )
     base.update(overrides)
     return Settings(**base)
@@ -250,6 +252,10 @@ def test_fetch_payment_by_id_returns_record():
 
     mock_client = MagicMock()
     mock_client.__enter__.return_value = mock_client
+    auth_response = MagicMock()
+    auth_response.status_code = 200
+    auth_response.json.return_value = {"token": "test-jwt-token"}
+    mock_client.post.return_value = auth_response
     mock_client.get.return_value = mock_response
 
     with patch("app.payments.nowpayments_provider.httpx.Client", return_value=mock_client):
@@ -291,6 +297,7 @@ def test_find_payment_for_order_matches_order_id():
     args, kwargs = mock_client.get.call_args
     assert args[0] == "https://api.nowpayments.io/v1/payment/"
     assert kwargs["headers"]["x-api-key"] == "live-key"
+    assert kwargs["headers"]["Authorization"] == "Bearer test-jwt-token"
 
 
 def test_find_payment_for_order_returns_none_when_absent():
