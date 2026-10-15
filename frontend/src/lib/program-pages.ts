@@ -61,7 +61,7 @@ const cohort9: ProgramPageContent = {
   cohortSlug: COHORT_9_COHORT_SLUG,
   aliases: [COHORT_9_COHORT_SLUG],
   eyebrow: "Cohort 1 Launch · Instructor-Led",
-  headline: "SQL Blockchain Data Analytics",
+  headline: "SQL & Excel for Blockchain Data Analytics and Research",
   support:
     "Master SQL, Excel and AI for Web3 research in a six-week instructor-led bootcamp. Move from raw blockchain data to practical market intelligence, dashboards and research across DeFi, tokenized real-world assets and perpetual futures.",
   seoTitle: "SQL & Excel for Onchain Data and Research Analysis | Analytic Sages",
@@ -73,8 +73,8 @@ const cohort9: ProgramPageContent = {
   format: "Instructor-led training, practical labs, weekly projects and office hours",
   duration: "6 weeks",
   timeCommitment: "5–8 hours per week · Mondays and Wednesdays training, Fridays office hours",
-  paymentOptions: "Cohort 1 early-bird: $50 / ₦70,000 (50% off the $100 / ₦140,000 standard rate). Registration and payment availability will be confirmed before enrolment opens.",
-  comingSoon: true,
+  paymentOptions: "Cohort 1 launch price: $50 / ₦70,000. Registration closes 31 October 2026.",
+  comingSoon: false,
   audienceFor: [
     "You want practical SQL, Excel and AI skills for Web3 research",
     "You want to analyze DeFi, RWA tokenization or perpetual futures",
@@ -200,7 +200,7 @@ const cohort9: ProgramPageContent = {
     {
       question: "When does the programme start and what does it cost?",
       answer:
-        "The six-week programme is scheduled for 2 November to 11 December 2026. Cohort 1 launch pricing is $50 / ₦70,000, compared with the standard rate of $100 / ₦140,000. Registration and payment details will be confirmed when enrolment opens.",
+        "The six-week programme runs from 2 November to 11 December 2026. Cohort 1 launch pricing is $50 / ₦70,000. Registration closes on 31 October 2026.",
     },
     {
       question: "What do I need to start?",
