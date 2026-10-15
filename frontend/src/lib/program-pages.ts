@@ -31,6 +31,7 @@ export type ProgramPageContent = {
   seoTitle: string;
   seoDescription: string;
   canonicalPath: string;
+  curriculumPath: string;
   format: string;
   duration: string;
   timeCommitment: string;
@@ -59,19 +60,20 @@ const cohort9: ProgramPageContent = {
   pageSlug: COHORT_9_PAGE_SLUG,
   cohortSlug: COHORT_9_COHORT_SLUG,
   aliases: [COHORT_9_COHORT_SLUG],
-  eyebrow: "Coming soon · Instructor-Led",
+  eyebrow: "Cohort 1 Launch · Instructor-Led",
   headline: "SQL Blockchain Data Analytics",
   support:
-    "Learn to work with real blockchain data using SQL and build practical analytics projects: live classes, recorded materials, and a learning community.",
-  seoTitle: "SQL Blockchain Data Analytics",
+    "Master SQL, Excel and AI for Web3 research in a six-week instructor-led bootcamp. Move from raw blockchain data to practical market intelligence, dashboards and research across DeFi, tokenized real-world assets and perpetual futures.",
+  seoTitle: "SQL & Excel for Onchain Data and Research Analysis | Analytic Sages",
   seoDescription:
-    "Learn SQL and practical blockchain data analytics through instructor-led training, real on-chain datasets, hands-on projects and expert guidance with Analytic Sages.",
+    "Learn SQL, Excel, APIs and AI-assisted research with Analytic Sages. Build onchain analytics dashboards and research projects across DeFi, tokenized real-world assets and perpetual futures in six weeks.",
   canonicalPath: `/programs/${COHORT_9_PAGE_SLUG}`,
+  curriculumPath: `/programs/${COHORT_9_PAGE_SLUG}/curriculum`,
   postcardImage: "/cohort-9-sql-blockchain-data-analytics.png",
-  format: "Live weekly sessions + recorded materials + community",
-  duration: "4 weeks",
-  timeCommitment: "5-8 hours per week",
-  paymentOptions: "Paystack (cards and bank transfer) or crypto via NOWPayments. One-time payment.",
+  format: "Instructor-led training, practical labs, weekly projects and office hours",
+  duration: "6 weeks",
+  timeCommitment: "5–8 hours per week · Mondays and Wednesdays training, Fridays office hours",
+  paymentOptions: "Cohort 1 early-bird: $50 / ₦70,000 (50% off the $100 / ₦140,000 standard rate). Registration and payment availability will be confirmed before enrolment opens.",
   comingSoon: true,
   audienceFor: [
     "You're curious about blockchain but don't know where to start",
@@ -238,7 +240,7 @@ export function listProgramPageSlugs(): string[] {
 export function listPublicProgramPaths(): string[] {
   return [
     ...new Set([
-      ...programPages.map((page) => page.canonicalPath),
+      ...programPages.flatMap((page) => [page.canonicalPath, page.curriculumPath]),
       blockchainDataEngineeringProgram.canonicalPath,
       blockchainDataEngineeringProgram.curriculumPath,
     ]),
