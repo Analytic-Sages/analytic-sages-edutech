@@ -36,7 +36,6 @@ export type ProgramPageContent = {
   duration: string;
   timeCommitment: string;
   paymentOptions: string;
-  priceLabel?: string;
   /** When true, show Coming soon - do not sell checkout as open. */
   comingSoon?: boolean;
   audienceFor: string[];
@@ -76,7 +75,6 @@ const cohort9: ProgramPageContent = {
   duration: "6 weeks",
   timeCommitment: "5–8 hours per week · Mondays and Wednesdays training, Fridays office hours",
   paymentOptions: "Pay in full: $50 / ₦70,000. Flexible 2-part plan: $28 / ₦40,000 to secure your seat, followed by $28 / ₦40,000 in Week 3. Registration closes 31 October 2026.",
-  priceLabel: "$50 / ₦70,000",
   comingSoon: false,
   audienceFor: [
     "You want practical SQL, Excel and AI skills for Web3 research",
