@@ -2013,6 +2013,10 @@ export type SubmissionPublic = {
   github_url: string | null;
   live_url: string | null;
   build_in_public_url: string | null;
+  x_post_text: string | null;
+  x_post_url: string | null;
+  linkedin_post_text: string | null;
+  linkedin_post_url: string | null;
   documentation_url: string | null;
   files: Record<string, unknown>[];
   score: number | null;
@@ -2046,6 +2050,10 @@ export type SubmissionUpsertPayload = {
   github_url?: string | null;
   live_url?: string | null;
   build_in_public_url?: string | null;
+  x_post_text?: string | null;
+  x_post_url?: string | null;
+  linkedin_post_text?: string | null;
+  linkedin_post_url?: string | null;
   documentation_url?: string | null;
   files?: Record<string, unknown>[];
   status: "draft" | "submitted";
