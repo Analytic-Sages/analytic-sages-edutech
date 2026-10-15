@@ -545,6 +545,8 @@ export function InstructorAssignmentsPanel({ cohortId }: { cohortId: string }) {
               </div>
             )}
           </section>
+        </div>
+      )}
 
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="sm:max-w-lg">
