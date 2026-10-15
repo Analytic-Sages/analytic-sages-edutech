@@ -70,7 +70,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
     ["Format", program.format],
     ["Time Commitment", program.timeCommitment],
     ["Price", !isComingSoon ? <CurrencyPrice amount={50} showBasePrice={false} /> : null],
-    ["Payment", program.paymentOptions],
+    ["Payment", !isComingSoon ? <span className="space-y-1 leading-relaxed">Pay in full: <CurrencyPrice amount={50} showBasePrice={false} />. Flexible 2-part plan: <CurrencyPrice amount={28} showBasePrice={false} /> to secure your seat, followed by <CurrencyPrice amount={28} showBasePrice={false} /> in Week 3. Registration closes 31 October 2026.</span> : program.paymentOptions],
   ];
 
   return (
