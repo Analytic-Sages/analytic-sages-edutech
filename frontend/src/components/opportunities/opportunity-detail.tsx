@@ -216,6 +216,8 @@ export function OpportunityDetailView({ opportunity }: { opportunity: Opportunit
           </div>
 
           <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+            <CourseSidebar />
+
             {learn ? (
               <section className="rounded-2xl border border-brand-navy/15 bg-[#EEF3FA] p-5 dark:bg-brand-navy/20">
                 <p className="text-sm font-semibold text-brand-navy dark:text-foreground">
@@ -244,8 +246,6 @@ export function OpportunityDetailView({ opportunity }: { opportunity: Opportunit
                 </div>
               </section>
             ) : null}
-
-            <CourseSidebar />
           </aside>
         </div>
       </div>
