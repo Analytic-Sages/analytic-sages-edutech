@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Briefcase, Loader2, Search } from "lucide-react";
 import { OpportunityRow } from "@/components/opportunities/opportunity-card";
+import { CourseSidebar } from "@/components/marketing/course-sidebar";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Input } from "@/components/ui/input";
 import { ApiError } from "@/lib/api";
@@ -134,7 +135,7 @@ export function OpportunitiesHub({
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8"><div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_300px]"><main className="min-w-0">
         <div className="mb-8 flex flex-col gap-4">
           <div className="relative max-w-xl">
             <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -308,7 +309,9 @@ export function OpportunitiesHub({
             </div>
           </div>
         ) : null}
-      </div>
+      </main>
+      <div className="lg:sticky lg:top-6"><CourseSidebar /></div>
+      </div></div>
     </div>
   );
 }
