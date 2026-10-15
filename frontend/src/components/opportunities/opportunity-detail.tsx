@@ -216,51 +216,6 @@ export function OpportunityDetailView({ opportunity }: { opportunity: Opportunit
           </div>
 
           <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
-            {opportunity.similar.length > 0 ? (
-              <section className="rounded-2xl border border-border/80 bg-card p-5 shadow-sm">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Similar opportunities
-                </h2>
-                <div className="mt-3">
-                  {opportunity.similar.map((item) => (
-                    <OpportunityRow key={item.id} opportunity={item} compact />
-                  ))}
-                </div>
-              </section>
-            ) : null}
-
-            <section className="rounded-2xl border border-border/80 bg-card p-5 shadow-sm">
-              <div className="flex items-center gap-3">
-                <OrganizationLogo
-                  name={opportunity.organization_name}
-                  logoUrl={logoUrl}
-                />
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold">{opportunity.title}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {opportunity.organization_name}
-                  </p>
-                </div>
-              </div>
-              <div className="mt-4">
-                <ApplySafetyButton
-                  href={opportunity.application_url}
-                  domain={opportunity.application_domain}
-                  opportunityType={opportunity.opportunity_type}
-                />
-              </div>
-              {opportunity.source_url ? (
-                <div className="mt-3 text-center">
-                  <ApplySafetyButton
-                    href={opportunity.source_url}
-                    label="View original listing"
-                    variant="text"
-                  />
-                </div>
-              ) : null}
-              <OpportunityTrustBadge badge={opportunity.public_badge} showMeaning />
-            </section>
-
             {learn ? (
               <section className="rounded-2xl border border-brand-navy/15 bg-[#EEF3FA] p-5 dark:bg-brand-navy/20">
                 <p className="text-sm font-semibold text-brand-navy dark:text-foreground">
@@ -274,6 +229,19 @@ export function OpportunityDetailView({ opportunity }: { opportunity: Opportunit
                 >
                   Explore programme →
                 </Link>
+              </section>
+            ) : null}
+
+            {opportunity.similar.length > 0 ? (
+              <section className="rounded-2xl border border-border/80 bg-card p-5 shadow-sm">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Similar opportunities
+                </h2>
+                <div className="mt-3">
+                  {opportunity.similar.map((item) => (
+                    <OpportunityRow key={item.id} opportunity={item} compact />
+                  ))}
+                </div>
               </section>
             ) : null}
 
