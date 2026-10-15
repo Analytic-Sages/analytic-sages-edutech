@@ -41,6 +41,7 @@ export type ProgramPageContent = {
   audienceFor: string[];
   audienceNotFor: string[];
   learnTopics: { title: string; body: string }[];
+  pathways?: { title: string; kicker: string; body: string; output: string }[];
   outcomesIntro: string;
   outcomes: string[];
   outcomeBonus: string;
@@ -109,6 +110,32 @@ const cohort9: ProgramPageContent = {
     {
       title: "Portfolio-Ready Capstone",
       body: "Package SQL, an Excel workbook, a dashboard, research report and presentation.",
+    },
+  ],
+  pathways: [
+    {
+      title: "SQL Analytics Training",
+      kicker: "CORE CURRICULUM",
+      body: "Build the core workflow: extract data, validate metrics, analyze with SQL and Excel, and present findings clearly.",
+      output: "Output: SQL queries · Excel workbook · dashboard · research brief",
+    },
+    {
+      title: "Study Group",
+      kicker: "ONGOING PRACTICE",
+      body: "Keep your analytical skills sharp through short CoinGecko, Excel, protocol-metrics and SQL exercises.",
+      output: "Output: Weekly exercises · peer reviews · reusable templates",
+    },
+    {
+      title: "Research Lab",
+      kicker: "DEEPER INVESTIGATION",
+      body: "Turn analytical skills into deeper research across DeFi, RWA and tokenization, stablecoins, perpetual futures and ecosystem growth.",
+      output: "Output: Research reports · dashboards · datasets · analytical threads",
+    },
+    {
+      title: "Fellowship",
+      kicker: "TALENT DEVELOPMENT",
+      body: "Committed learners can progress into larger research briefs, mentorship, methodology documentation and community or industry presentations.",
+      output: "Output: Research ownership · portfolio evidence · mentorship · opportunities",
     },
   ],
   outcomesIntro: "By the end of this program…",
