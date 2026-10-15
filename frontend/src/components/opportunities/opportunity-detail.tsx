@@ -12,7 +12,6 @@ import {
   compensationLabel,
   formatDeadline,
   formatPostedRelative,
-  learningPathForOpportunity,
   REGION_LABELS,
   resolveOrganizationLogoUrl,
   SAFETY_NOTICE,
@@ -79,7 +78,6 @@ function MetaRow({ opportunity }: { opportunity: OpportunityDetail }) {
 export function OpportunityDetailView({ opportunity }: { opportunity: OpportunityDetail }) {
   const primary =
     opportunity.career_paths.find((item) => item.is_primary) || opportunity.primary_career_path;
-  const learn = learningPathForOpportunity(opportunity);
   const skillPreview = opportunity.skills.slice(0, 12);
   const logoUrl = resolveOrganizationLogoUrl(opportunity);
 
@@ -217,22 +215,6 @@ export function OpportunityDetailView({ opportunity }: { opportunity: Opportunit
 
           <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
             <CourseSidebar />
-
-            {learn ? (
-              <section className="rounded-2xl border border-brand-navy/15 bg-[#EEF3FA] p-5 dark:bg-brand-navy/20">
-                <p className="text-sm font-semibold text-brand-navy dark:text-foreground">
-                  Want to land this role?
-                </p>
-                <p className="mt-2 font-heading text-base font-semibold">{learn.title}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{learn.body}</p>
-                <Link
-                  href={learn.href}
-                  className="mt-4 inline-flex text-sm font-semibold text-brand-orange hover:underline"
-                >
-                  Explore programme →
-                </Link>
-              </section>
-            ) : null}
 
             {opportunity.similar.length > 0 ? (
               <section className="rounded-2xl border border-border/80 bg-card p-5 shadow-sm">
