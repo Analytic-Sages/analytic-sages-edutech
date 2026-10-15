@@ -55,7 +55,7 @@ export function MarketingFooter() {
                   href="/partner-with-us"
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  Partner With Us
+                  Strategic Partnerships
                 </Link>
               </li>
               {isPartnersPublic() ? (
@@ -64,7 +64,7 @@ export function MarketingFooter() {
                     href="/partners"
                     className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    Referral Partners
+                    Become a Referral Partner
                   </Link>
                 </li>
               ) : null}
