@@ -40,7 +40,6 @@ export const marketingHeaderNav = [
   { title: "Community", href: "/community" },
   { title: "Insights", href: "/insights" },
   { title: "About us", href: "/about" },
-  { title: "Partner With Us", href: "/partner-with-us" },
 ] as const;
 
 export const studentNav: NavItem[] = [
