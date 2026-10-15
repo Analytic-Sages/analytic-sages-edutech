@@ -115,6 +115,16 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
                 {primaryLabel}
                 <ArrowRight className="ml-2 size-4" />
               </ButtonLink>
+              {program.curriculumPath && (
+                <ButtonLink
+                  href={program.curriculumPath}
+                  size="lg"
+                  variant="outline"
+                  className="h-12 rounded-full px-8"
+                >
+                  View full curriculum
+                </ButtonLink>
+              )}
               {isComingSoon && (
                 <ButtonLink
                   href="/instructor-led"
