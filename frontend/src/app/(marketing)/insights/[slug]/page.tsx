@@ -2,6 +2,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Clock } from "lucide-react";
 import { BlogLearnCta } from "@/components/blog/blog-learn-cta";
+import { CourseSidebar } from "@/components/marketing/course-sidebar";
 import { ArticleBody } from "@/components/insights/article-body";
 import { ArticleShare } from "@/components/insights/article-share";
 import { InsightsSubscribeCta } from "@/components/insights/insights-subscribe-cta";
@@ -144,42 +145,7 @@ export default async function InsightArticlePage({ params }: Props) {
       </div>
       </div>
       <aside className="w-full lg:sticky lg:top-24">
-        <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
-          <div className="relative aspect-[16/9] bg-muted">
-            <Image
-              src="/SQL and Excel for Blockchain Analytics.png"
-              alt="SQL and Excel for Blockchain Data Analytics and Research course"
-              fill
-              className="object-cover"
-              sizes="(max-width: 1024px) 100vw, 320px"
-            />
-          </div>
-          <div className="space-y-4 p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-brand-orange">
-              Instructor-Led · Registration Open
-            </p>
-            <h2 className="font-heading text-xl font-bold leading-tight">
-              SQL &amp; Excel for Blockchain Data Analytics and Research
-            </h2>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              Learn SQL, Excel, market-data APIs and AI-assisted research in a six-week live programme.
-              Build dashboards and portfolio-ready onchain research projects.
-            </p>
-            <div className="flex items-baseline gap-2">
-              <span className="font-heading text-2xl font-bold">$50</span>
-              <span className="text-sm text-muted-foreground">USD · 6 weeks</span>
-            </div>
-            <p className="text-xs leading-relaxed text-brand-orange">
-              Registration closes 31 October 2026 · Classes start 2 November 2026
-            </p>
-            <ButtonLink
-              href="/programs/cohort-9-sql-blockchain-data-analytics"
-              className="w-full bg-brand-orange text-white hover:bg-brand-orange/90"
-            >
-              Explore programme
-            </ButtonLink>
-          </div>
-        </div>
+        <CourseSidebar />
       </aside>
       </div>
     </article>
