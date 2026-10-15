@@ -147,7 +147,7 @@ export default async function InsightArticlePage({ params }: Props) {
         <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
           <div className="relative aspect-[16/9] bg-muted">
             <Image
-              src="/cohort-9-sql-blockchain-data-analytics.png"
+              src="/SQL and Excel for Blockchain Analytics.png"
               alt="SQL and Excel for Blockchain Data Analytics and Research course"
               fill
               className="object-cover"
