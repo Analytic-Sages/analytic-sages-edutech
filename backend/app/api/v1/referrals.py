@@ -161,6 +161,16 @@ def apply_partner(
 ) -> PartnerPublic:
     if not settings.partners_public and user.role != UserRole.ADMIN:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    if not (user.email or user.phone_number):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Add an email address or WhatsApp number to your account before applying.",
+        )
+    if not user.telegram_username or not user.telegram_username.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Add your Telegram handle to your account before applying.",
+        )
     partner = partners.apply(
         user=user,
         display_name=payload.display_name,

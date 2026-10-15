@@ -11,6 +11,9 @@ import {
   applyReferralPartner,
   ensureSession,
   getMyPartnerProfile,
+  getMe,
+  updateMyProfile,
+  type AuthUser,
   type PartnerPublic,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -18,7 +21,9 @@ import { cn } from "@/lib/utils";
 export function PartnersPageContent() {
   const [session, setSession] = useState(false);
   const [profile, setProfile] = useState<PartnerPublic | null>(null);
+  const [accountUser, setAccountUser] = useState<AuthUser | null>(null);
   const [displayName, setDisplayName] = useState("");
+  const [telegramHandle, setTelegramHandle] = useState("");
   const [social, setSocial] = useState("");
   const [channels, setChannels] = useState("");
   const [terms, setTerms] = useState(false);
@@ -31,6 +36,13 @@ export function PartnersPageContent() {
     ensureSession().then((ok) => {
       setSession(!!ok);
       if (ok) {
+        getMe()
+          .then((user) => {
+            setAccountUser(user);
+            setDisplayName(user.full_name?.trim() || "");
+            setTelegramHandle(user.telegram_username || "");
+          })
+          .catch(() => setAccountUser(null));
         getMyPartnerProfile()
           .then(setProfile)
           .catch(() => setProfile(null));
@@ -42,8 +54,21 @@ export function PartnersPageContent() {
     e.preventDefault();
     setError(null);
     setSuccess(null);
+    const normalizedTelegram = telegramHandle.trim().replace(/^@+/, "");
+    if (!accountUser?.email && !accountUser?.phone_number) {
+      setError("Add an email address or WhatsApp number to your account before applying.");
+      return;
+    }
+    if (!normalizedTelegram) {
+      setError("Add your Telegram handle before submitting your application.");
+      return;
+    }
     setSubmitting(true);
     try {
+      if (normalizedTelegram !== (accountUser?.telegram_username || "").replace(/^@+/, "")) {
+        const updatedUser = await updateMyProfile({ telegram_username: normalizedTelegram });
+        setAccountUser(updatedUser);
+      }
       const partner = await applyReferralPartner({
         display_name: displayName.trim(),
         social_handle: social.trim() || undefined,
@@ -83,7 +108,7 @@ export function PartnersPageContent() {
             <p className="mt-4 text-lg text-[#0B1F3A]/80">
               Earn while helping others build the skills of the future.
             </p>
-            <p className="mt-5 text-base leading-relaxed text-muted-foreground">
+            <p className="mt-5 text-base leading-relaxed text-[#0B1F3A]/90">
               Join the Analytic Sages Referral Partner Programme and share specialised programmes
               with your network. When someone you refer makes an eligible successful payment, you
               earn a 7% commission.
@@ -218,6 +243,12 @@ export function PartnersPageContent() {
             </div>
           ) : showApply ? (
             <form onSubmit={onApply} className="max-w-md space-y-4">
+              <div className="rounded-lg border border-[#0B1F3A]/15 bg-[#F7F9FC] p-4 text-sm text-[#0B1F3A]">
+                <p className="font-semibold">Contact details</p>
+                <p className="mt-1">We’ll use your account email for application updates.</p>
+                {accountUser?.email ? <p className="mt-2"><span className="font-medium">Email:</span> {accountUser.email}</p> : null}
+                {accountUser?.phone_number ? <p><span className="font-medium">WhatsApp:</span> {accountUser.phone_number}</p> : null}
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="display_name">Display name</Label>
                 <Input
@@ -227,6 +258,18 @@ export function PartnersPageContent() {
                   required
                   minLength={2}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="telegram_handle">Telegram handle</Label>
+                <Input
+                  id="telegram_handle"
+                  value={telegramHandle}
+                  onChange={(e) => setTelegramHandle(e.target.value)}
+                  placeholder="@yourusername"
+                  autoComplete="off"
+                  required
+                />
+                <p className="text-xs text-muted-foreground">Required so our team can contact you about your application.</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="social">Public / social handle (optional)</Label>

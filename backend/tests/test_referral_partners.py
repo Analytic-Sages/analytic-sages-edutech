@@ -160,6 +160,45 @@ def _cleanup_cohort(*, slug: str | None = None, cohort_id=None) -> None:
         db.close()
 
 
+
+def test_partner_application_requires_telegram_profile_handle():
+    email = f"ref-apply-{uuid.uuid4()}@example.com"
+    try:
+        applicant = _make_user(email, UserRole.ADMIN, full_name="Referral Applicant")
+        payload = {
+            "display_name": "Referral Applicant",
+            "social_handle": None,
+            "promotion_channels": "WhatsApp",
+            "terms_accepted": True,
+        }
+
+        missing_handle = client.post(
+            "/api/v1/partners/apply",
+            json=payload,
+            headers=_auth(applicant),
+        )
+        assert missing_handle.status_code == 400
+        assert "Telegram handle" in missing_handle.json()["detail"]
+
+        db = SessionLocal()
+        try:
+            stored_user = db.get(User, applicant.id)
+            assert stored_user is not None
+            stored_user.telegram_username = "referral_applicant"
+            db.commit()
+        finally:
+            db.close()
+
+        submitted = client.post(
+            "/api/v1/partners/apply",
+            json=payload,
+            headers=_auth(applicant),
+        )
+        assert submitted.status_code == 200
+        assert submitted.json()["display_name"] == "Referral Applicant"
+    finally:
+        _cleanup_emails(email)
+
 def test_commission_formula_is_seven_percent():
     assert commission_from_payment_amount(
         eligible_amount=300_000, rate=Decimal("0.07")
