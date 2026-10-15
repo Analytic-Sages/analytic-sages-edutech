@@ -59,7 +59,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
   const isComingSoon = Boolean(program.comingSoon);
   const primaryHref = isComingSoon ? "/contact" : checkoutHref;
   const primaryLabel = isComingSoon ? "Get notified" : "Register now";
-  const priceLabel = program.priceLabel ?? (cohort && cohort.price > 0 ? `${cohort.price}` : null);
+  const priceLabel = cohort && cohort.price > 0 ? `${cohort.price}` : null;
   const startDate = formatDate(cohort?.starts_at ?? null);
   const deadline = formatDate(cohort?.registration_deadline ?? null);
 
@@ -69,7 +69,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
     ["Start Date", isComingSoon ? "Coming soon" : startDate],
     ["Format", program.format],
     ["Time Commitment", program.timeCommitment],
-    ["Price", !isComingSoon && priceLabel ? `${priceLabel} one-time payment` : null],
+    ["Price", !isComingSoon ? <CurrencyPrice amount={50} showBasePrice={false} /> : null],
     ["Payment", program.paymentOptions],
   ];
 
