@@ -11,7 +11,7 @@ const courses = [
     duration: "6 weeks",
     price: "$50",
     href: "/programs/cohort-9-sql-blockchain-data-analytics",
-    image: "/cohort-9-sql-blockchain-data-analytics.png",
+    image: "/SQL and Excel for Blockchain Analytics.png",
     label: "Registration open",
   },
   {

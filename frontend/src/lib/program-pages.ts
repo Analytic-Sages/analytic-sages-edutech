@@ -70,7 +70,7 @@ const cohort9: ProgramPageContent = {
     "Learn SQL, Excel, APIs and AI-assisted research with Analytic Sages. Build onchain analytics dashboards and research projects across DeFi, tokenized real-world assets and perpetual futures in six weeks.",
   canonicalPath: `/programs/${COHORT_9_PAGE_SLUG}`,
   curriculumPath: `/programs/${COHORT_9_PAGE_SLUG}/curriculum`,
-  postcardImage: "/cohort-9-sql-blockchain-data-analytics.png",
+  postcardImage: "/SQL and Excel for Blockchain Analytics.png",
   format: "Instructor-led training, practical labs, weekly projects and office hours",
   duration: "6 weeks",
   timeCommitment: "5–8 hours per week · Mondays and Wednesdays training, Fridays office hours",
