@@ -86,11 +86,6 @@ export function InstructorAssignmentsPanel({ cohortId }: { cohortId: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
-    setAssignments([]);
-    setTracking(null);
-    setSelectedId(null);
 
     async function loadAssignmentsAndSubmissions() {
       try {
@@ -105,6 +100,9 @@ export function InstructorAssignmentsPanel({ cohortId }: { cohortId: string }) {
           setSelectedId(firstAssignment.id);
           const data = await getAssignmentTracking(firstAssignment.id);
           if (!cancelled) setTracking(data);
+        } else {
+          setTracking(null);
+          setSelectedId(null);
         }
       } catch (err) {
         if (!cancelled) {
