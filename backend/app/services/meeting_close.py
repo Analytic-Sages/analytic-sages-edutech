@@ -192,8 +192,31 @@ class MeetingCloseService:
     def close_session(self, session: LiveSession) -> bool:
         """Close one session when it is due. Returns True when it is finished."""
         self.db.refresh(session)
-        if not session_should_end(session, datetime.now(timezone.utc)):
+        now = datetime.now(timezone.utc)
+        if not session_should_end(session, now):
             return session.realtimekit_closed_at is not None
+
+        # Match the scheduled-end sweep here too: routes can reach this method
+        # while serving a join/session request, so they must not bypass the
+        # soft-end boundary and stop a live class that still has staff present.
+        # Explicit end/cancel actions remain authoritative and close immediately.
+        if session.status not in {LiveSessionStatus.ENDED, LiveSessionStatus.CANCELLED}:
+            staff_present = self._authorized_staff_present(session)
+            if staff_present is None:
+                logger.warning(
+                    "Leaving RealtimeKit meeting %s open because staff presence "
+                    "could not be verified",
+                    session.realtimekit_meeting_id,
+                )
+                return False
+            if staff_present:
+                logger.info(
+                    "Keeping classroom session %s open past scheduled end: "
+                    "authorized staff still present",
+                    session.id,
+                )
+                return False
+
         meeting_id = str(session.realtimekit_meeting_id or "")
         if not meeting_id.startswith("mock-") and not self.realtimekit.configured:
             return False

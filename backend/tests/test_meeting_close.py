@@ -150,6 +150,67 @@ def _kit(*, succeed: bool) -> MagicMock:
     return kit
 
 
+
+
+def test_close_session_keeps_room_open_while_admin_is_present():
+    _cleanup()
+    session_id = _seed(ends_at=datetime.now(UTC) - timedelta(minutes=2))
+    admin_id = uuid.uuid4()
+    kit = _kit(succeed=True)
+    kit.find_session_for_meeting.return_value = {
+        "id": "provider-session-live",
+        "status": "LIVE",
+    }
+    kit.list_all_session_participants.return_value = [
+        {"custom_participant_id": str(admin_id), "left_at": None}
+    ]
+
+    db = SessionLocal()
+    try:
+        db.add(
+            User(
+                id=admin_id,
+                email=f"{EMAIL_PREFIX}admin@example.com",
+                full_name="Test Admin",
+                role=UserRole.ADMIN,
+                is_active=True,
+            )
+        )
+        db.commit()
+        row = db.get(LiveSession, session_id)
+        assert row is not None
+
+        finished = MeetingCloseService(db, get_settings(), realtimekit=kit).close_session(row)
+
+        db.refresh(row)
+        assert finished is False
+        assert row.realtimekit_closed_at is None
+        kit.end_live_meeting.assert_not_called()
+    finally:
+        db.close()
+    _cleanup()
+
+
+def test_close_session_fails_open_when_staff_presence_cannot_be_verified():
+    _cleanup()
+    session_id = _seed(ends_at=datetime.now(UTC) - timedelta(minutes=2))
+    kit = _kit(succeed=True)
+    kit.find_session_for_meeting.side_effect = RealtimeKitError("provider unavailable")
+
+    db = SessionLocal()
+    try:
+        row = db.get(LiveSession, session_id)
+        assert row is not None
+        finished = MeetingCloseService(db, get_settings(), realtimekit=kit).close_session(row)
+
+        db.refresh(row)
+        assert finished is False
+        assert row.realtimekit_closed_at is None
+        kit.end_live_meeting.assert_not_called()
+    finally:
+        db.close()
+    _cleanup()
+
 def test_close_elapsed_stops_recording_and_kicks_everyone():
     _cleanup()
     session_id = _seed(ends_at=datetime.now(UTC) - timedelta(minutes=2))
