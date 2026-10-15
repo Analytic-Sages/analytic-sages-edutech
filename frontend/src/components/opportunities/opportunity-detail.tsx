@@ -6,6 +6,7 @@ import { OpportunityRow } from "@/components/opportunities/opportunity-card";
 import { OrganizationLogo } from "@/components/opportunities/organization-logo";
 import { OpportunityTrustBadge } from "@/components/opportunities/opportunity-trust-badge";
 import { SaveOpportunityButton } from "@/components/opportunities/save-opportunity-button";
+import { CourseSidebar } from "@/components/marketing/course-sidebar";
 import { Badge } from "@/components/ui/badge";
 import {
   compensationLabel,
@@ -275,6 +276,8 @@ export function OpportunityDetailView({ opportunity }: { opportunity: Opportunit
                 </Link>
               </section>
             ) : null}
+
+            <CourseSidebar />
           </aside>
         </div>
       </div>
