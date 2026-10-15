@@ -494,7 +494,7 @@ export function InstructorAssignmentsPanel({ cohortId }: { cohortId: string }) {
                             <div className="rounded-lg border bg-background p-4">
                               <div className="mb-3">
                                 <p className="font-semibold">Instructor review</p>
-                                <p className="text-xs text-muted-foreground">Score and feedback are saved to this student's submission.</p>
+                                <p className="text-xs text-muted-foreground">Score and feedback are saved to this student&apos;s submission.</p>
                               </div>
                               <div className="flex flex-col items-stretch gap-3 md:flex-row md:items-end">
                                 <div>
