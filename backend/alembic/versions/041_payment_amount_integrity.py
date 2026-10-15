@@ -12,7 +12,7 @@ from alembic import op
 
 
 revision: str = "041_payment_amount_integrity"
-down_revision: Union[str, None] = "040_recording_import"
+down_revision: Union[str, None] = "039_realtimekit_attendance"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
