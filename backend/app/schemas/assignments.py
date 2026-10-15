@@ -49,7 +49,7 @@ class SubmissionPublic(BaseModel):
     reviewer_name: str | None = None
     reviewed_at: datetime | None = None
     submitted_at: datetime | None = None
-    updated_at: datetime
+    updated_at: datetime | None = None
 
 
 class AssignmentDetailPublic(AssignmentPublic):
