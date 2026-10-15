@@ -31,6 +31,7 @@ export type ProgramPageContent = {
   seoTitle: string;
   seoDescription: string;
   canonicalPath: string;
+  curriculumPath: string;
   format: string;
   duration: string;
   timeCommitment: string;
@@ -59,65 +60,66 @@ const cohort9: ProgramPageContent = {
   pageSlug: COHORT_9_PAGE_SLUG,
   cohortSlug: COHORT_9_COHORT_SLUG,
   aliases: [COHORT_9_COHORT_SLUG],
-  eyebrow: "Coming soon · Instructor-Led",
+  eyebrow: "Cohort 1 Launch · Instructor-Led",
   headline: "SQL Blockchain Data Analytics",
   support:
-    "Learn to work with real blockchain data using SQL and build practical analytics projects: live classes, recorded materials, and a learning community.",
-  seoTitle: "SQL Blockchain Data Analytics",
+    "Master SQL, Excel and AI for Web3 research in a six-week instructor-led bootcamp. Move from raw blockchain data to practical market intelligence, dashboards and research across DeFi, tokenized real-world assets and perpetual futures.",
+  seoTitle: "SQL & Excel for Onchain Data and Research Analysis | Analytic Sages",
   seoDescription:
-    "Learn SQL and practical blockchain data analytics through instructor-led training, real on-chain datasets, hands-on projects and expert guidance with Analytic Sages.",
+    "Learn SQL, Excel, APIs and AI-assisted research with Analytic Sages. Build onchain analytics dashboards and research projects across DeFi, tokenized real-world assets and perpetual futures in six weeks.",
   canonicalPath: `/programs/${COHORT_9_PAGE_SLUG}`,
+  curriculumPath: `/programs/${COHORT_9_PAGE_SLUG}/curriculum`,
   postcardImage: "/cohort-9-sql-blockchain-data-analytics.png",
-  format: "Live weekly sessions + recorded materials + community",
-  duration: "4 weeks",
-  timeCommitment: "5-8 hours per week",
-  paymentOptions: "Paystack (cards and bank transfer) or crypto via NOWPayments. One-time payment.",
+  format: "Instructor-led training, practical labs, weekly projects and office hours",
+  duration: "6 weeks",
+  timeCommitment: "5–8 hours per week · Mondays and Wednesdays training, Fridays office hours",
+  paymentOptions: "Cohort 1 early-bird: $50 / ₦70,000 (50% off the $100 / ₦140,000 standard rate). Registration and payment availability will be confirmed before enrolment opens.",
   comingSoon: true,
   audienceFor: [
-    "You're curious about blockchain but don't know where to start",
-    "You want a practical, skill-based path in Web3 data",
-    "You have no coding experience (we start from zero)",
-    "You're ready to stop watching and start building",
+    "You want practical SQL, Excel and AI skills for Web3 research",
+    "You want to analyze DeFi, RWA tokenization or perpetual futures",
+    "You want to build dashboards and portfolio-ready research",
+    "You can attend live sessions and complete weekly projects",
   ],
   audienceNotFor: [
-    "You're looking for a get-rich-quick scheme",
-    "You can't commit 5-8 hours per week",
+    "You expect guaranteed jobs or investment returns",
+    "You cannot commit time to weekly practice and projects",
   ],
   learnTopics: [
     {
-      title: "SQL for Blockchain Data",
-      body: "Query wallets, transactions, and protocols like an analyst.",
+      title: "SQL for Onchain Research",
+      body: "Query blockchain tables with filters, joins, CTEs and window functions.",
     },
     {
-      title: "Onchain Analytics",
-      body: "Track whales, analyze protocol health, spot trends.",
+      title: "Excel, APIs & Data Integration",
+      body: "Clean datasets, combine CoinGecko market data and onchain metrics, and build interactive workbooks.",
     },
     {
-      title: "Research-Driven Reports",
-      body: "Write insights that investors and DAOs actually read.",
+      title: "DeFi, RWA & Derivatives Research",
+      body: "Analyze protocol performance, tokenized assets and perpetual futures market structure.",
     },
     {
-      title: "Real Dashboard Projects",
-      body: "Build a portfolio of work you can show employers.",
+      title: "AI-Assisted Analysis",
+      body: "Use AI to draft and debug queries, review formulas and structure research responsibly.",
     },
     {
-      title: "Live Sessions & Support",
-      body: "Learn with instructors and a community of peers.",
+      title: "Live Labs & Office Hours",
+      body: "Get guided practice, troubleshooting and weekly project feedback.",
     },
     {
-      title: "Career Pathways",
-      body: "Freelance, full-time, or build your own tools.",
+      title: "Portfolio-Ready Capstone",
+      body: "Package SQL, an Excel workbook, a dashboard, research report and presentation.",
     },
   ],
   outcomesIntro: "By the end of this program…",
   outcomes: [
-    "Build 2-3 complete dashboards (portfolio ready)",
-    "Write a research report from scratch",
-    "Query real blockchain data independently",
-    "Present your findings with confidence",
-    "Join a network of analysts and alumni",
+    "Query and document real blockchain datasets with SQL",
+    "Integrate market and onchain data in Excel",
+    "Build dashboards for DeFi, RWA and perpetual futures research",
+    "Validate AI-assisted analysis and communicate limitations",
+    "Present a portfolio-ready capstone project",
   ],
-  outcomeBonus: "Bonus: Access to our alumni community.",
+  outcomeBonus: "Final portfolio: SQL queries, Excel workbook, custom dashboard, written research report and presentation.",
   duneDashboards: [
     {
       id: "d1",
@@ -183,7 +185,7 @@ const cohort9: ProgramPageContent = {
     {
       question: "Do I need any experience?",
       answer:
-        "No. We start from the basics: blockchain data, explorers, then SQL and Dune. No prior coding or SQL is required.",
+        "The programme introduces onchain research and SQL foundations with guided labs and AI-assisted practice. Prior blockchain research experience is not required.",
     },
     {
       question: "What if I miss a live session?",
@@ -196,14 +198,14 @@ const cohort9: ProgramPageContent = {
         "Platform certificates are not issued yet. Completing Cohort 9 still gives you the dashboards, report, and classroom work you can show.",
     },
     {
-      question: "Is registration open?",
+      question: "When does the programme start and what does it cost?",
       answer:
-        "Not yet. This SQL Blockchain Data Analytics programme is coming soon. It is separate from Blockchain Data Engineering, which is open for registration now. When this programme opens, payment will be one-time via Paystack or NOWPayments.",
+        "The six-week programme is scheduled for 2 November to 11 December 2026. Cohort 1 launch pricing is $50 / ₦70,000, compared with the standard rate of $100 / ₦140,000. Registration and payment details will be confirmed when enrolment opens.",
     },
     {
       question: "What do I need to start?",
       answer:
-        "A laptop, a browser, and time for live class plus practice. Dune setup is covered in the early sessions.",
+        "Bring a laptop, a browser, and time for live sessions and weekly practice. The programme introduces Dune, Excel workflows, market-data APIs and responsible AI use.",
     },
     {
       question: "Will this help me get a job?",
@@ -238,7 +240,7 @@ export function listProgramPageSlugs(): string[] {
 export function listPublicProgramPaths(): string[] {
   return [
     ...new Set([
-      ...programPages.map((page) => page.canonicalPath),
+      ...programPages.flatMap((page) => [page.canonicalPath, page.curriculumPath]),
       blockchainDataEngineeringProgram.canonicalPath,
       blockchainDataEngineeringProgram.curriculumPath,
     ]),

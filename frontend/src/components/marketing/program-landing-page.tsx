@@ -95,7 +95,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
             ) : (
               <p className="mt-6 text-sm text-muted-foreground sm:text-base">
                 {isComingSoon
-                  ? "Coming soon · Fully remote · Live sessions"
+                  ? "Cohort 1 · Starts 2 November 2026 · Early-bird $50 / ₦70,000 · Fully remote · Live sessions"
                   : [
                       deadline ? `Registration closes: ${deadline}` : null,
                       startDate ? `Classes start: ${startDate}` : null,
@@ -115,6 +115,16 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
                 {primaryLabel}
                 <ArrowRight className="ml-2 size-4" />
               </ButtonLink>
+              {program.curriculumPath && (
+                <ButtonLink
+                  href={program.curriculumPath}
+                  size="lg"
+                  variant="outline"
+                  className="h-12 rounded-full px-8"
+                >
+                  View full curriculum
+                </ButtonLink>
+              )}
               {isComingSoon && (
                 <ButtonLink
                   href="/instructor-led"
