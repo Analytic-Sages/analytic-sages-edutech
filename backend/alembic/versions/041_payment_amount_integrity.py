@@ -1,7 +1,7 @@
 """Track expected and settled provider payment amounts.
 
 Revision ID: 041_payment_amount_integrity
-Revises: 039_realtimekit_attendance
+Revises: 040_recording_import
 Create Date: 2026-10-15
 """
 
@@ -12,7 +12,7 @@ from alembic import op
 
 
 revision: str = "041_payment_amount_integrity"
-down_revision: Union[str, None] = "039_realtimekit_attendance"
+down_revision: Union[str, None] = "040_recording_import"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
