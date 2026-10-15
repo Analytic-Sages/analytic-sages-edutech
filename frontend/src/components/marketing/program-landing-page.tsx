@@ -81,19 +81,19 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
             <p className="text-sm font-semibold uppercase tracking-[0.14em] text-brand-orange">
               {program.eyebrow}
             </p>
-            <h1 className="mt-4 font-heading text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
+            <h1 className="mt-4 font-heading text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-[3.15rem] lg:leading-[1.1]">
               {program.headline}
             </h1>
-            <p className="mx-auto mt-5 max-w-2xl text-lg text-muted-foreground sm:text-xl lg:mx-0">
+            <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-white/80 sm:text-xl lg:mx-0">
               {program.support}
             </p>
             {loading && !isComingSoon ? (
-              <p className="mt-6 inline-flex items-center gap-2 text-sm text-muted-foreground">
+              <p className="mt-6 inline-flex items-center gap-2 text-sm text-white/60">
                 <Loader2 className="size-4 animate-spin" />
                 Loading cohort dates…
               </p>
             ) : (
-              <p className="mt-6 text-sm text-muted-foreground sm:text-base">
+              <p className="mt-6 text-sm text-white/65 sm:text-base">
                 {isComingSoon
                   ? "Cohort 1 · Starts 2 November 2026 · $50 / ₦70,000 · Registration closes 31 October · Fully remote · Live sessions"
                   : [
@@ -106,6 +106,11 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
                       .join("  ·  ")}
               </p>
             )}
+            <div className="mt-8 max-w-md rounded-lg border border-white/15 bg-white/5 px-4 py-4 backdrop-blur-sm">
+              <p className="font-heading text-3xl font-bold tracking-tight text-white sm:text-4xl">$50 / ₦70,000</p>
+              <p className="mt-1 text-sm font-medium text-brand-orange">Registration is LIVE</p>
+              <p className="mt-2 text-sm leading-relaxed text-white/80">Pay in full, or secure your seat with $28 / ₦40,000 now and complete the final $28 / ₦40,000 payment in Week 3.</p>
+            </div>
             <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row lg:justify-start">
               <ButtonLink
                 href={primaryHref}
@@ -137,7 +142,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
               )}
             </div>
           </div>
-          <div className="relative aspect-[16/10] overflow-hidden rounded-2xl border bg-brand-surface shadow-card">
+          <div className="relative aspect-[16/10] overflow-hidden rounded-2xl border border-white/10 shadow-float">
             <Image
               src={program.postcardImage}
               alt={`${program.headline} course postcard`}
@@ -268,6 +273,29 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
             items={program.testimonials}
             moreUrl={program.moreTestimonialsUrl}
           />
+        </div>
+      </section>
+
+      <section id="pricing" className="scroll-mt-24 border-t border-border/60 bg-[#F7F9FC] dark:bg-transparent">
+        <div className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6 sm:py-20">
+          <h2 className="font-heading text-3xl font-bold sm:text-4xl">Tuition & Payment Options</h2>
+          <p className="mt-3 text-muted-foreground">Registration is LIVE. Choose the payment option that works best for you.</p>
+          <div className="mt-10 grid gap-4 text-left sm:grid-cols-2">
+            <div className="rounded-xl border border-border/70 bg-background p-6 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-orange">Pay in Full</p>
+              <p className="mt-2 font-heading text-3xl font-bold text-[#0B1F3A] dark:text-foreground">$50 / ₦70,000</p>
+              <p className="mt-2 text-sm text-muted-foreground">Single payment. Full programme access is secured at registration.</p>
+            </div>
+            <div className="rounded-xl border border-brand-orange/40 bg-brand-orange/5 p-6 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-orange">Flexible Payment</p>
+              <p className="mt-2 font-heading text-3xl font-bold text-[#0B1F3A] dark:text-foreground">$28 / ₦40,000</p>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Secure your seat with the initial payment, followed by $28 / ₦40,000 in Week 3.</p>
+            </div>
+          </div>
+          <p className="mt-6 text-sm text-muted-foreground">Select your preferred tuition option below to finalize registration. Seats are limited to ensure direct project reviews.</p>
+          <ButtonLink href={primaryHref} size="lg" className="mt-7 h-12 rounded-full bg-brand-orange px-10 text-base text-white hover:bg-brand-orange/90">
+            Register Now <ArrowRight className="ml-2 size-4" />
+          </ButtonLink>
         </div>
       </section>
 

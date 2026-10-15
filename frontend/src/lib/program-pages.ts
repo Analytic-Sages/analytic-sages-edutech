@@ -74,7 +74,7 @@ const cohort9: ProgramPageContent = {
   format: "Instructor-led training, practical labs, weekly projects and office hours",
   duration: "6 weeks",
   timeCommitment: "5–8 hours per week · Mondays and Wednesdays training, Fridays office hours",
-  paymentOptions: "Cohort 1 launch price: $50 / ₦70,000. Registration closes 31 October 2026.",
+  paymentOptions: "Pay in full: $50 / ₦70,000. Flexible 2-part plan: $28 / ₦40,000 to secure your seat, followed by $28 / ₦40,000 in Week 3. Registration closes 31 October 2026.",
   comingSoon: false,
   audienceFor: [
     "You want practical SQL, Excel and AI skills for Web3 research",

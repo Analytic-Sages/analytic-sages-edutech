@@ -76,12 +76,14 @@ const weeks = [
 export function SqlBlockchainDataAnalyticsCurriculum() {
   return (
     <div className="bg-background pb-20 text-foreground">
-      <section className="border-b border-border/60 bg-[#0B1F3A] text-white">
-        <div className="mx-auto max-w-5xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
+      <section className="relative overflow-hidden border-b border-[#0B1F3A]/10 bg-gradient-to-br from-[#0B1F3A] via-[#122A4A] to-[#0B1F3A] text-white">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(241,90,36,0.22),transparent_45%)]" />
+        <div className="relative mx-auto max-w-5xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
           <p className="text-sm font-semibold uppercase tracking-[0.14em] text-brand-orange">Full curriculum · Instructor-led</p>
           <h1 className="mt-3 font-heading text-4xl font-bold tracking-tight sm:text-5xl">SQL & Excel for Blockchain Data Analytics and Research</h1>
           <p className="mt-4 max-w-2xl text-lg text-white/80">A six-week practical learning journey from blockchain data queries to market intelligence, dashboards and publishable research.</p>
-          <p className="mt-6 text-sm font-medium tracking-wide text-brand-orange">2 November – 11 December 2026 · Mondays and Wednesdays training · Fridays office hours · Time to be confirmed (WAT, UTC+1)</p>
+          <p className="mt-6 text-sm font-medium tracking-wide text-brand-orange">6 Modules · 6 Weeks · 12 Live Sessions + Weekly Office Hours · Learn by Building</p>
+          <p className="mt-2 text-sm text-white/65">Project-Based Learning · SQL · Excel · Blockchain Data · AI-Assisted Research</p>
           <div className="mt-8 flex flex-wrap gap-3">
             <ButtonLink href="/programs/cohort-9-sql-blockchain-data-analytics" className="h-11 bg-brand-orange text-white hover:bg-brand-orange/90">Programme overview <ArrowRight className="ml-2 size-4" /></ButtonLink>
             <ButtonLink href="/contact" variant="outline" className="h-11 border-white/30 bg-transparent text-white hover:bg-white/10">Enquiry & enrolment updates</ButtonLink>
@@ -97,17 +99,16 @@ export function SqlBlockchainDataAnalyticsCurriculum() {
       </section>
       <section className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
         <h2 className="font-heading text-2xl font-bold sm:text-3xl">Six-week curriculum</h2>
-        <p className="mt-3 max-w-2xl text-muted-foreground">Each week includes two instructor-led sessions, a Friday office hour and a practical project. Dates and topics are listed below.</p>
+        <p className="mt-3 max-w-2xl text-muted-foreground">Each week includes two instructor-led sessions, a Friday office hour and a practical project. Follow the sequence from foundations to capstone without tying the curriculum to calendar dates.</p>
         <div className="mt-8 space-y-12">
           {weeks.map((week) => <article key={week.week} id={`week-${week.week}`} className="scroll-mt-24 border-t border-border/70 pt-8">
-            <p className="font-mono text-sm font-semibold text-brand-orange">Week {week.week} · {week.dates}</p>
+            <p className="font-mono text-sm font-semibold text-brand-orange">Week {week.week}</p>
             <h3 className="mt-2 font-heading text-2xl font-bold">{week.title}</h3>
             <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">{week.focus}</p>
             <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tools and methods: {week.tools.join(" · ")}</p>
             <h4 className="mt-7 text-sm font-semibold uppercase tracking-wide">Live sessions</h4>
             <ol className="mt-3 divide-y divide-border/60 border-y border-border/60">
               {week.sessions.map((session) => <li key={session.title} className="py-5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-brand-orange">{session.date}</p>
                 <h5 className="mt-1 text-base font-semibold">{session.title}</h5>
                 <ul className="mt-3 space-y-2">{session.topics.map((topic) => <li key={topic} className="flex gap-2 text-sm text-muted-foreground"><Check className="mt-0.5 size-4 shrink-0 text-brand-orange" />{topic}</li>)}</ul>
               </li>)}
