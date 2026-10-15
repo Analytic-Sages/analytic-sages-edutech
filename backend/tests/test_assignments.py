@@ -112,10 +112,12 @@ def test_student_submit_and_instructor_review():
     cohort_id_uuid, _ = _seed()
     cohort_id = str(cohort_id_uuid)
     student = _make_user("assign-test-student")
+    student_without_submission = _make_user("assign-test-no-submission")
     instructor = _make_user("assign-test-instructor", UserRole.INSTRUCTOR)
     db = SessionLocal()
     try:
         db.add(CohortMember(cohort_id=cohort_id_uuid, user_id=student.id, role=CohortMemberRole.STUDENT))
+        db.add(CohortMember(cohort_id=cohort_id_uuid, user_id=student_without_submission.id, role=CohortMemberRole.STUDENT))
         db.add(CohortMember(cohort_id=cohort_id_uuid, user_id=instructor.id, role=CohortMemberRole.INSTRUCTOR))
         db.commit()
     finally:
@@ -164,7 +166,16 @@ def test_student_submit_and_instructor_review():
         f"/api/v1/instructor/assignments/{assignment_id}/tracking", headers=_auth(instructor)
     )
     assert tracking.status_code == 200
-    assert tracking.json()["submitted_count"] == 1
+    tracking_payload = tracking.json()
+    assert tracking_payload["student_count"] == 2
+    assert tracking_payload["submitted_count"] == 1
+    assert tracking_payload["missing_count"] == 1
+    missing_row = next(
+        row for row in tracking_payload["submissions"]
+        if row["user_id"] == str(student_without_submission.id)
+    )
+    assert missing_row["submission"]["status"] == "missing"
+    assert missing_row["submission"]["updated_at"] is None
 
     reviewed = client.patch(
         f"/api/v1/instructor/submissions/{submission_id}/review",
