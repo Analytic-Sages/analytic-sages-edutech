@@ -30,7 +30,6 @@ export const marketingNav = [
   { title: "Community", href: "/community" },
   { title: "Insights", href: "/insights" },
   { title: "About us", href: "/about" },
-  { title: "Partner With Us", href: "/partner-with-us" },
 ] as const;
 
 /** Top navigation bar. Hides "Student Projects" while the showcase is not in the header. */
