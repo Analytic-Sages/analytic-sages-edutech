@@ -12,6 +12,7 @@ from sqlalchemy import select
 from app.core.config import get_settings
 from app.core.payments import PaymentProviderName, PaymentStatus
 from app.core.referrals import (
+    PartnerLedgerEntryType,
     PartnerLedgerStatus,
     ReferralConversionStatus,
     ReferralPartnerStatus,
@@ -30,7 +31,7 @@ from app.models.referral import (
     ReferralConversion,
     ReferralPartner,
 )
-from app.models.user import User
+from app.models.user import EmailVerificationToken, User
 from app.payments.base import WebhookEvent
 from app.services.email import EmailService
 from app.services.payments import PaymentService
@@ -78,6 +79,11 @@ def _cleanup_emails(*emails: str) -> None:
             user = db.scalar(select(User).where(User.email == email))
             if not user:
                 continue
+            # Verification tokens reference users with a non-nullable foreign key.
+            for token in db.scalars(
+                select(EmailVerificationToken).where(EmailVerificationToken.user_id == user.id)
+            ).all():
+                db.delete(token)
             partner = db.scalar(select(ReferralPartner).where(ReferralPartner.user_id == user.id))
             if partner:
                 for conv in db.scalars(
@@ -673,3 +679,343 @@ def test_payout_rejects_unsupported_currency_and_mixed_aggregation():
     finally:
         db.close()
 
+
+
+def test_installment_payments_each_create_one_commission():
+    """Two independently confirmed $28 installments each earn exactly $1.96."""
+    partner_email = f"p-inst-{uuid.uuid4()}@example.com"
+    learner_email = f"l-inst-{uuid.uuid4()}@example.com"
+    admin_email = f"a-inst-{uuid.uuid4()}@example.com"
+    cohort_slug = f"inst-{uuid.uuid4().hex[:8]}"
+    cohort_id = None
+    try:
+        partner_user = _make_user(partner_email, full_name="Installment Partner")
+        learner = _make_user(learner_email, full_name="Installment Learner")
+        admin = _make_user(admin_email, UserRole.ADMIN)
+        db = SessionLocal()
+        try:
+            settings = get_settings()
+            partner = ReferralPartnerService(db, settings).apply(
+                user=partner_user, display_name="Installment Partner",
+                social_handle=None, promotion_channels="X", terms_accepted=True,
+            )
+            partner = ReferralPartnerService(db, settings).set_status(
+                partner_id=partner.id, status_value=ReferralPartnerStatus.ACTIVE, actor=admin,
+            )
+            now = datetime.now(UTC)
+            db.add(ReferralAttribution(
+                partner_id=partner.id, anonymous_visitor_id=uuid.uuid4().hex,
+                referred_user_id=learner.id, referral_code=partner.referral_code or "INST",
+                attributed_at=now, expires_at=now + timedelta(days=30), locked_at=now,
+            ))
+            cohort = Cohort(
+                name="Installment Test", slug=cohort_slug, description="test",
+                status=CohortStatus.OPEN, price=56, currency="USD",
+                referral_commission_eligible=True,
+            )
+            db.add(cohort)
+            db.flush()
+            cohort_id = cohort.id
+            service = ReferralCommissionService(db, settings)
+            payments = []
+            for index in range(2):
+                payment = Payment(
+                    order_id=f"ord-inst-{uuid.uuid4().hex[:10]}",
+                    user_id=learner.id, cohort_id=cohort.id,
+                    provider=PaymentProviderName.MOCK,
+                    provider_payment_id=f"inst-{uuid.uuid4().hex[:10]}",
+                    amount=Decimal("28.00"), currency="USD",
+                    status=PaymentStatus.CONFIRMED, confirmed_at=now,
+                )
+                db.add(payment)
+                db.flush()
+                conversion = service.handle_successful_payment(payment)
+                assert conversion is not None
+                payments.append((payment.id, conversion.id))
+            db.commit()
+
+            conversions = list(db.scalars(
+                select(ReferralConversion).where(
+                    ReferralConversion.payment_id.in_([payment_id for payment_id, _ in payments])
+                )
+            ).all())
+            assert len(conversions) == 2
+            assert {row.commission_amount for row in conversions} == {Decimal("1.96")}
+            assert {row.eligible_amount for row in conversions} == {Decimal("28.00")}
+            ledger_rows = list(db.scalars(
+                select(PartnerLedgerEntry).where(
+                    PartnerLedgerEntry.reference_id.in_([conversion_id for _, conversion_id in payments]),
+                    PartnerLedgerEntry.entry_type == PartnerLedgerEntryType.COMMISSION,
+                )
+            ).all())
+            assert len(ledger_rows) == 2
+            assert sum((row.amount for row in ledger_rows), Decimal("0.00")) == Decimal("3.92")
+        finally:
+            db.close()
+    finally:
+        if cohort_id is not None:
+            _cleanup_cohort(cohort_id=cohort_id)
+        _cleanup_emails(partner_email, learner_email, admin_email)
+
+
+def test_referral_track_sets_persistent_30_day_visitor_cookie():
+    """The API cookie survives browser restarts and is sent on later requests."""
+    settings = get_settings()
+    response = client.post(
+        "/api/v1/referrals/track",
+        json={"code": "NO-SUCH-CODE", "anonymous_visitor_id": uuid.uuid4().hex},
+    )
+    assert response.status_code == 200
+    cookie = response.headers.get("set-cookie", "")
+    assert "as_ref_vid=" in cookie
+    assert "Max-Age=2592000" in cookie
+    assert "Path=/" in cookie
+    assert "HttpOnly" in cookie
+    assert "samesite=lax" in cookie.lower()
+
+
+def test_payout_service_rejects_below_minimum_in_each_configured_currency():
+    from fastapi import HTTPException
+    from app.services.referrals import ReferralPayoutService
+
+    partner_email = f"p-min-{uuid.uuid4()}@example.com"
+    admin_email = f"a-min-{uuid.uuid4()}@example.com"
+    try:
+        partner_user = _make_user(partner_email)
+        admin = _make_user(admin_email, UserRole.ADMIN)
+        db = SessionLocal()
+        try:
+            settings = get_settings()
+            partner = ReferralPartnerService(db, settings).apply(
+                user=partner_user, display_name="Minimum Test Partner",
+                social_handle=None, promotion_channels="X", terms_accepted=True,
+            )
+            partner = ReferralPartnerService(db, settings).set_status(
+                partner_id=partner.id, status_value=ReferralPartnerStatus.ACTIVE, actor=admin,
+            )
+            payouts = ReferralPayoutService(db, settings)
+            assert payouts.minimum_for("USD") is not None
+            assert payouts.minimum_for("NGN") is not None
+            for currency in ("USD", "NGN"):
+                minimum = payouts.minimum_for(currency)
+                assert minimum is not None and minimum > 0
+                try:
+                    payouts.request_payout(
+                        partner=partner, amount=minimum / Decimal("2"), currency=currency,
+                    )
+                except HTTPException as exc:
+                    assert exc.status_code == 400
+                    assert "Minimum payout" in str(exc.detail)
+                else:
+                    raise AssertionError(f"Below-minimum {currency} payout was accepted")
+        finally:
+            db.close()
+    finally:
+        _cleanup_emails(partner_email, admin_email)
+
+
+def test_public_leaderboard_response_contains_only_partner_safe_fields(monkeypatch):
+    """Exercise the public API serialization and ensure private learner fields cannot leak."""
+    from app.api.v1 import referrals as referrals_api
+    from app.core.config import get_settings
+
+    class StubDashboard:
+        def leaderboard(self, *, period="all", limit=20):
+            return [{
+                "rank": 1,
+                "display_name": "DataSage_01",
+                "successful_enrollments": 3,
+            }]
+
+    original_overrides = app.dependency_overrides.copy()
+    try:
+        settings = get_settings().model_copy(update={"partners_public": True})
+        app.dependency_overrides[get_settings] = lambda: settings
+        app.dependency_overrides[referrals_api._dashboard] = lambda: StubDashboard()
+        response = client.get("/api/v1/referrals/leaderboard")
+        assert response.status_code == 200
+        body = response.json()
+        assert set(body) == {"period", "entries"}
+        assert body["entries"] == [{
+            "rank": 1,
+            "display_name": "DataSage_01",
+            "successful_enrollments": 3,
+        }]
+        for row in body["entries"]:
+            assert not ({"email", "learner_email", "learner_name", "payment_details", "payment_id"} & set(row))
+    finally:
+        app.dependency_overrides.clear()
+        app.dependency_overrides.update(original_overrides)
+
+
+def test_refund_with_open_payout_requires_review_and_blocks_payout_transition():
+    """A refunded commission must not be paid while an open payout overlaps it."""
+    from fastapi import HTTPException
+    from app.core.referrals import PartnerPayoutStatus
+    from app.models.referral import PartnerPayoutRequest
+    from app.services.referrals import ReferralPayoutService
+
+    partner_email = f"p-ref-open-{uuid.uuid4()}@example.com"
+    learner_email = f"l-ref-open-{uuid.uuid4()}@example.com"
+    admin_email = f"a-ref-open-{uuid.uuid4()}@example.com"
+    cohort_slug = f"ref-open-{uuid.uuid4().hex[:8]}"
+    cohort_id = None
+    try:
+        partner_user = _make_user(partner_email)
+        learner = _make_user(learner_email)
+        admin = _make_user(admin_email, UserRole.ADMIN)
+        db = SessionLocal()
+        try:
+            settings = get_settings()
+            partner = ReferralPartnerService(db, settings).apply(
+                user=partner_user, display_name="Refund Open Payout",
+                social_handle=None, promotion_channels="X", terms_accepted=True,
+            )
+            partner = ReferralPartnerService(db, settings).set_status(
+                partner_id=partner.id, status_value=ReferralPartnerStatus.ACTIVE, actor=admin,
+            )
+            now = datetime.now(UTC)
+            db.add(ReferralAttribution(
+                partner_id=partner.id, anonymous_visitor_id=uuid.uuid4().hex,
+                referred_user_id=learner.id, referral_code=partner.referral_code or "RFOP",
+                attributed_at=now, expires_at=now + timedelta(days=30), locked_at=now,
+            ))
+            cohort = Cohort(
+                name="Refund Open Payout", slug=cohort_slug, description="test",
+                status=CohortStatus.OPEN, price=100, currency="USD",
+                referral_commission_eligible=True,
+            )
+            db.add(cohort)
+            db.flush()
+            cohort_id = cohort.id
+            payment = Payment(
+                order_id=f"ord-rfo-{uuid.uuid4().hex[:10]}", user_id=learner.id,
+                cohort_id=cohort.id, provider=PaymentProviderName.MOCK,
+                provider_payment_id=f"rfo-{uuid.uuid4().hex[:10]}",
+                amount=Decimal("100.00"), currency="USD",
+                status=PaymentStatus.CONFIRMED, confirmed_at=now,
+            )
+            db.add(payment)
+            db.flush()
+            conversion = ReferralCommissionService(db, settings).handle_successful_payment(payment)
+            assert conversion is not None
+            conversion.status = ReferralConversionStatus.AVAILABLE
+            ledger = db.scalar(select(PartnerLedgerEntry).where(
+                PartnerLedgerEntry.reference_id == conversion.id,
+                PartnerLedgerEntry.entry_type == PartnerLedgerEntryType.COMMISSION,
+            ))
+            assert ledger is not None
+            ledger.status = PartnerLedgerStatus.AVAILABLE
+            payout = PartnerPayoutRequest(
+                partner_id=partner.id, amount=Decimal("7.00"), currency="USD",
+                payment_method="manual", status=PartnerPayoutStatus.REQUESTED,
+            )
+            db.add(payout)
+            db.flush()
+            db.add(PartnerLedgerEntry(
+                partner_id=partner.id, entry_type=PartnerLedgerEntryType.PAYOUT,
+                amount=Decimal("-7.00"), currency="USD",
+                reference_type="partner_payout_request", reference_id=payout.id,
+                status=PartnerLedgerStatus.RESERVED, description="test reservation",
+            ))
+            payment.status = PaymentStatus.REFUNDED
+            ReferralCommissionService(db, settings).handle_refunded_payment(payment)
+            db.commit()
+            assert conversion.status == ReferralConversionStatus.REVIEW_REQUIRED
+
+            try:
+                ReferralPayoutService(db, settings).update_status(
+                    payout_id=payout.id, status_value=PartnerPayoutStatus.PROCESSING,
+                    actor=admin, note="must remain blocked until refund review",
+                )
+            except HTTPException as exc:
+                assert exc.status_code == 409
+                assert "requires admin review" in str(exc.detail)
+            else:
+                raise AssertionError("Payout was allowed to process during refund review")
+        finally:
+            db.close()
+    finally:
+        if cohort_id is not None:
+            _cleanup_cohort(cohort_id=cohort_id)
+        _cleanup_emails(partner_email, learner_email, admin_email)
+
+
+def test_registration_locks_cookie_attribution_to_account_for_later_other_device_payment():
+    """Registration transfers browser attribution to the account; payment needs no visitor cookie."""
+    partner_email = f"p-cookie-reg-{uuid.uuid4()}@example.com"
+    admin_email = f"a-cookie-reg-{uuid.uuid4()}@example.com"
+    learner_email = f"l-cookie-reg-{uuid.uuid4()}@example.com"
+    partner_id = None
+    learner_id = None
+    db = SessionLocal()
+    try:
+        partner_user = _make_user(partner_email, full_name="Cookie Partner")
+        admin = _make_user(admin_email, UserRole.ADMIN)
+        partner = ReferralPartnerService(db, get_settings()).apply(
+            user=partner_user, display_name="Cookie Partner",
+            social_handle=None, promotion_channels="X", terms_accepted=True,
+        )
+        partner = ReferralPartnerService(db, get_settings()).set_status(
+            partner_id=partner.id, status_value=ReferralPartnerStatus.ACTIVE, actor=admin,
+        )
+        partner_id = partner.id
+        code = partner.referral_code
+        assert code
+    finally:
+        db.close()
+
+    # Keep this test independent of deployment cookie-domain/security settings.
+    original_overrides = app.dependency_overrides.copy()
+    test_settings = get_settings().model_copy(update={"cookie_secure": False, "cookie_domain": None})
+    app.dependency_overrides[get_settings] = lambda: test_settings
+    browser = TestClient(app)
+    try:
+        tracked = browser.post("/api/v1/referrals/track", json={"code": code})
+        assert tracked.status_code == 200
+        visitor_id = tracked.json()["anonymous_visitor_id"]
+        cookie_header = tracked.headers.get("set-cookie", "")
+        assert "as_ref_vid=" in cookie_header
+
+        registered = browser.post("/api/v1/auth/register", json={
+            "email": learner_email,
+            "password": "ReferralTest!123",
+            "full_name": "Cookie Referred Learner",
+            "phone_number": "+2348012345678",
+            "phone_country_code": "NG",
+            "country_of_residence": "NG",
+        })
+        assert registered.status_code == 201
+
+        db = SessionLocal()
+        try:
+            learner = db.scalar(select(User).where(User.email == learner_email))
+            assert learner is not None
+            learner_id = learner.id
+            attribution = db.scalar(select(ReferralAttribution).where(
+                ReferralAttribution.referred_user_id == learner.id,
+                ReferralAttribution.locked_at.is_not(None),
+            ))
+            assert attribution is not None
+            assert attribution.partner_id == partner_id
+            assert attribution.anonymous_visitor_id == visitor_id
+            # This account-level lock is what lets a later desktop payment qualify.
+            assert ReferralAttributionService(db, get_settings()).get_locked_for_user(learner.id) is not None
+        finally:
+            db.close()
+    finally:
+        db = SessionLocal()
+        try:
+            if learner_id:
+                for attr in db.scalars(select(ReferralAttribution).where(
+                    ReferralAttribution.referred_user_id == learner_id
+                )).all():
+                    db.delete(attr)
+                db.commit()
+        finally:
+            db.close()
+        try:
+            _cleanup_emails(partner_email, admin_email, learner_email)
+        finally:
+            app.dependency_overrides.clear()
+            app.dependency_overrides.update(original_overrides)
