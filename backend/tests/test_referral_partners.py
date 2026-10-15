@@ -846,6 +846,7 @@ def test_refund_with_open_payout_requires_review_and_blocks_payout_transition():
     from fastapi import HTTPException
     from app.core.referrals import PartnerPayoutStatus
     from app.models.referral import PartnerPayoutRequest
+    from app.services.referrals import ReferralPayoutService
 
     partner_email = f"p-ref-open-{uuid.uuid4()}@example.com"
     learner_email = f"l-ref-open-{uuid.uuid4()}@example.com"
