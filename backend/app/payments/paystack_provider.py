@@ -209,6 +209,8 @@ class PaystackProvider:
             provider=self.name,
             provider_payment_id=str(ref),
             checkout_url=str(auth_url),
+            charge_amount=charge_amount,
+            charge_currency=currency,
             metadata={
                 "mode": "live",
                 "reference": str(ref),
