@@ -268,7 +268,7 @@ class PaystackProvider:
         return WebhookEvent(
             provider=self.name,
             order_id=order_id,
-            provider_payment_id=str(verified.get("id") or reference),
+            # Keep our stable checkout reference as the canonical provider ID.\n            # Paystack transaction IDs are stored inside the raw verified payload.\n            provider_payment_id=reference,
             status=payment_status,
             crypto_currency=None,
             crypto_amount=None,
