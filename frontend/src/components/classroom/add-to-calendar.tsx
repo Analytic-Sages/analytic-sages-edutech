@@ -108,24 +108,24 @@ export function AllSessionsCalendarMenu({ sessions }: { sessions: LiveSessionPub
                 <DropdownMenuItem className="p-0">
                   <CalendarLinks
                     url={googleSessionCalendarUrl(next)}
-                    label="Google Calendar (next session)"
+                    label="Google Calendar (next session only)"
                   />
                 </DropdownMenuItem>
                 <DropdownMenuItem className="p-0">
                   <CalendarLinks
                     url={outlookSessionCalendarUrl(next)}
-                    label="Outlook (next session)"
+                    label="Outlook (next session only)"
                   />
                 </DropdownMenuItem>
               </>
             )}
             <DropdownMenuItem onClick={() => downloadAllSessionsIcs(sessions)}>
-              Download all ({sessions.length}) as .ics
+              Download all {sessions.length} sessions (.ics) — import into Google, Apple or Outlook
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSubscribe}>
               <Copy className="mr-2 size-4" />
-              Copy subscribe link (live updates)
+              Subscribe to all sessions (live updates)
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
