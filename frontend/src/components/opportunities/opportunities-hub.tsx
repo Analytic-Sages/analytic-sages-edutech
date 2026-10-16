@@ -39,7 +39,9 @@ export function OpportunitiesHub({
   const [items, setItems] = useState<OpportunityCard[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
   const [careerPath, setCareerPath] = useState("");
@@ -70,6 +72,7 @@ export function OpportunitiesHub({
     queueMicrotask(() => {
       if (!cancelled) setLoading(true);
     });
+    setLoadMoreError(null);
     listOpportunities({
       q: debounced || undefined,
       opportunity_type: initialType,
@@ -80,6 +83,7 @@ export function OpportunitiesHub({
       region: region || undefined,
       sort,
       limit: 30,
+      offset: 0,
     })
       .then((data) => {
         if (cancelled) return;
@@ -98,6 +102,35 @@ export function OpportunitiesHub({
       cancelled = true;
     };
   }, [debounced, initialType, careerPath, skill, workplace, employment, region, sort]);
+
+  async function loadMore() {
+    if (loadingMore || items.length >= total) return;
+    setLoadingMore(true);
+    setLoadMoreError(null);
+    try {
+      const data = await listOpportunities({
+        q: debounced || undefined,
+        opportunity_type: initialType,
+        career_path: careerPath || undefined,
+        skill: skill || undefined,
+        workplace_type: workplace || undefined,
+        employment_type: employment || undefined,
+        region: region || undefined,
+        sort,
+        limit: 30,
+        offset: items.length,
+      });
+      setItems((current) => {
+        const knownIds = new Set(current.map((item) => item.id));
+        return [...current, ...data.items.filter((item) => !knownIds.has(item.id))];
+      });
+      setTotal(data.total);
+    } catch (err) {
+      setLoadMoreError(err instanceof ApiError ? err.detail : "Could not load more opportunities.");
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   const typeCounts = useMemo(() => {
     const map = new Map((filters?.types || []).map((item) => [item.value, item.count]));
@@ -307,6 +340,21 @@ export function OpportunitiesHub({
                 <OpportunityRow key={item.id} opportunity={item} />
               ))}
             </div>
+            {items.length < total ? (
+              <div className="mt-6 flex flex-col items-center gap-3">
+                {loadMoreError ? (
+                  <p role="alert" className="text-sm text-destructive">{loadMoreError}</p>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="inline-flex min-h-10 items-center justify-center rounded-lg border border-border bg-card px-5 py-2 text-sm font-semibold transition-colors hover:border-brand-orange hover:text-brand-orange disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loadingMore ? "Loading more…" : `Load more opportunities (${items.length} of ${total})`}
+                </button>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </main>
