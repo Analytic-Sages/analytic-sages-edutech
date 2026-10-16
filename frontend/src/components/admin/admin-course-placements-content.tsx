@@ -34,8 +34,6 @@ export function AdminCoursePlacementsContent() {
 
   useEffect(() => {
     let cancelled = false;
-    setError(null);
-    setMessage(null);
     getAdminCoursePlacements(page, section)
       .then((items) => { if (!cancelled) setRows(items); })
       .catch((err) => { if (!cancelled) setError(err instanceof ApiError ? err.detail : "Could not load this placement."); });
@@ -121,7 +119,7 @@ export function AdminCoursePlacementsContent() {
           <ol className="divide-y">
             {rows.map((row, index) => <li key={row.course_id} className="flex items-center gap-3 p-4">
               <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold">{index + 1}</span>
-              {row.thumbnail ? <img src={row.thumbnail} alt="" className="size-14 rounded-md border object-cover" /> : <div className="flex size-14 items-center justify-center rounded-md border text-xs text-muted-foreground">Course</div>}
+              {row.thumbnail ? <><span className="sr-only">Course thumbnail</span>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={row.thumbnail} alt="" className="size-14 rounded-md border object-cover" /></> : <div className="flex size-14 items-center justify-center rounded-md border text-xs text-muted-foreground">Course</div>}
               <div className="min-w-0 flex-1"><p className="truncate font-medium">{row.title}</p><p className="text-xs text-muted-foreground">{row.slug} · {row.delivery_type} · {row.published ? "Published" : "Draft"}</p></div>
               <button type="button" title={row.visible ? "Hide card" : "Show card"} aria-label={row.visible ? `Hide ${row.title}` : `Show ${row.title}`} onClick={() => setRows((current) => current.map((item) => item.course_id === row.course_id ? { ...item, visible: !item.visible } : item))} className="rounded-md border p-2 text-muted-foreground hover:bg-muted">{row.visible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}</button>
               <button type="button" title="Move up" aria-label={`Move ${row.title} up`} disabled={index === 0} onClick={() => move(index, -1)} className="rounded-md border p-2 disabled:opacity-30"><ArrowUp className="size-4" /></button>
@@ -131,7 +129,7 @@ export function AdminCoursePlacementsContent() {
           </ol>
         )}
       </div>
-      <p className="text-sm text-muted-foreground">Saving replaces only this page/section's placement list. It never deletes a course. Draft courses can be staged here, but the public placement endpoint only returns published courses.</p>
+      <p className="text-sm text-muted-foreground">Saving replaces only this page/section&apos;s placement list. It never deletes a course. Draft courses can be staged here, but the public placement endpoint only returns published courses.</p>
     </div>
   );
 }
