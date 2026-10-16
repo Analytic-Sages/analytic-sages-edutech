@@ -70,9 +70,11 @@ export function OpportunitiesHub({
   useEffect(() => {
     let cancelled = false;
     queueMicrotask(() => {
-      if (!cancelled) setLoading(true);
+      if (!cancelled) {
+        setLoading(true);
+        setLoadMoreError(null);
+      }
     });
-    setLoadMoreError(null);
     listOpportunities({
       q: debounced || undefined,
       opportunity_type: initialType,
