@@ -30,7 +30,7 @@ export function CoursePlacementSection({ pageKey, sectionKey = "main", title, de
         {items.map((item) => (
           <Link key={item.course_id} href={`/courses/${item.course_slug}`} className="group overflow-hidden rounded-xl border bg-card transition hover:-translate-y-0.5 hover:shadow-md">
             <div className="aspect-[16/9] overflow-hidden bg-muted">
-              {item.thumbnail ? <img src={item.thumbnail} alt="" loading="lazy" className="size-full object-cover transition-transform group-hover:scale-[1.02]" /> : <div className="flex size-full items-center justify-center"><BookOpen className="size-8 text-muted-foreground" /></div>}
+              {item.thumbnail ? <>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={item.thumbnail} alt="" loading="lazy" className="size-full object-cover transition-transform group-hover:scale-[1.02]" /></> : <div className="flex size-full items-center justify-center"><BookOpen className="size-8 text-muted-foreground" /></div>}
             </div>
             <div className="p-5"><p className="text-xs font-semibold uppercase tracking-wide text-brand-orange">{item.delivery_type.replace(/_/g, " ")}</p><h3 className="mt-2 line-clamp-2 font-heading text-lg font-semibold">{item.title}</h3><span className="mt-4 inline-flex items-center gap-2 text-sm font-medium">View course <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" /></span></div>
           </Link>
