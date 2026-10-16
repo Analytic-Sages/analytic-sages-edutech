@@ -12,6 +12,7 @@ from app.models.billing import (
 )
 from app.models.classroom import Cohort, CohortMember, LiveSession, SessionRecording
 from app.models.course import Course
+from app.models.course_card_placement import CourseCardPlacement
 from app.models.enrollment import Enrollment
 from app.models.event import Event, EventRegistration
 from app.models.instructor import CohortInstructor, CourseAccessGrant, CourseInstructor, InstructorProfile
@@ -60,6 +61,7 @@ __all__ = [
     "EmailVerificationToken",
     "PasswordResetToken",
     "Course",
+    "CourseCardPlacement",
     "CourseModule",
     "Lesson",
     "LessonProgress",
