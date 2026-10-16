@@ -1,6 +1,7 @@
 import { pageMetadata } from "@/lib/seo";
 import { ArrowRight } from "lucide-react";
 import { FeaturesSection } from "@/components/marketing/features-section";
+import { CoursePlacementSection } from "@/components/marketing/course-placement-section";
 import { HeroVisual } from "@/components/marketing/hero-visual";
 import { HomeCommunitySection } from "@/components/marketing/home-community-section";
 import { HomeCtaSection } from "@/components/marketing/home-cta-section";
@@ -67,6 +68,8 @@ export default function HomePage() {
       <TrustStats />
 
       <LearningPathsSection />
+
+      <CoursePlacementSection pageKey="home" sectionKey="main" title="Featured Courses" description="Explore the courses selected by the Analytic Sages team." />
 
       <HomeInstructorLedSection />
 
