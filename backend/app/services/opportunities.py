@@ -907,11 +907,12 @@ class OpportunityService:
                     reg = self._aware(details.registration_deadline)
                 elif row.deadline:
                     reg = self._aware(row.deadline)
-                return (
-                    PHASE_RANK.get(phase, 99),
-                    reg or datetime.max.replace(tzinfo=UTC),
-                    -(row.published_at.timestamp() if row.published_at else 0),
-                )
+                published_rank = -(row.published_at.timestamp() if row.published_at else 0)
+                phase_rank = PHASE_RANK.get(phase, 99)
+                deadline_rank = reg or datetime.max.replace(tzinfo=UTC)
+                if sort == "newest":
+                    return (published_rank, phase_rank, deadline_rank)
+                return (phase_rank, deadline_rank, published_rank)
 
             rows.sort(key=_hackathon_sort_key)
             total = len(rows)
@@ -941,11 +942,12 @@ class OpportunityService:
                 elif row.deadline:
                     due = self._aware(row.deadline)
                 reward = float(details.reward_amount) if details and details.reward_amount is not None else 0.0
-                return (
-                    BOUNTY_PHASE_RANK.get(phase, 99),
-                    due or datetime.max.replace(tzinfo=UTC),
-                    -reward,
-                )
+                published_rank = -(row.published_at.timestamp() if row.published_at else 0)
+                phase_rank = BOUNTY_PHASE_RANK.get(phase, 99)
+                deadline_rank = due or datetime.max.replace(tzinfo=UTC)
+                if sort == "newest":
+                    return (published_rank, phase_rank, deadline_rank, -reward)
+                return (phase_rank, deadline_rank, -reward, published_rank)
 
             rows.sort(key=_bounty_sort_key)
             total = len(rows)
@@ -973,10 +975,12 @@ class OpportunityService:
                 Opportunity.published_at.desc().nullslast(),
             )
         else:
+            # "Newest" must actually prioritize publication recency. Featured
+            # listings get priority only when the caller explicitly asks for it.
             query = query.order_by(
-                Opportunity.featured.desc(),
                 Opportunity.published_at.desc().nullslast(),
                 Opportunity.created_at.desc(),
+                Opportunity.featured.desc(),
             )
 
         total = int(self.db.scalar(count_query) or 0)

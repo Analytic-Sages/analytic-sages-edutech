@@ -156,6 +156,68 @@ def test_admin_publish_then_public_can_read():
         _cleanup_user(admin_email)
 
 
+def test_newest_sort_prioritizes_recently_published_over_featured():
+    older_slug = f"older-featured-{uuid.uuid4().hex[:8]}"
+    newer_slug = f"newer-published-{uuid.uuid4().hex[:8]}"
+    _cleanup_slug(older_slug)
+    _cleanup_slug(newer_slug)
+    admin_email = f"admin-newest-{uuid.uuid4()}@example.com"
+    admin = _make_user(admin_email, UserRole.ADMIN)
+    try:
+        older = client.post(
+            "/api/v1/admin/opportunities",
+            headers=_auth(admin),
+            json=_payload(slug=older_slug, featured=True),
+        )
+        assert older.status_code == 201, older.text
+        older_id = older.json()["id"]
+        published_older = client.post(
+            f"/api/v1/admin/opportunities/{older_id}/publish",
+            headers=_auth(admin),
+            json={},
+        )
+        assert published_older.status_code == 200, published_older.text
+
+        newer = client.post(
+            "/api/v1/admin/opportunities",
+            headers=_auth(admin),
+            json=_payload(slug=newer_slug, featured=False),
+        )
+        assert newer.status_code == 201, newer.text
+        newer_id = newer.json()["id"]
+        published_newer = client.post(
+            f"/api/v1/admin/opportunities/{newer_id}/publish",
+            headers=_auth(admin),
+            json={},
+        )
+        assert published_newer.status_code == 200, published_newer.text
+
+        newest_page = client.get(
+            "/api/v1/opportunities",
+            params={"sort": "newest", "limit": 1, "offset": 0},
+        )
+        assert newest_page.status_code == 200, newest_page.text
+        assert newest_page.json()["items"][0]["slug"] == newer_slug
+
+        next_page = client.get(
+            "/api/v1/opportunities",
+            params={"sort": "newest", "limit": 1, "offset": 1},
+        )
+        assert next_page.status_code == 200, next_page.text
+        assert older_slug in {item["slug"] for item in next_page.json()["items"]}
+
+        featured_page = client.get(
+            "/api/v1/opportunities",
+            params={"sort": "featured", "limit": 1, "offset": 0},
+        )
+        assert featured_page.status_code == 200, featured_page.text
+        assert featured_page.json()["items"][0]["slug"] == older_slug
+    finally:
+        _cleanup_slug(older_slug)
+        _cleanup_slug(newer_slug)
+        _cleanup_user(admin_email)
+
+
 def test_archived_opportunity_can_be_restored_and_published():
     slug = f"restore-opp-{uuid.uuid4().hex[:8]}"
     _cleanup_slug(slug)
