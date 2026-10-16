@@ -20,18 +20,17 @@ export function AdminCourseCardsContent() {
   const [placements, setPlacements] = useState<Placement[]>(
     MANAGED_COURSE_CARDS.map((card) => ({ card_key: card.key, visible: true })),
   );
-  const [loading, setLoading] = useState(true);
+  const [loadedPage, setLoadedPage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
     listAdminCourseCardPlacements()
       .then((rows) => {
         if (cancelled) return;
+        setError(null);
         const current = rows
           .filter((row) => row.page_key === pageKey && row.section_key === "sidebar")
           .sort((a, b) => a.position - b.position)
@@ -41,7 +40,7 @@ export function AdminCourseCardsContent() {
       .catch((err) => {
         if (!cancelled) setError(err instanceof ApiError ? err.detail : "Could not load course card settings.");
       })
-      .finally(() => { if (!cancelled) setLoading(false); });
+      .finally(() => { if (!cancelled) setLoadedPage(pageKey); });
     return () => { cancelled = true; };
   }, [pageKey]);
 
@@ -93,7 +92,7 @@ export function AdminCourseCardsContent() {
         </select>
       </div>
 
-      {loading ? (
+      {loadedPage !== pageKey ? (
         <div className="flex items-center gap-2 py-10 text-muted-foreground"><Loader2 className="size-4 animate-spin" />Loading placements…</div>
       ) : (
         <div className="space-y-4">
