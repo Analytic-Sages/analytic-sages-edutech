@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { CoursePlacementSection } from "@/components/marketing/course-placement-section";
 import { notFound } from "next/navigation";
 import { OpportunitiesHub } from "@/components/opportunities/opportunities-hub";
 import { isOpportunitiesPublic } from "@/lib/feature-flags";
@@ -21,6 +22,7 @@ export default function OpportunitiesPage() {
         <div className="p-12 text-center text-sm text-muted-foreground">Loading opportunities…</div>
       }
     >
+      <CoursePlacementSection pageKey="opportunities" title="Build Skills for These Opportunities" />
       <OpportunitiesHub />
     </Suspense>
   );
