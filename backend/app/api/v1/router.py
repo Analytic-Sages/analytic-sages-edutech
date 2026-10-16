@@ -6,6 +6,7 @@ from app.api.v1 import (
     auth,
     billing,
     classroom,
+    course_card_placements,
     contact,
     events,
     experience,
@@ -35,6 +36,7 @@ api_router.include_router(billing.admin_router)
 api_router.include_router(payments.router)
 api_router.include_router(realtimekit_webhooks.router)
 api_router.include_router(classroom.router)
+api_router.include_router(course_card_placements.router)
 api_router.include_router(classroom.internal_router)
 api_router.include_router(assignments.router)
 api_router.include_router(projects.router)
