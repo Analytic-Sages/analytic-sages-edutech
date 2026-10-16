@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { CalendarDays, Clock, UserRound } from "lucide-react";
 import { EventKeepLearning } from "@/components/events/event-keep-learning";
+import { CourseSidebar } from "@/components/marketing/course-sidebar";
 import { EventRegisterCta } from "@/components/events/event-register-cta";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -156,6 +157,7 @@ export function EventDetail({ initialEvent }: Props) {
             preferred={event.keep_learning}
             relatedCourseSlug={event.related_course_slug}
           />
+          <CourseSidebar pageKey="events" />
         </aside>
       </div>
     </div>
