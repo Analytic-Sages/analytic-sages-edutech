@@ -70,6 +70,7 @@ export const adminNav: NavItem[] = [
   { title: "Billing", href: "/admin/billing", icon: "payments" },
   { title: "Collections", href: "/admin/collections", icon: "payments" },
   { title: "Courses", href: "/admin/courses", icon: "courses" },
+  { title: "Course Card Placements", href: "/admin/course-placements", icon: "courses" },
   { title: "Events", href: "/admin/events", icon: "events" },
   { title: "Opportunities", href: "/admin/opportunities", icon: "opportunities" },
   { title: "Referrals", href: "/admin/referrals", icon: "referrals" },
