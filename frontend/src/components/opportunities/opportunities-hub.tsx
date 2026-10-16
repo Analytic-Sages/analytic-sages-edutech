@@ -310,7 +310,7 @@ export function OpportunitiesHub({
           </div>
         ) : null}
       </main>
-      <div className="lg:sticky lg:top-6"><CourseSidebar /></div>
+      <div className="lg:sticky lg:top-6"><CourseSidebar pageKey="opportunities" /></div>
       </div></div>
     </div>
   );
