@@ -86,6 +86,7 @@ export const operationsNav: NavItem[] = [
   { title: "Join class", href: "/classroom", icon: "classroom" },
   { title: "Events", href: "/admin/events", icon: "events" },
   { title: "Courses", href: "/admin/courses", icon: "courses" },
+  { title: "Course Card Placements", href: "/admin/course-placements", icon: "courses" },
   { title: "Live sessions", href: "/admin/classroom", icon: "classroom" },
   { title: "Attendance", href: "/admin/attendance", icon: "classroom" },
   { title: "Reports", href: "/admin/reports", icon: "analytics" },
