@@ -1,4 +1,5 @@
 import { InsightsPageContent } from "@/components/insights/insights-page-content";
+import { CoursePlacementSection } from "@/components/marketing/course-placement-section";
 import { JsonLd } from "@/components/seo/json-ld";
 import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
 
@@ -18,6 +19,7 @@ export default function InsightsPage() {
           { name: "Insights", path: "/insights" },
         ])}
       />
+      <CoursePlacementSection pageKey="insights" title="Keep Learning" />
       <InsightsPageContent />
     </>
   );
