@@ -26,7 +26,6 @@ def list_public_placements(
         .where(
             CourseCardPlacement.page_key == page_key,
             CourseCardPlacement.section_key == section_key,
-            CourseCardPlacement.visible.is_(True),
         )
         .order_by(CourseCardPlacement.position, CourseCardPlacement.created_at)
     ).all()
