@@ -58,7 +58,10 @@ def test_admin_can_replace_order_and_visibility_for_multiple_cards():
         params={"page_key": page, "section_key": "sidebar"},
     )
     assert public.status_code == 200
-    assert [row["card_key"] for row in public.json()] == ["sql-excel"]
+    assert [row["card_key"] for row in public.json()] == [
+        "sql-excel", "blockchain-data-engineering"
+    ]
+    assert public.json()[1]["visible"] is False
 
     db = SessionLocal()
     try:
