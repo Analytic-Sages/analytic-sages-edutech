@@ -13,6 +13,7 @@ from app.models import (  # noqa: F401
     CohortInstructor,
     CohortMember,
     Course,
+    CourseCardPlacement,
     CourseInstructor,
     CourseModule,
     EmailVerificationToken,

@@ -474,6 +474,17 @@ export type LessonCompleteResponse = {
   next_slug: string | null;
 };
 
+export type CourseCardPlacement = {
+  id: string;
+  page_key: string;
+  section_key: string;
+  card_key: string;
+  position: number;
+  visible: boolean;
+};
+
+export type CourseCardPlacementInput = Omit<CourseCardPlacement, "id">;
+
 export type AdminCourseRow = {
   id: string;
   slug: string;
@@ -830,6 +841,37 @@ export function completeSelfPacedLesson(courseSlug: string, lessonSlug: string) 
 
 export function getMySelfPacedEnrollments() {
   return apiFetch<SelfPacedEnrollment[]>("/api/v1/self-paced/me/enrollments");
+}
+
+export function listCourseCardPlacements(pageKey: string, sectionKey: string) {
+  return apiFetch<CourseCardPlacement[]>(
+    `/api/v1/course-card-placements?page_key=${encodeURIComponent(pageKey)}&section_key=${encodeURIComponent(sectionKey)}`,
+  );
+}
+
+export function listAdminCourseCardPlacements() {
+  return apiFetch<CourseCardPlacement[]>("/api/v1/admin/course-card-placements");
+}
+
+export function saveCourseCardPlacements(
+  pageKey: string,
+  sectionKey: string,
+  placements: Array<{ card_key: string; visible: boolean }>,
+) {
+  return apiFetch<CourseCardPlacement[]>("/api/v1/admin/course-card-placements", {
+    method: "PUT",
+    body: JSON.stringify({
+      page_key: pageKey,
+      section_key: sectionKey,
+      placements: placements.map((item, position) => ({
+        page_key: pageKey,
+        section_key: sectionKey,
+        card_key: item.card_key,
+        position,
+        visible: item.visible,
+      })),
+    }),
+  });
 }
 
 export function getAdminCourses() {

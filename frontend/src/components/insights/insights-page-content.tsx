@@ -126,7 +126,7 @@ export function InsightsPageContent() {
       ) : null}
 
       <div className="mt-20 space-y-8"><InsightsSubscribeCta /><BlogLearnCta /></div>
-      </main><div className="lg:sticky lg:top-6"><CourseSidebar /></div></div></div>
+      </main><div className="lg:sticky lg:top-6"><CourseSidebar pageKey="insights" /></div></div></div>
   );
 }
 
