@@ -49,7 +49,6 @@ export function MarketingHeader() {
 
         <nav className="hidden items-center gap-10 lg:pointer-fine:flex" aria-label="Main navigation">
           {publicMarketingHeaderNav()
-            .filter((item) => item.href !== partnershipHref)
             .map((item) => {
               const active =
                 pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -164,7 +163,6 @@ export function MarketingHeader() {
                 aria-label="Mobile navigation"
               >
                 {publicMarketingHeaderNav()
-                  .filter((item) => item.href !== partnershipHref)
                   .map((item) => {
                     const active =
                       pathname === item.href || pathname.startsWith(`${item.href}/`);
