@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { CatalogPageContent } from "@/components/marketing/catalog-page-content";
+import { CoursePlacementSection } from "@/components/marketing/course-placement-section";
 import { JsonLd } from "@/components/seo/json-ld";
 import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
 
@@ -20,6 +21,7 @@ export default function CoursesPage() {
           { name: "Self-Paced Courses", path: "/courses" },
         ])}
       />
+      <CoursePlacementSection pageKey="courses" title="Featured Courses" description="Courses selected by the Analytic Sages team." />
       <Suspense fallback={<div className="p-12 text-center text-muted-foreground">Loading courses…</div>}>
         <CatalogPageContent />
       </Suspense>
