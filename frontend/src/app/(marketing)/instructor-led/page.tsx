@@ -1,4 +1,5 @@
 import { InstructorLedPageContent } from "@/components/marketing/instructor-led-page-content";
+import { CoursePlacementSection } from "@/components/marketing/course-placement-section";
 import { JsonLd } from "@/components/seo/json-ld";
 import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
 
@@ -18,6 +19,7 @@ export default function InstructorLedPage() {
           { name: "Instructor-Led Training", path: "/instructor-led" },
         ])}
       />
+      <CoursePlacementSection pageKey="instructor-led" title="Featured Courses" />
       <InstructorLedPageContent />
     </>
   );

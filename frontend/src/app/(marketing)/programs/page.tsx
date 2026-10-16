@@ -1,4 +1,5 @@
 import { ProgramsPageContent } from "@/components/marketing/programs-page-content";
+import { CoursePlacementSection } from "@/components/marketing/course-placement-section";
 import { JsonLd } from "@/components/seo/json-ld";
 import { breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
 
@@ -18,6 +19,7 @@ export default function ProgramsPage() {
           { name: "Our Programs", path: "/programs" },
         ])}
       />
+      <CoursePlacementSection pageKey="programs" title="Featured Courses" />
       <ProgramsPageContent />
     </>
   );

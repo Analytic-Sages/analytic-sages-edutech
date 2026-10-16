@@ -3230,3 +3230,49 @@ export function patchAdminReferralPayout(payoutId: string, status: string, note?
 export function getAdminReferralReviewQueue() {
   return apiFetch<AdminConversionRow[]>("/api/v1/admin/referrals/review-queue");
 }
+
+
+export type CoursePlacementOption = {
+  id: string;
+  slug: string;
+  title: string;
+  thumbnail: string | null;
+  delivery_type: string;
+  published: boolean;
+};
+
+export type CoursePlacementRow = CoursePlacementOption & {
+  page_key: string;
+  section_key: string;
+  course_id: string;
+  sort_order: number;
+  visible: boolean;
+};
+
+export function getCoursePlacementOptions() {
+  return apiFetch<CoursePlacementOption[]>("/api/v1/admin/course-placements/options");
+}
+
+export function getAdminCoursePlacements(pageKey: string, sectionKey: string) {
+  return apiFetch<CoursePlacementRow[]>(
+    `/api/v1/admin/course-placements/${encodeURIComponent(pageKey)}/${encodeURIComponent(sectionKey)}`
+  );
+}
+
+export function saveAdminCoursePlacements(
+  pageKey: string,
+  sectionKey: string,
+  placements: Array<{ course_id: string; visible: boolean }>
+) {
+  return apiFetch<CoursePlacementRow[]>(
+    `/api/v1/admin/course-placements/${encodeURIComponent(pageKey)}/${encodeURIComponent(sectionKey)}`,
+    { method: "PUT", body: JSON.stringify({ placements }) }
+  );
+}
+
+export function getPublicCoursePlacements(pageKey: string, sectionKey = "main") {
+  return apiFetch<CoursePlacementRow[]>(
+    `/api/v1/course-placements/${encodeURIComponent(pageKey)}/${encodeURIComponent(sectionKey)}`,
+    { auth: false }
+  );
+}

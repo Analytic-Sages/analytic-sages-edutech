@@ -16,6 +16,7 @@ function isOperationsPath(pathname: string) {
   return (
     pathname.startsWith("/admin/events") ||
     pathname.startsWith("/admin/courses") ||
+    pathname.startsWith("/admin/course-placements") ||
     pathname.startsWith("/admin/cohorts/") ||
     pathname.startsWith("/admin/classroom") ||
     pathname.startsWith("/admin/attendance") ||

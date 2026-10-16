@@ -7,6 +7,7 @@ from app.api.v1 import (
     billing,
     classroom,
     contact,
+    course_placements,
     events,
     experience,
     health,
@@ -30,6 +31,7 @@ api_router.include_router(contact.router)
 api_router.include_router(auth.router)
 api_router.include_router(rbac.router)
 api_router.include_router(admin.router)
+api_router.include_router(course_placements.router)
 api_router.include_router(billing.router)
 api_router.include_router(billing.admin_router)
 api_router.include_router(payments.router)
