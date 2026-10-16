@@ -125,7 +125,7 @@ export function AdminCourseCardsContent() {
                   <Button type="button" variant="outline" onClick={() => setPlacements((current) => current.map((item) => item.card_key === placement.card_key ? { ...item, visible: !item.visible } : item))}>
                     {placement.visible ? <><EyeOff className="mr-2 size-4" />Hide</> : <><Eye className="mr-2 size-4" />Show</>}
                   </Button>
-                  <Button type="button" variant="ghost" onClick={() => setPlacements((current) => current.filter((item) => item.card_key !== placement.card_key))}>Remove</Button>
+                  <Button type="button" variant="ghost" onClick={() => setPlacements((current) => current.filter((item) => item.card_key !== placement.card_key))} disabled={placements.length === 1}>Remove</Button>
                 </div>
               </article>
             );
