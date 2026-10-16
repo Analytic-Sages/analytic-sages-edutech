@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { ArrowDown, ArrowUp, Eye, EyeOff, Loader2, Save } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -112,7 +113,7 @@ export function AdminCourseCardsContent() {
               <article key={placement.card_key} className="flex flex-col gap-4 rounded-xl border bg-card p-4 sm:flex-row sm:items-center">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted font-heading text-lg font-bold">{index + 1}</div>
                 <div className="relative h-24 w-full shrink-0 overflow-hidden rounded-md bg-muted sm:w-36">
-                  <img src={card.image} alt="" className="h-full w-full object-cover" />
+                  <Image src={card.image} alt="" fill sizes="(min-width: 640px) 144px, 100vw" className="object-cover" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="font-semibold">{card.title}</h3>
