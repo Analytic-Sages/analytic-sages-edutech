@@ -13,10 +13,12 @@ import {
   getMyPartnerProfile,
   getMyReferralApplication,
   getReferralEligibleCourses,
+  getReferralProgramGuide,
   submitReferralPartnerApplication,
   type AuthUser,
   type PartnerPublic,
   type ReferralPartnerApplication,
+  type ReferralProgramGuide,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +32,7 @@ export function PartnersPageContent() {
   const [profile, setProfile] = useState<PartnerPublic | null>(null);
   const [application, setApplication] = useState<ReferralPartnerApplication | null>(null);
   const [courses, setCourses] = useState<{ id: string; slug: string; title: string }[]>([]);
+  const [guide, setGuide] = useState<ReferralProgramGuide | null>(null);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [country, setCountry] = useState("");
@@ -54,6 +57,7 @@ export function PartnersPageContent() {
 
   useEffect(() => {
     let cancelled = false;
+    getReferralProgramGuide().then((row) => { if (!cancelled) setGuide(row); }).catch(() => null);
     getReferralEligibleCourses().then((rows) => {
       if (!cancelled) setCourses(rows);
     }).catch(() => {
@@ -146,9 +150,7 @@ export function PartnersPageContent() {
               Connect People to Opportunities That Matter.
             </h1>
             <p className="mt-4 text-lg text-[#0B1F3A]/80">Help more learners build practical skills and earn commission on eligible paid course and programme payments.</p>
-            <p className="mt-5 text-base leading-relaxed text-[#0B1F3A]/90">
-              Approved partners receive trackable course and campaign links. Eligible payments earn a 7% commission, with a 30-day attribution window and a 14-day commission hold, subject to programme rules.
-            </p>
+            <p className="mt-5 text-base leading-relaxed text-[#0B1F3A]/90">{guide?.program_overview || "Approved partners receive trackable course and campaign links. Applications are reviewed before activation."}</p>
             <div className="mt-6 space-y-2 text-sm text-[#0B1F3A]/80">
               <p>• One partner account can have multiple course and campaign links.</p>
               <p>• Applications are reviewed by the team; submission does not activate referral privileges.</p>
@@ -171,6 +173,7 @@ export function PartnersPageContent() {
 
       <div className="mx-auto max-w-3xl space-y-8 px-4 py-12 sm:px-6">
         {loading ? <p className="text-sm text-muted-foreground">Loading your application status…</p> : null}
+        {guide ? <section className="space-y-3 rounded-lg border p-4 text-sm"><h2 className="font-semibold text-base">Programme terms and guidelines</h2><p>{guide.commission_policy}</p><p>{guide.attribution_policy}</p><p>{guide.payout_policy}</p><p>{guide.marketing_guidelines}</p><p className="text-muted-foreground">Terms version: {guide.terms_version} · Support: {guide.support_contact}</p></section> : null}
         {profile?.status === "active" ? (
           <div className="rounded-lg border p-5">
             <h2 className="font-semibold">You are an active Referral Partner</h2>
@@ -220,7 +223,7 @@ export function PartnersPageContent() {
               </fieldset>
               <div className="space-y-2"><Label htmlFor="partner-marketing-plan">How would you promote the courses? *</Label><textarea id="partner-marketing-plan" value={marketingPlan} onChange={(e) => setMarketingPlan(e.target.value)} rows={5} required minLength={30} maxLength={3000} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Describe your audience, planned content or outreach, channels, and how you will communicate course value honestly." /></div>
 
-              <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} className="mt-1" required /><span>I agree to the Referral Partner programme terms and marketing guidelines. I will not spam, mislead learners, or promise unapproved benefits. I understand that approval and onboarding are separate from activation.</span></label>
+              <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} className="mt-1" required /><span>I agree to the Referral Partner programme terms ({guide?.terms_version || "referral-partner-v1"}) and marketing guidelines. I will not spam, mislead learners, or promise unapproved benefits. I understand that approval and onboarding are separate from activation.</span></label>
               {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
               {success ? <p role="status" className="text-sm text-green-700">{success}</p> : null}
               <Button type="submit" disabled={submitting || !terms || channels.length === 0} className="bg-brand-orange text-white hover:bg-brand-orange/90">{submitting ? "Submitting…" : "Submit application"}</Button>
