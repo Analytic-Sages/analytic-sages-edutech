@@ -30,6 +30,11 @@ export function ReferralLinksManager({
   const [target, setTarget] = useState("");
   const [campaign, setCampaign] = useState("");
   const [channel, setChannel] = useState("");
+  const [filterCourse, setFilterCourse] = useState("");
+  const [filterCampaign, setFilterCampaign] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [terms, setTerms] = useState(false);
   const [guidelines, setGuidelines] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -69,6 +74,33 @@ export function ReferralLinksManager({
       });
     return () => { cancelled = true; };
   }, []);
+
+  async function applyFilters() {
+    setError(null);
+    try {
+      const start_at = startDate ? new Date(`${startDate}T00:00:00.000Z`).toISOString() : undefined;
+      const end_at = endDate ? new Date(new Date(`${endDate}T00:00:00.000Z`).getTime() + 24 * 60 * 60 * 1000).toISOString() : undefined;
+      const rows = await getPartnerReferralLinks({
+        start_at, end_at,
+        course_id: filterCourse || undefined,
+        campaign: filterCampaign.trim() || undefined,
+        status: filterStatus || undefined,
+      });
+      setLinks(rows);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.detail : "Could not filter referral link performance.");
+    }
+  }
+
+  async function clearFilters() {
+    setFilterCourse("");
+    setFilterCampaign("");
+    setFilterStatus("");
+    setStartDate("");
+    setEndDate("");
+    try { setLinks(await getPartnerReferralLinks()); }
+    catch (err) { setError(err instanceof ApiError ? err.detail : "Could not reload referral links."); }
+  }
 
   async function createLink(e: React.FormEvent) {
     e.preventDefault();
@@ -149,6 +181,14 @@ export function ReferralLinksManager({
       </form>
       {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
       {message ? <p role="status" className="text-sm text-muted-foreground">{message}</p> : null}
+      <div className="grid gap-3 rounded-lg border p-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-1"><label className="text-sm font-medium">Course</label><select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={filterCourse} onChange={(e) => setFilterCourse(e.target.value)}><option value="">All courses</option>{targets.courses.map((row) => <option key={row.id} value={row.id}>{row.title}</option>)}</select></div>
+        <div className="space-y-1"><label className="text-sm font-medium">Campaign or channel</label><Input value={filterCampaign} onChange={(e) => setFilterCampaign(e.target.value)} placeholder="Search campaign" /></div>
+        <div className="space-y-1"><label className="text-sm font-medium">Link status</label><select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}><option value="">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option><option value="revoked">Revoked</option></select></div>
+        <div className="space-y-1"><label className="text-sm font-medium">From date</label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></div>
+        <div className="space-y-1"><label className="text-sm font-medium">To date</label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></div>
+        <div className="flex items-end gap-2"><Button type="button" variant="outline" onClick={applyFilters}>Apply filters</Button><Button type="button" variant="ghost" onClick={clearFilters}>Clear</Button></div>
+      </div>
       {links.length ? (
         <Table>
           <TableHeader><TableRow><TableHead>Destination</TableHead><TableHead>Campaign</TableHead><TableHead>Clicks</TableHead><TableHead>Paid enrollments</TableHead><TableHead>Commission</TableHead><TableHead>Status</TableHead><TableHead>Referral URL</TableHead><TableHead>Action</TableHead></TableRow></TableHeader>
