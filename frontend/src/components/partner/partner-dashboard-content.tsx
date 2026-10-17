@@ -274,6 +274,8 @@ export function PartnerDashboardContent() {
               <TableRow>
                 <TableHead>Date</TableHead>
                 <TableHead>Programme</TableHead>
+                <TableHead>Referral campaign</TableHead>
+                <TableHead>Commission rate</TableHead>
                 <TableHead>Learner</TableHead>
                 <TableHead>Payment</TableHead>
                 <TableHead>Commission</TableHead>
@@ -286,6 +288,8 @@ export function PartnerDashboardContent() {
                 <TableRow key={row.id}>
                   <TableCell>{new Date(row.created_at).toLocaleDateString()}</TableCell>
                   <TableCell>{row.programme}</TableCell>
+                  <TableCell>{row.campaign_label || "—"}</TableCell>
+                  <TableCell>{row.commission_rate ? `${(Number(row.commission_rate) * 100).toFixed(2)}%` : "—"}</TableCell>
                   <TableCell>{row.learner_label}</TableCell>
                   <TableCell>{money(row.eligible_amount, row.currency)}</TableCell>
                   <TableCell>{money(row.commission_amount, row.currency)}</TableCell>
