@@ -17,6 +17,8 @@ import {
 import {
   ApiError,
   getMyPartnerProfile,
+  getMyReferralApplication,
+  claimApprovedReferralApplication,
   getPartnerConversions,
   getPartnerDashboard,
   getPartnerPayouts,
@@ -25,8 +27,10 @@ import {
   type PartnerDashboard,
   type PartnerPayoutRow,
   type PartnerPublic,
+  type ReferralPartnerApplicationStatus,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { ReferralLinksManager } from "@/components/partner/referral-links-manager";
 
 function money(value: string | number | null | undefined, currency: string) {
   if (value == null || value === "") return "—";
@@ -35,6 +39,9 @@ function money(value: string | number | null | undefined, currency: string) {
 
 export function PartnerDashboardContent() {
   const [profile, setProfile] = useState<PartnerPublic | null | undefined>(undefined);
+  const [application, setApplication] = useState<ReferralPartnerApplicationStatus | null>(null);
+  const [claimBusy, setClaimBusy] = useState(false);
+  const [claimMessage, setClaimMessage] = useState<string | null>(null);
   const [dash, setDash] = useState<PartnerDashboard | null>(null);
   const [conversions, setConversions] = useState<PartnerConversionRow[]>([]);
   const [payouts, setPayouts] = useState<PartnerPayoutRow[]>([]);
@@ -60,18 +67,36 @@ export function PartnerDashboardContent() {
   }
 
   useEffect(() => {
-    getMyPartnerProfile()
-      .then(async (p) => {
+    let cancelled = false;
+    Promise.all([getMyPartnerProfile(), getMyReferralApplication()])
+      .then(async ([p, app]) => {
+        if (cancelled) return;
         setProfile(p);
-        if (p?.status === "active") {
-          await reload();
-        }
+        setApplication(app);
+        if (p?.status === "active") await reload();
       })
       .catch((err) => {
-        setError(err instanceof ApiError ? err.detail : "Failed to load partner profile");
-        setProfile(null);
+        if (!cancelled) {
+          setError(err instanceof ApiError ? err.detail : "Failed to load partner profile");
+          setProfile(null);
+        }
       });
+    return () => { cancelled = true; };
   }, []);
+
+  async function claimApplication() {
+    setClaimBusy(true);
+    setClaimMessage(null);
+    try {
+      const app = await claimApprovedReferralApplication();
+      setApplication(app);
+      setProfile(await getMyPartnerProfile());
+    } catch (err) {
+      setClaimMessage(err instanceof ApiError ? err.detail : "Could not claim the approved application.");
+    } finally {
+      setClaimBusy(false);
+    }
+  }
 
   async function onPayout(e: React.FormEvent) {
     e.preventDefault();
@@ -111,27 +136,32 @@ export function PartnerDashboardContent() {
   if (!profile) {
     return (
       <div className="space-y-4 p-6">
-        <PageHeader title="Partner dashboard" description="You are not a Referral Partner yet." />
-        <Link
-          href="/partners"
-          className={cn(buttonVariants(), "bg-brand-orange text-white hover:bg-brand-orange/90")}
-        >
-          Apply on the partners page
-        </Link>
+        <PageHeader title="Partner dashboard" description={application ? `Application status: ${application.status.replaceAll("_", " ")}.` : "You are not a Referral Partner yet."} />
+        {application && ["approved", "onboarding"].includes(application.status) ? <Button onClick={claimApplication} disabled={claimBusy}>{claimBusy ? "Claiming…" : "Claim approved application"}</Button> : null}
+        {claimMessage ? <p className="text-sm text-muted-foreground">{claimMessage}</p> : null}
+        <Link href="/partners" className={cn(buttonVariants(), "bg-brand-orange text-white hover:bg-brand-orange/90")}>Apply on the partners page</Link>
       </div>
     );
   }
 
   if (profile.status !== "active") {
+    if (application && ["approved", "onboarding"].includes(application.status)) {
+      return (
+        <div className="space-y-6 p-6">
+          <PageHeader title="Complete partner onboarding" description="Your application has been approved. Create at least one referral link and complete the activation checklist." />
+          <p className="text-sm text-muted-foreground">Application status: <span className="font-medium capitalize">{application.status.replaceAll("_", " ")}</span></p>
+          <ReferralLinksManager onboarding onActivated={async () => {
+            setProfile(await getMyPartnerProfile());
+            setApplication(await getMyReferralApplication());
+            await reload();
+          }} />
+        </div>
+      );
+    }
     return (
       <div className="space-y-4 p-6">
-        <PageHeader
-          title="Partner dashboard"
-          description={`Application status: ${profile.status}. Active partners unlock the full dashboard.`}
-        />
-        <Link href="/partners" className={cn(buttonVariants({ variant: "outline" }))}>
-          Back to programme info
-        </Link>
+        <PageHeader title="Partner dashboard" description={`Application status: ${profile.status}. Active referral privileges are enabled only after approval and onboarding.`} />
+        <Link href="/partners" className={cn(buttonVariants({ variant: "outline" }))}>Back to programme info</Link>
       </div>
     );
   }
@@ -212,7 +242,7 @@ export function PartnerDashboardContent() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold">My referral link</h2>
+        <ReferralLinksManager />\n      </section>\n\n      <section className="space-y-3">\n        <h2 className="text-lg font-semibold">My referral link</h2>
         <div className="flex flex-wrap items-center gap-2">
           <code className="rounded bg-muted px-3 py-2 text-sm">{link}</code>
           <Button
@@ -244,6 +274,8 @@ export function PartnerDashboardContent() {
               <TableRow>
                 <TableHead>Date</TableHead>
                 <TableHead>Programme</TableHead>
+                <TableHead>Referral campaign</TableHead>
+                <TableHead>Commission rate</TableHead>
                 <TableHead>Learner</TableHead>
                 <TableHead>Payment</TableHead>
                 <TableHead>Commission</TableHead>
@@ -256,6 +288,8 @@ export function PartnerDashboardContent() {
                 <TableRow key={row.id}>
                   <TableCell>{new Date(row.created_at).toLocaleDateString()}</TableCell>
                   <TableCell>{row.programme}</TableCell>
+                  <TableCell>{row.campaign_label || "—"}</TableCell>
+                  <TableCell>{row.commission_rate ? `${(Number(row.commission_rate) * 100).toFixed(2)}%` : "—"}</TableCell>
                   <TableCell>{row.learner_label}</TableCell>
                   <TableCell>{money(row.eligible_amount, row.currency)}</TableCell>
                   <TableCell>{money(row.commission_amount, row.currency)}</TableCell>

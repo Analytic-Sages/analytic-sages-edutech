@@ -3074,6 +3074,125 @@ export type PartnerPublic = {
   approved_at: string | null;
 };
 
+export type ReferralProgramGuide = {
+  terms_version: string;
+  program_overview: string;
+  commission_policy: string;
+  attribution_policy: string;
+  payout_policy: string;
+  marketing_guidelines: string;
+  support_contact: string;
+  updated_at: string;
+};
+
+export type ReferralAuditRow = {
+  id: string;
+  actor_id: string | null;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  note: string | null;
+  before_json: Record<string, unknown> | null;
+  after_json: Record<string, unknown> | null;
+  created_at: string;
+};
+
+export type ReferralPartnerApplicationStatus = {
+  id: string;
+  full_name: string;
+  email: string;
+  status: string;
+  cohort_id: string | null;
+  partner_id: string | null;
+  terms_version: string;
+  terms_accepted_at: string;
+  approved_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ReferralPartnerApplication = {
+  id: string;
+  full_name: string;
+  email: string;
+  country: string | null;
+  timezone: string | null;
+  linkedin_url: string | null;
+  social_profiles: { platform: string; url: string }[];
+  communities: string | null;
+  audience_size: string | null;
+  audience_engagement: string | null;
+  relevant_experience: string | null;
+  partnership_experience: string | null;
+  interested_courses: string[];
+  promotion_channels: string[];
+  marketing_plan: string;
+  status: string;
+  score_total: number | null;
+  cohort_id: string | null;
+  partner_id: string | null;
+  reviewer_id: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  interview_reviewer_id: string | null;
+  created_at: string;
+  updated_at: string;
+  terms_version: string;
+  terms_accepted_at: string;
+  review_notes: string | null;
+  rejection_reason: string | null;
+  scores: Record<string, number>;
+  interview_at: string | null;
+  interview_status: string | null;
+  interview_notes: string | null;
+  interview_decision: string | null;
+  interview_reason: string | null;
+  follow_up_actions: string | null;
+};
+
+export type ReferralLink = {
+  id: string;
+  partner_id: string;
+  course_id: string | null;
+  course_title: string | null;
+  course_slug: string | null;
+  cohort_id: string | null;
+  cohort_name: string | null;
+  target_type: string;
+  target_slug: string | null;
+  target_available: boolean;
+  unavailable_reason: string | null;
+  campaign_label: string | null;
+  campaign_channel: string | null;
+  code: string;
+  destination_path: string;
+  url: string;
+  status: string;
+  clicks: number;
+  paid_enrollments: number;
+  conversion_rate: string;
+  commission_amount: string | null;
+  commission_currency: string | null;
+  commission_by_currency: Record<string, string>;
+  created_at: string;
+  revoked_at: string | null;
+};
+
+export type ReferralCohort = {
+  id: string;
+  name: string;
+  capacity: number;
+  approved_count: number;
+  remaining_slots: number;
+  is_active: boolean;
+  created_at: string;
+};
+
+export type ReferralLinkTargets = {
+  courses: { id: string; slug: string; title: string; price: string; currency: string }[];
+  programmes: { id: string; slug: string; title: string; price: string; currency: string }[];
+};
+
 export type CurrencyBalanceRow = {
   currency: string;
   pending_commission: string;
@@ -3119,6 +3238,9 @@ export type PartnerConversionRow = {
   currency: string;
   status: string;
   created_at: string;
+  referral_link_id: string | null;
+  campaign_label: string | null;
+  commission_rate: string | null;
   reporting_usd_equivalent: string | null;
 };
 
@@ -3163,6 +3285,10 @@ export type AdminConversionRow = {
   status: string;
   fraud_status: string;
   created_at: string;
+  referral_link_id: string | null;
+  referral_code: string | null;
+  campaign_label: string | null;
+  commission_rate: string | null;
   reporting_usd_equivalent: string | null;
 };
 
@@ -3271,4 +3397,174 @@ export function patchAdminReferralPayout(payoutId: string, status: string, note?
 
 export function getAdminReferralReviewQueue() {
   return apiFetch<AdminConversionRow[]>("/api/v1/admin/referrals/review-queue");
+}
+
+
+export function getReferralEligibleCourses() {
+  return apiFetch<{ id: string; slug: string; title: string; price: string; currency: string }[]>("/api/v1/partners/eligible-courses");
+}
+
+export function submitReferralPartnerApplication(payload: {
+  full_name: string;
+  email: string;
+  country?: string;
+  timezone?: string;
+  linkedin_url?: string;
+  social_profiles?: { platform: string; url: string }[];
+  communities?: string;
+  audience_size?: string;
+  audience_engagement?: string;
+  relevant_experience?: string;
+  partnership_experience?: string;
+  interested_courses: string[];
+  promotion_channels: string[];
+  marketing_plan: string;
+  terms_accepted: boolean;
+  terms_version: string;
+}) {
+  return apiFetch<ReferralPartnerApplicationStatus>("/api/v1/partners/applications", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getMyReferralApplication() {
+  return apiFetch<ReferralPartnerApplicationStatus | null>("/api/v1/partner/application/me");
+}
+
+export function claimApprovedReferralApplication() {
+  return apiFetch<ReferralPartnerApplicationStatus>("/api/v1/partner/onboarding/claim", { method: "POST" });
+}
+
+export function completePartnerOnboarding(payload: {
+  profile_completed: boolean;
+  terms_accepted: boolean;
+  marketing_guidelines_accepted: boolean;
+  terms_version: string;
+}) {
+  return apiFetch<PartnerPublic>("/api/v1/partner/onboarding/complete", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getPartnerReferralLinkTargets() {
+  return apiFetch<ReferralLinkTargets>("/api/v1/partner/link-targets");
+}
+
+export function getPartnerReferralLinks(filters: {
+  start_at?: string;
+  end_at?: string;
+  course_id?: string;
+  campaign?: string;
+  status?: string;
+  link_id?: string;
+} = {}) {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => { if (value) params.set(key, value); });
+  const query = params.toString();
+  return apiFetch<ReferralLink[]>(`/api/v1/partner/links${query ? `?${query}` : ""}`);
+}
+
+export function createPartnerReferralLink(payload: {
+  course_id?: string;
+  cohort_id?: string;
+  campaign_label?: string;
+  campaign_channel?: string;
+}) {
+  return apiFetch<ReferralLink>("/api/v1/partner/links", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function patchPartnerReferralLink(linkId: string, status: "inactive" | "revoked", reason?: string) {
+  return apiFetch<ReferralLink>(`/api/v1/partner/links/${linkId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status, revocation_reason: reason || null }),
+  });
+}
+
+export function getAdminReferralApplications(status?: string) {
+  const q = status ? `?status=${encodeURIComponent(status)}` : "";
+  return apiFetch<ReferralPartnerApplication[]>(`/api/v1/admin/referrals/applications${q}`);
+}
+
+export function patchAdminReferralApplication(applicationId: string, payload: {
+  status?: string;
+  cohort_id?: string;
+  scores?: Record<string, number>;
+  review_notes?: string;
+  rejection_reason?: string;
+  interview_at?: string;
+  interview_status?: string;
+  interview_notes?: string;
+  interview_decision?: string;
+  interview_reason?: string;
+  follow_up_actions?: string;
+}) {
+  return apiFetch<ReferralPartnerApplication>(`/api/v1/admin/referrals/applications/${applicationId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getAdminReferralCohorts() {
+  return apiFetch<ReferralCohort[]>("/api/v1/admin/referrals/cohorts");
+}
+
+export function createAdminReferralCohort(payload: { name: string; capacity: number; is_active: boolean }) {
+  return apiFetch<ReferralCohort>("/api/v1/admin/referrals/cohorts", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function patchAdminReferralCohort(cohortId: string, payload: { capacity?: number; is_active?: boolean }) {
+  return apiFetch<ReferralCohort>(`/api/v1/admin/referrals/cohorts/${cohortId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getAdminReferralLinks(filters: {
+  partner_id?: string;
+  start_at?: string;
+  end_at?: string;
+  course_id?: string;
+  campaign?: string;
+  status?: string;
+  link_id?: string;
+} = {}) {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => { if (value) params.set(key, value); });
+  const query = params.toString();
+  return apiFetch<ReferralLink[]>(`/api/v1/admin/referrals/links${query ? `?${query}` : ""}`);
+}
+
+export function patchAdminReferralLink(linkId: string, status: "inactive" | "active" | "revoked", reason?: string) {
+  return apiFetch<ReferralLink>(`/api/v1/admin/referrals/links/${linkId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status, revocation_reason: reason || null }),
+  });
+}
+
+
+export function getReferralProgramGuide() {
+  return apiFetch<ReferralProgramGuide>("/api/v1/referrals/program-guide");
+}
+
+export function getAdminReferralProgramGuide() {
+  return apiFetch<ReferralProgramGuide>("/api/v1/admin/referrals/program-guide");
+}
+
+export function updateAdminReferralProgramGuide(payload: Omit<ReferralProgramGuide, "updated_at">) {
+  return apiFetch<ReferralProgramGuide>("/api/v1/admin/referrals/program-guide", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getAdminReferralAudit(limit = 200) {
+  return apiFetch<ReferralAuditRow[]>(`/api/v1/admin/referrals/audit?limit=${limit}`);
 }

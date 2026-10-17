@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
+import { AdminReferralOnboardingContent } from "@/components/admin/admin-referral-onboarding-content";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -27,7 +28,7 @@ import {
   type PartnerPayoutRow,
 } from "@/lib/api";
 
-type Tab = "overview" | "partners" | "conversions" | "payouts" | "review";
+type Tab = "overview" | "partners" | "conversions" | "payouts" | "review" | "onboarding";
 
 export function AdminReferralsContent() {
   const [tab, setTab] = useState<Tab>("overview");
@@ -127,6 +128,7 @@ export function AdminReferralsContent() {
             ["conversions", "Conversions"],
             ["payouts", "Payouts"],
             ["review", "Review queue"],
+            ["onboarding", "Applications & links"],
           ] as const
         ).map(([id, label]) => (
           <Button
@@ -287,6 +289,8 @@ export function AdminReferralsContent() {
                 <TableCell>{row.partner_name}</TableCell>
                 <TableCell>{row.learner_email}</TableCell>
                 <TableCell>{row.programme}</TableCell>
+                <TableCell>{row.referral_code || "Legacy link"}{row.campaign_label ? <span className="block text-xs text-muted-foreground">{row.campaign_label}</span> : null}</TableCell>
+                <TableCell>{row.commission_rate ? `${(Number(row.commission_rate) * 100).toFixed(2)}%` : "—"}</TableCell>
                 <TableCell>
                   {row.currency} {row.eligible_amount}
                 </TableCell>
@@ -358,7 +362,7 @@ export function AdminReferralsContent() {
         </Table>
       ) : null}
 
-      {tab === "review" ? (
+      {tab === "onboarding" ? <AdminReferralOnboardingContent /> : null}\n\n      {tab === "review" ? (
         review.length === 0 ? (
           <p className="text-sm text-muted-foreground">No items need review.</p>
         ) : (
