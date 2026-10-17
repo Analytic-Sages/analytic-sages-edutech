@@ -620,6 +620,13 @@ def admin_update_referral_program_guide(
         "marketing_guidelines": resources.marketing_guidelines,
         "support_contact": resources.support_contact,
     }
+    policy_fields = ("commission_policy", "attribution_policy", "payout_policy", "marketing_guidelines")
+    policy_changed = any(getattr(resources, field) != getattr(payload, field) for field in policy_fields)
+    if policy_changed and payload.terms_version == resources.terms_version:
+        raise HTTPException(
+            status_code=409,
+            detail="Increment the terms version when changing commission, attribution, payout, or marketing policies.",
+        )
     for key, value in payload.model_dump().items():
         setattr(resources, key, value.strip())
     resources.updated_by = admin.id
