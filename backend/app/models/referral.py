@@ -426,3 +426,22 @@ class ReferralLink(Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     revocation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class ReferralProgramResources(Base):
+    __tablename__ = "referral_program_resources"
+
+    id: Mapped[int] = mapped_column(primary_key=True, default=1)
+    terms_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    program_overview: Mapped[str] = mapped_column(Text, nullable=False)
+    commission_policy: Mapped[str] = mapped_column(Text, nullable=False)
+    attribution_policy: Mapped[str] = mapped_column(Text, nullable=False)
+    payout_policy: Mapped[str] = mapped_column(Text, nullable=False)
+    marketing_guidelines: Mapped[str] = mapped_column(Text, nullable=False)
+    support_contact: Mapped[str] = mapped_column(String(320), nullable=False)
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
