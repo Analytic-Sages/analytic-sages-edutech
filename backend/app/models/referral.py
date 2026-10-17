@@ -66,6 +66,13 @@ class ReferralPartner(Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     admin_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cohort_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("referral_partner_cohorts.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    profile_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    marketing_guidelines_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    onboarding_terms_version: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    onboarding_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -89,6 +96,9 @@ class ReferralClick(Base):
         nullable=False,
         index=True,
     )
+    referral_link_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("referral_links.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     referral_code: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     anonymous_visitor_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     landing_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
@@ -108,6 +118,9 @@ class ReferralAttribution(Base):
         ForeignKey("referral_partners.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
+    )
+    referral_link_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("referral_links.id", ondelete="SET NULL"), nullable=True, index=True
     )
     anonymous_visitor_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     referred_user_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -146,6 +159,9 @@ class ReferralConversion(Base):
         ForeignKey("referral_partners.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
+    )
+    referral_link_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("referral_links.id", ondelete="SET NULL"), nullable=True, index=True
     )
     referred_user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
@@ -313,3 +329,100 @@ class ReferralAuditEvent(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
     )
+
+
+
+class ReferralPartnerCohort(Base):
+    __tablename__ = "referral_partner_cohorts"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(120), nullable=False, unique=True)
+    capacity: Mapped[int] = mapped_column(nullable=False, default=10)
+    is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class ReferralPartnerApplication(Base):
+    __tablename__ = "referral_partner_applications"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    partner_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("referral_partners.id", ondelete="SET NULL"), nullable=True
+    )
+    cohort_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("referral_partner_cohorts.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    full_name: Mapped[str] = mapped_column(String(160), nullable=False)
+    email: Mapped[str] = mapped_column(String(320), nullable=False)
+    email_normalized: Mapped[str] = mapped_column(String(320), nullable=False, unique=True)
+    country: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    timezone: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    linkedin_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    social_profiles: Mapped[list[dict[str, str]]] = mapped_column(JSONB, nullable=False, default=list)
+    communities: Mapped[str | None] = mapped_column(Text, nullable=True)
+    audience_size: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    audience_engagement: Mapped[str | None] = mapped_column(Text, nullable=True)
+    relevant_experience: Mapped[str | None] = mapped_column(Text, nullable=True)
+    partnership_experience: Mapped[str | None] = mapped_column(Text, nullable=True)
+    interested_courses: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    promotion_channels: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    marketing_plan: Mapped[str] = mapped_column(Text, nullable=False)
+    terms_accepted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    terms_version: Mapped[str] = mapped_column(String(40), nullable=False, default="referral-partner-v1")
+    marketing_guidelines_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(24), nullable=False, default="submitted", index=True)
+    scores: Mapped[dict[str, int]] = mapped_column(JSONB, nullable=False, default=dict)
+    score_total: Mapped[int | None] = mapped_column(nullable=True)
+    reviewer_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    review_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    interview_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    interview_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    interview_reviewer_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    interview_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    interview_decision: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    interview_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    follow_up_actions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class ReferralLink(Base):
+    __tablename__ = "referral_links"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    partner_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("referral_partners.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    course_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("courses.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    cohort_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("cohorts.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    campaign_label: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    campaign_channel: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    code: Mapped[str] = mapped_column(String(32), nullable=False, unique=True, index=True)
+    destination_path: Mapped[str] = mapped_column(String(512), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="inactive", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    revocation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
