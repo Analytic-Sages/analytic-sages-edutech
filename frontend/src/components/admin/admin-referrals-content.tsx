@@ -289,6 +289,8 @@ export function AdminReferralsContent() {
                 <TableCell>{row.partner_name}</TableCell>
                 <TableCell>{row.learner_email}</TableCell>
                 <TableCell>{row.programme}</TableCell>
+                <TableCell>{row.referral_code || "Legacy link"}{row.campaign_label ? <span className="block text-xs text-muted-foreground">{row.campaign_label}</span> : null}</TableCell>
+                <TableCell>{row.commission_rate ? `${(Number(row.commission_rate) * 100).toFixed(2)}%` : "—"}</TableCell>
                 <TableCell>
                   {row.currency} {row.eligible_amount}
                 </TableCell>
