@@ -57,7 +57,7 @@ SCORE_WEIGHTS = {
     "relevant_experience": 15,
     "communication_professionalism": 10,
 }
-ACTIVE_COHORT_STATUSES = ("approved", "onboarding", "active")
+COHORT_MEMBER_STATUSES = ("approved", "onboarding", "active", "suspended", "inactive")
 
 
 def normalize_email(email: str) -> str:
@@ -204,6 +204,10 @@ class ReferralOnboardingService:
                 raise HTTPException(status_code=400, detail="Choose an active referral-partner cohort.")
             self._assert_capacity(cohort, application)
             application.cohort_id = cohort.id
+            if application.partner_id:
+                assigned_partner = self.db.get(ReferralPartner, application.partner_id)
+                if assigned_partner:
+                    assigned_partner.cohort_id = cohort.id
         if next_status == "approved" and application.status != "approved":
             if application.status != "interviewed":
                 raise HTTPException(status_code=409, detail="Interview and record a decision before approval.")
@@ -218,7 +222,16 @@ class ReferralOnboardingService:
                 raise HTTPException(status_code=409, detail="No active cohort is available.")
             self._assert_capacity(cohort, application)
             application.cohort_id = cohort.id
+            application.approved_at = datetime.now(UTC)
+            application.approved_by = actor.id
+            application.reviewer_id = actor.id
             self._attach_partner_if_account_exists(application)
+            if application.partner_id:
+                approved_partner = self.db.get(ReferralPartner, application.partner_id)
+                if approved_partner:
+                    approved_partner.cohort_id = cohort.id
+                    approved_partner.approved_at = application.approved_at
+                    approved_partner.approved_by = actor.id
         if next_status == "onboarding":
             self._attach_partner_if_account_exists(application)
             if not application.partner_id:
@@ -230,7 +243,7 @@ class ReferralOnboardingService:
             if not partner or partner.onboarding_completed_at is None:
                 raise HTTPException(status_code=409, detail="Complete onboarding before reactivation.")
             partner.status = ReferralPartnerStatus.ACTIVE
-            self._set_link_statuses(partner.id, "active")
+            self._set_link_statuses(partner.id, "active", actor.id)
         review_fields = {"scores", "review_notes", "rejection_reason", "cohort_id"}
         interview_fields = {"interview_at", "interview_status", "interview_notes", "interview_decision", "interview_reason", "follow_up_actions"}
         if review_fields.intersection(updates):
@@ -249,7 +262,7 @@ class ReferralOnboardingService:
             partner = self.db.get(ReferralPartner, application.partner_id)
             if partner:
                 partner.status = ReferralPartnerStatus.SUSPENDED
-                self._set_link_statuses(partner.id, "inactive")
+                self._set_link_statuses(partner.id, "inactive", actor.id)
         self._audit(
             actor_id=actor.id,
             action="application.updated",
@@ -327,8 +340,8 @@ class ReferralOnboardingService:
         partner.onboarding_completed_at = now
         partner.cohort_id = application.cohort_id
         partner.status = ReferralPartnerStatus.ACTIVE
-        partner.approved_at = partner.approved_at or now
-        partner.approved_by = partner.approved_by or actor.id
+        partner.approved_at = partner.approved_at or application.approved_at
+        partner.approved_by = partner.approved_by or application.approved_by
         if not partner.referral_code:
             partner.referral_code = self._unique_code()
         application.marketing_guidelines_accepted_at = now
@@ -575,6 +588,9 @@ class ReferralOnboardingService:
             raise HTTPException(status_code=409, detail="This account already has an active Referral Partner profile.")
         application.user_id = user.id
         application.partner_id = partner.id
+        partner.cohort_id = application.cohort_id
+        partner.approved_at = partner.approved_at or application.approved_at
+        partner.approved_by = partner.approved_by or application.approved_by
         return partner
 
     def _default_cohort_for_update(self) -> ReferralPartnerCohort | None:
@@ -591,13 +607,13 @@ class ReferralOnboardingService:
         return int(self.db.scalar(
             select(func.count(ReferralPartnerApplication.id)).where(
                 ReferralPartnerApplication.cohort_id == cohort_id,
-                ReferralPartnerApplication.status.in_(ACTIVE_COHORT_STATUSES),
+                ReferralPartnerApplication.status.in_(COHORT_MEMBER_STATUSES),
             )
         ) or 0)
 
     def _assert_capacity(self, cohort: ReferralPartnerCohort, application: ReferralPartnerApplication) -> None:
         count = self._approved_count(cohort.id)
-        if application.cohort_id == cohort.id and application.status in ACTIVE_COHORT_STATUSES:
+        if application.cohort_id == cohort.id and application.status in COHORT_MEMBER_STATUSES:
             count -= 1
         if count >= cohort.capacity:
             raise HTTPException(status_code=409, detail=f"{cohort.name} is full ({cohort.capacity} approved partners). Waitlist the applicant or choose another cohort.")
@@ -606,9 +622,22 @@ class ReferralOnboardingService:
         count = self._approved_count(cohort.id)
         return {"id": cohort.id, "name": cohort.name, "capacity": cohort.capacity, "approved_count": count, "remaining_slots": max(0, cohort.capacity - count), "is_active": cohort.is_active, "created_at": cohort.created_at}
 
-    def _set_link_statuses(self, partner_id: UUID, status_value: str) -> None:
-        for link in self.db.scalars(select(ReferralLink).where(ReferralLink.partner_id == partner_id, ReferralLink.status != "revoked")).all():
+    def _set_link_statuses(self, partner_id: UUID, status_value: str, actor_id: UUID | None = None) -> None:
+        for link in self.db.scalars(
+            select(ReferralLink).where(ReferralLink.partner_id == partner_id, ReferralLink.status != "revoked")
+        ).all():
+            if link.status == status_value:
+                continue
+            previous = link.status
             link.status = status_value
+            self._audit(
+                actor_id=actor_id,
+                action=f"referral_link.{status_value}",
+                entity_type="referral_link",
+                entity_id=link.id,
+                before={"status": previous},
+                after={"status": status_value},
+            )
 
     def _unique_code(self) -> str:
         for _ in range(30):
