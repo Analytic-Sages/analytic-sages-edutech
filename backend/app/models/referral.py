@@ -415,6 +415,8 @@ class ReferralLink(Base):
     cohort_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("cohorts.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    target_type: Mapped[str] = mapped_column(String(16), nullable=False, default="general")
+    target_slug: Mapped[str | None] = mapped_column(String(160), nullable=True)
     campaign_label: Mapped[str | None] = mapped_column(String(120), nullable=True)
     campaign_channel: Mapped[str | None] = mapped_column(String(80), nullable=True)
     code: Mapped[str] = mapped_column(String(32), nullable=False, unique=True, index=True)
