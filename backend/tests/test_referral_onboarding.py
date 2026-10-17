@@ -259,6 +259,22 @@ def test_course_campaign_link_tracks_link_identity_and_uses_server_destination()
             assert attribution is not None
             assert click.partner_id == partner.id
             assert attribution.partner_id == partner.id
+
+        course.published = False
+        db.commit()
+        ok, redirect = tracker.track_click(
+            code=link.code,
+            anonymous_visitor_id=f"visitor-{suffix}-unpublished",
+            landing_path=f"/ref/{link.code}",
+            ip="192.0.2.10",
+            user_agent="Referral test",
+            destination="/programs",
+        )
+        assert ok is False
+        assert redirect == get_settings().referral_default_redirect_path
+        link_rows = service.list_links(partner=partner)
+        first_link = next(row for row in link_rows if row["id"] == link.id)
+        assert first_link["target_available"] is False
     finally:
         if link_ids:
             db.query(ReferralClick).filter(ReferralClick.referral_link_id.in_(link_ids)).delete(synchronize_session=False)
