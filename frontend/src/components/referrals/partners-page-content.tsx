@@ -31,7 +31,7 @@ export function PartnersPageContent() {
   const [accountUser, setAccountUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<PartnerPublic | null>(null);
   const [application, setApplication] = useState<ReferralPartnerApplicationStatus | null>(null);
-  const [courses, setCourses] = useState<{ id: string; slug: string; title: string }[]>([]);
+  const [courses, setCourses] = useState<{ id: string; slug: string; title: string; price: string; currency: string }[]>([]);
   const [guide, setGuide] = useState<ReferralProgramGuide | null>(null);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -215,7 +215,7 @@ export function PartnersPageContent() {
 
               <fieldset className="space-y-3">
                 <legend className="text-sm font-medium">Courses you are interested in promoting</legend>
-                {courses.length ? <div className="grid gap-2 sm:grid-cols-2">{courses.map((course) => <label key={course.id} className="flex items-start gap-2 text-sm"><input type="checkbox" checked={interestedCourses.includes(course.slug)} onChange={() => toggle(interestedCourses, course.slug, setInterestedCourses)} className="mt-1" /><span>{course.title}</span></label>)}</div> : <p className="text-sm text-muted-foreground">Course choices will be available when the programme is open.</p>}
+                {courses.length ? <div className="grid gap-2 sm:grid-cols-2">{courses.map((course) => <label key={course.id} className="flex items-start gap-2 text-sm"><input type="checkbox" checked={interestedCourses.includes(course.slug)} onChange={() => toggle(interestedCourses, course.slug, setInterestedCourses)} className="mt-1" /><span>{course.title} — {course.currency} {course.price}</span></label>)}</div> : <p className="text-sm text-muted-foreground">Course choices will be available when the programme is open.</p>}
               </fieldset>
 
               <fieldset className="space-y-3">
