@@ -60,7 +60,7 @@ export function PartnersPageContent() {
       if (!cancelled) setCourses([]);
     });
     ensureSession().then(async (ok) => {
-      if (!ok) return;
+      if (!ok) { if (!cancelled) setLoading(false); return; }
       try {
         const [user, partner, app] = await Promise.all([
           getMe(), getMyPartnerProfile(), getMyReferralApplication(),
