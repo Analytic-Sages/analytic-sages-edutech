@@ -348,22 +348,22 @@ def submit_referral_application(
     current_user: User | None = Depends(get_current_user_optional),
     service: ReferralOnboardingService = Depends(_onboarding),
     rate_limiter=Depends(get_rate_limiter),
-) -> ReferralPartnerApplicationPublic:
+) -> ReferralPartnerApplicationStatusPublic:
     enforce_rate_limit(rate_limiter, request, scope="referral-application")
     if not settings.partners_public and (current_user is None or current_user.role != UserRole.ADMIN):
         raise HTTPException(status_code=404, detail="Not found")
     application = service.submit_application(payload=payload, user=current_user, actor_id=current_user.id if current_user else None)
-    return ReferralPartnerApplicationPublic.model_validate(application)
+    return ReferralPartnerApplicationStatusPublic.model_validate(application)
 
 
 
 
 
-@router.get("/partner/application/me", response_model=ReferralPartnerApplicationPublic | None)
+@router.get("/partner/application/me", response_model=ReferralPartnerApplicationStatusPublic | None)
 def my_referral_application(
     user: User = Depends(get_current_user),
     service: ReferralOnboardingService = Depends(_onboarding),
- ) -> ReferralPartnerApplicationStatusPublic | None:
+) -> ReferralPartnerApplicationStatusPublic | None:
     if not user.email_verified:
         return None
     from app.services.referral_onboarding import normalize_email
@@ -381,7 +381,7 @@ def my_referral_application(
 def claim_referral_application(
     user: User = Depends(get_current_user),
     service: ReferralOnboardingService = Depends(_onboarding),
- ) -> ReferralPartnerApplicationStatusPublic:
+) -> ReferralPartnerApplicationStatusPublic:
     application = service.claim_approved_application(user=user)
     return ReferralPartnerApplicationStatusPublic.model_validate(application)
 
