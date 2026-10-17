@@ -195,7 +195,7 @@ export function ReferralLinksManager({
       </div>
       {links.length ? (
         <Table>
-          <TableHeader><TableRow><TableHead>Destination</TableHead><TableHead>Campaign</TableHead><TableHead>Clicks</TableHead><TableHead>Paid enrollments</TableHead><TableHead>Commission</TableHead><TableHead>Status</TableHead><TableHead>Referral URL</TableHead><TableHead>Action</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>Destination</TableHead><TableHead>Campaign</TableHead><TableHead>Clicks</TableHead><TableHead>Paid enrollments</TableHead><TableHead>Conversion rate</TableHead><TableHead>Commission</TableHead><TableHead>Status</TableHead><TableHead>Referral URL</TableHead><TableHead>Action</TableHead></TableRow></TableHeader>
           <TableBody>{links.map((row) => (
             <TableRow key={row.id}>
               <TableCell>{row.course_title || row.cohort_name || "All programmes"}</TableCell>
