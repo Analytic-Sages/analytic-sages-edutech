@@ -28,6 +28,7 @@ from app.models.referral import (
     ReferralPartner,
     ReferralPartnerApplication,
     ReferralPartnerCohort,
+    ReferralProgramResources,
 )
 from app.models.user import User
 from app.services.referrals import generate_referral_code
@@ -73,6 +74,10 @@ class ReferralOnboardingService:
     ) -> ReferralPartnerApplication:
         if not payload.terms_accepted:
             raise HTTPException(status_code=400, detail="You must accept the Referral Partner terms.")
+        resources = self.db.get(ReferralProgramResources, 1)
+        current_terms_version = resources.terms_version if resources else "referral-partner-v1"
+        if payload.terms_version != current_terms_version:
+            raise HTTPException(status_code=409, detail="The programme terms have changed. Refresh the page and accept the current version.")
         email = normalize_email(payload.email)
         if not re.fullmatch(r"[^@\\s]+@[^@\\s]+\\.[^@\\s]+", email):
             raise HTTPException(status_code=400, detail="Enter a valid email address.")
@@ -130,7 +135,8 @@ class ReferralOnboardingService:
             promotion_channels=[x.strip() for x in payload.promotion_channels if x.strip()],
             marketing_plan=payload.marketing_plan.strip(),
             terms_accepted_at=now,
-            terms_version="referral-partner-v1",
+            terms_version=current_terms_version,
+            marketing_guidelines_accepted_at=now,
             status="submitted",
         )
         self.db.add(application)
