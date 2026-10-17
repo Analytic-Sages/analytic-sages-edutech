@@ -50,6 +50,7 @@ from app.schemas.referral_onboarding import (
     ReferralPartnerApplicationCreate,
     ReferralPartnerApplicationPatch,
     ReferralPartnerApplicationPublic,
+    ReferralPartnerApplicationStatusPublic,
     ReferralPartnerCohortCreate,
     ReferralPartnerCohortPatch,
     ReferralPartnerCohortPublic,
@@ -339,7 +340,7 @@ def referral_eligible_courses(
     return [{"id": str(course.id), "slug": course.slug, "title": course.title} for course in courses]
 
 
-@router.post("/partners/applications", response_model=ReferralPartnerApplicationPublic, status_code=201)
+@router.post("/partners/applications", response_model=ReferralPartnerApplicationStatusPublic, status_code=201)
 def submit_referral_application(
     request: Request,
     payload: ReferralPartnerApplicationCreate,
@@ -362,7 +363,7 @@ def submit_referral_application(
 def my_referral_application(
     user: User = Depends(get_current_user),
     service: ReferralOnboardingService = Depends(_onboarding),
-) -> ReferralPartnerApplicationPublic | None:
+ ) -> ReferralPartnerApplicationStatusPublic | None:
     if not user.email_verified:
         return None
     from app.services.referral_onboarding import normalize_email
@@ -373,16 +374,16 @@ def my_referral_application(
     )
     if application and application.user_id and application.user_id != user.id:
         return None
-    return ReferralPartnerApplicationPublic.model_validate(application) if application else None
+    return ReferralPartnerApplicationStatusPublic.model_validate(application) if application else None
 
 
-@router.post("/partner/onboarding/claim", response_model=ReferralPartnerApplicationPublic)
+@router.post("/partner/onboarding/claim", response_model=ReferralPartnerApplicationStatusPublic)
 def claim_referral_application(
     user: User = Depends(get_current_user),
     service: ReferralOnboardingService = Depends(_onboarding),
-) -> ReferralPartnerApplicationPublic:
+ ) -> ReferralPartnerApplicationStatusPublic:
     application = service.claim_approved_application(user=user)
-    return ReferralPartnerApplicationPublic.model_validate(application)
+    return ReferralPartnerApplicationStatusPublic.model_validate(application)
 
 
 @router.post("/partner/onboarding/complete", response_model=PartnerPublic)
