@@ -337,7 +337,7 @@ def referral_eligible_courses(
             Course.is_free.is_(False),
         ).order_by(Course.title.asc())
     ).all()
-    return [{"id": str(course.id), "slug": course.slug, "title": course.title} for course in courses]
+    return [{"id": str(course.id), "slug": course.slug, "title": course.title, "price": str(course.price), "currency": course.currency} for course in courses]
 
 
 @router.post("/partners/applications", response_model=ReferralPartnerApplicationStatusPublic, status_code=201)
@@ -417,8 +417,8 @@ def partner_referral_link_targets(
         ).order_by(Cohort.name.asc())
     ).all()
     return {
-        "courses": [{"id": str(row.id), "slug": row.slug, "title": row.title} for row in courses],
-        "programmes": [{"id": str(row.id), "slug": row.slug, "title": row.name} for row in programmes],
+        "courses": [{"id": str(row.id), "slug": row.slug, "title": row.title, "price": str(row.price), "currency": row.currency} for row in courses],
+        "programmes": [{"id": str(row.id), "slug": row.slug, "title": row.name, "price": str(row.price), "currency": row.currency} for row in programmes],
     }
 
 
