@@ -3140,6 +3140,10 @@ export type ReferralLink = {
   course_slug: string | null;
   cohort_id: string | null;
   cohort_name: string | null;
+  target_type: string;
+  target_slug: string | null;
+  target_available: boolean;
+  unavailable_reason: string | null;
   campaign_label: string | null;
   campaign_channel: string | null;
   code: string;
