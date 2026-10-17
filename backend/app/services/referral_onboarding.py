@@ -584,7 +584,8 @@ class ReferralOnboardingService:
 
     def _unique_code(self) -> str:
         for _ in range(30):
-            code = generate_referral_code()
+            # Prefix link codes so they occupy a distinct namespace from legacy 8-char partner codes.
+            code = "RL" + generate_referral_code()
             exists_partner = self.db.scalar(select(ReferralPartner.id).where(ReferralPartner.referral_code == code))
             exists_link = self.db.scalar(select(ReferralLink.id).where(ReferralLink.code == code))
             if not exists_partner and not exists_link:
