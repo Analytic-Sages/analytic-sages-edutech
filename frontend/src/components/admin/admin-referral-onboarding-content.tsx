@@ -47,14 +47,6 @@ function ApplicationReviewRow({ application, cohorts, onSaved }: {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    setStatus(application.status);
-    setCohortId(application.cohort_id || "");
-    setScores(application.scores || {});
-    setReviewNotes(application.review_notes || "");
-    setRejectionReason(application.rejection_reason || "");
-  }, [application]);
-
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -165,7 +157,13 @@ export function AdminReferralOnboardingContent() {
     setEligibleCourses(nextCourses);
   }
 
-  useEffect(() => { load().catch((err) => setError(err instanceof ApiError ? err.detail : "Could not load onboarding data.")); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    Promise.resolve().then(() => load()).catch((err) => {
+      if (!cancelled) setError(err instanceof ApiError ? err.detail : "Could not load onboarding data.");
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   async function createCohort(e: React.FormEvent) {
     e.preventDefault();
@@ -236,7 +234,7 @@ export function AdminReferralOnboardingContent() {
     <div className="space-y-5">
       <div className="flex flex-wrap gap-2">{(["applications", "cohorts", "links", "guide", "audit"] as const).map((key) => <Button key={key} size="sm" variant={tab === key ? "default" : "outline"} onClick={() => setTab(key)} className={tab === key ? "bg-brand-orange text-white hover:bg-brand-orange/90" : ""}>{key === "applications" ? "Applications" : key === "cohorts" ? "Cohorts" : key === "links" ? "Referral links" : key === "guide" ? "Program guide" : "Audit trail"}</Button>)}</div>
       {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
-      {tab === "applications" ? <div className="space-y-3"><p className="text-sm text-muted-foreground">Score applicants consistently; approval requires an interview decision and an available cohort. Activation remains a separate partner onboarding step.</p>{applications.length ? applications.map((app) => <ApplicationReviewRow key={app.id} application={app} cohorts={cohorts} onSaved={() => load().catch((err) => setError(err instanceof ApiError ? err.detail : "Could not refresh applications."))} />) : <p className="text-sm text-muted-foreground">No applications submitted yet.</p>}</div> : null}
+      {tab === "applications" ? <div className="space-y-3"><p className="text-sm text-muted-foreground">Score applicants consistently; approval requires an interview decision and an available cohort. Activation remains a separate partner onboarding step.</p>{applications.length ? applications.map((app) => <ApplicationReviewRow key={`${app.id}:${app.updated_at}`} application={app} cohorts={cohorts} onSaved={() => load().catch((err) => setError(err instanceof ApiError ? err.detail : "Could not refresh applications."))} />) : <p className="text-sm text-muted-foreground">No applications submitted yet.</p>}</div> : null}
       {tab === "cohorts" ? <div className="space-y-4"><form onSubmit={createCohort} className="grid gap-3 rounded-lg border p-4 sm:grid-cols-[1fr_140px_auto]"><div className="space-y-1"><label className="text-sm font-medium">Cohort name</label><Input value={newCohortName} onChange={(e) => setNewCohortName(e.target.value)} minLength={2} required placeholder="e.g. Cohort 2" /></div><div className="space-y-1"><label className="text-sm font-medium">Capacity</label><Input type="number" min={1} max={1000} value={newCohortCapacity} onChange={(e) => setNewCohortCapacity(e.target.value)} required /></div><div className="flex items-end"><Button type="submit" disabled={busy || !newCohortName.trim()}>{busy ? "Creating…" : "Create cohort"}</Button></div></form><Table><TableHeader><TableRow><TableHead>Cohort</TableHead><TableHead>Approved / capacity</TableHead><TableHead>Remaining</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader><TableBody>{cohorts.map((row) => <TableRow key={row.id}><TableCell>{row.name}</TableCell><TableCell>{row.approved_count} / {row.capacity}</TableCell><TableCell>{row.remaining_slots}</TableCell><TableCell>{row.is_active ? "Active" : "Inactive"}</TableCell><TableCell className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => { const value = window.prompt("New cohort capacity", String(row.capacity)); if (value && Number.isInteger(Number(value))) void updateCohort(row, { capacity: Number(value) }); }}>Change capacity</Button><Button size="sm" variant="outline" onClick={() => void updateCohort(row, { is_active: !row.is_active })}>{row.is_active ? "Deactivate" : "Activate"}</Button></TableCell></TableRow>)}</TableBody></Table></div> : null}
       {tab === "guide" && guide ? <form onSubmit={saveGuide} className="space-y-4 rounded-lg border p-4"><div><h3 className="font-semibold">Referral program guide and terms</h3><p className="mt-1 text-sm text-muted-foreground">These settings feed the public programme page and partner onboarding. Changing the terms version identifies the current acknowledgement version; coordinate any policy change before publishing.</p></div><div className="space-y-1"><label className="text-sm font-medium">Terms version</label><Input name="terms_version" defaultValue={guide.terms_version} required maxLength={40} /></div>{([["program_overview","Programme overview"],["commission_policy","Commission policy"],["attribution_policy","Attribution policy"],["payout_policy","Payout policy"],["marketing_guidelines","Marketing guidelines"]] as const).map(([name,label]) => <div key={name} className="space-y-1"><label className="text-sm font-medium">{label}</label><textarea name={name} defaultValue={guide[name]} rows={4} required className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" /></div>)}<div className="space-y-1"><label className="text-sm font-medium">Support contact</label><Input name="support_contact" defaultValue={guide.support_contact} required maxLength={320} /></div><Button type="submit" disabled={guideSaving}>{guideSaving ? "Saving…" : "Save programme guide"}</Button></form> : null}
       {tab === "audit" ? <div className="space-y-3"><p className="text-sm text-muted-foreground">Administrative changes to applications, cohorts, links, guide settings and partner actions are recorded here.</p><Table><TableHeader><TableRow><TableHead>Time</TableHead><TableHead>Actor ID</TableHead><TableHead>Action</TableHead><TableHead>Target</TableHead><TableHead>Details</TableHead></TableRow></TableHeader><TableBody>{audit.map((row) => <TableRow key={row.id}><TableCell>{new Date(row.created_at).toLocaleString()}</TableCell><TableCell className="font-mono text-xs">{row.actor_id || "System"}</TableCell><TableCell>{row.action}</TableCell><TableCell>{row.entity_type}{row.entity_id ? ` · ${row.entity_id.slice(0, 8)}` : ""}</TableCell><TableCell><details><summary className="cursor-pointer text-sm">View</summary><pre className="mt-2 max-w-xl whitespace-pre-wrap break-words text-xs">{JSON.stringify({ note: row.note, before: row.before_json, after: row.after_json }, null, 2)}</pre></details></TableCell></TableRow>)}</TableBody></Table></div> : null}
