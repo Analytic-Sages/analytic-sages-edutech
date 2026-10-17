@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
+import { AdminReferralOnboardingContent } from "@/components/admin/admin-referral-onboarding-content";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -27,7 +28,7 @@ import {
   type PartnerPayoutRow,
 } from "@/lib/api";
 
-type Tab = "overview" | "partners" | "conversions" | "payouts" | "review";
+type Tab = "overview" | "partners" | "conversions" | "payouts" | "review" | "onboarding";
 
 export function AdminReferralsContent() {
   const [tab, setTab] = useState<Tab>("overview");
@@ -127,6 +128,7 @@ export function AdminReferralsContent() {
             ["conversions", "Conversions"],
             ["payouts", "Payouts"],
             ["review", "Review queue"],
+            ["onboarding", "Applications & links"],
           ] as const
         ).map(([id, label]) => (
           <Button
@@ -358,7 +360,7 @@ export function AdminReferralsContent() {
         </Table>
       ) : null}
 
-      {tab === "review" ? (
+      {tab === "onboarding" ? <AdminReferralOnboardingContent /> : null}\n\n      {tab === "review" ? (
         review.length === 0 ? (
           <p className="text-sm text-muted-foreground">No items need review.</p>
         ) : (
