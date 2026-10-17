@@ -91,6 +91,12 @@ class ReferralOnboardingService:
             raise HTTPException(status_code=400, detail="Use the email address on your signed-in account.")
         if user and not user.email_verified:
             raise HTTPException(status_code=400, detail="Verify your account email before applying.")
+        whatsapp_number = payload.whatsapp_number.strip()
+        telegram_id = payload.telegram_id.strip()
+        if len(re.sub(r"\\D", "", whatsapp_number)) < 7:
+            raise HTTPException(status_code=400, detail="Enter a WhatsApp number with at least seven digits, including country code.")
+        if not telegram_id:
+            raise HTTPException(status_code=400, detail="Enter your Telegram ID or username.")
         existing = self.db.scalar(
             select(ReferralPartnerApplication).where(
                 ReferralPartnerApplication.email_normalized == email
@@ -128,8 +134,8 @@ class ReferralOnboardingService:
             email_normalized=email,
             country=(payload.country or "").strip() or None,
             timezone=(payload.timezone or "").strip() or None,
-            whatsapp_number=payload.whatsapp_number.strip(),
-            telegram_id=payload.telegram_id.strip(),
+            whatsapp_number=whatsapp_number,
+            telegram_id=telegram_id,
             linkedin_url=(payload.linkedin_url or "").strip() or None,
             social_profiles=payload.social_profiles,
             communities=(payload.communities or "").strip() or None,
