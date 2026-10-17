@@ -3215,6 +3215,9 @@ export type PartnerConversionRow = {
   currency: string;
   status: string;
   created_at: string;
+  referral_link_id: string | null;
+  campaign_label: string | null;
+  commission_rate: string | null;
   reporting_usd_equivalent: string | null;
 };
 
@@ -3259,6 +3262,10 @@ export type AdminConversionRow = {
   status: string;
   fraud_status: string;
   created_at: string;
+  referral_link_id: string | null;
+  referral_code: string | null;
+  campaign_label: string | null;
+  commission_rate: string | null;
   reporting_usd_equivalent: string | null;
 };
 
