@@ -368,8 +368,6 @@ class ReferralOnboardingService:
             course = self.db.get(Course, link.course_id) if link.course_id else None
             cohort = self.db.get(Cohort, link.cohort_id) if link.cohort_id else None
             clicks = self.db.scalar(select(func.count(ReferralClick.id)).where(ReferralClick.referral_link_id == link.id)) or 0
-            conversions = self.db.scalars(select(ReferralAttribution.id).where(ReferralAttribution.referral_link_id == link.id)).all()
-            from app.models.referral import ReferralConversion
             conv_rows = list(self.db.scalars(select(ReferralConversion).where(ReferralConversion.referral_link_id == link.id)).all())
             result.append({
                 "id": link.id, "partner_id": link.partner_id,
@@ -380,9 +378,20 @@ class ReferralOnboardingService:
                 "code": link.code, "destination_path": link.destination_path,
                 "url": f"{self.settings.frontend_url.rstrip('/')}/ref/{link.code}",
                 "status": link.status, "clicks": clicks,
-                "paid_enrollments": len({row.payment_id for row in conv_rows}),
-                "commission_amount": sum((row.commission_amount for row in conv_rows), start=0),
-                "commission_currency": conv_rows[0].currency if conv_rows and len({r.currency for r in conv_rows}) == 1 else None,
+                "paid_enrollments": len({
+                    row.enrollment_id if row.enrollment_id else (row.referred_user_id, row.course_id, row.cohort_id)
+                    for row in conv_rows
+                }),
+                "commission_amount": (
+                    sum((row.commission_amount for row in conv_rows), start=Decimal("0.00"))
+                    if len({row.currency for row in conv_rows}) == 1 and conv_rows
+                    else None
+                ),
+                "commission_currency": next(iter({row.currency for row in conv_rows})) if len({row.currency for row in conv_rows}) == 1 and conv_rows else None,
+                "commission_by_currency": {
+                    currency: sum((row.commission_amount for row in conv_rows if row.currency == currency), start=Decimal("0.00"))
+                    for currency in {row.currency for row in conv_rows}
+                },
                 "created_at": link.created_at, "revoked_at": link.revoked_at,
             })
         return result
