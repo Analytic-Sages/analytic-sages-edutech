@@ -1,6 +1,6 @@
 """Add WhatsApp and Telegram contact fields to partner applications.
 
-Revision ID: 048_referral_partner_contact_fields
+Revision ID: 048_ref_partner_contacts
 Revises: 047_referral_onboarding_links
 Create Date: 2026-10-17
 """
@@ -9,7 +9,7 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "048_referral_partner_contact_fields"
+revision: str = "048_ref_partner_contacts"
 down_revision: Union[str, None] = "047_referral_onboarding_links"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
