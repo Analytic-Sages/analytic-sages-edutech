@@ -3390,6 +3390,7 @@ export function submitReferralPartnerApplication(payload: {
   promotion_channels: string[];
   marketing_plan: string;
   terms_accepted: boolean;
+  terms_version: string;
 }) {
   return apiFetch<ReferralPartnerApplication>("/api/v1/partners/applications", {
     method: "POST",
