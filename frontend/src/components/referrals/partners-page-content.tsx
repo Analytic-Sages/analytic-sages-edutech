@@ -37,9 +37,10 @@ export function PartnersPageContent() {
   const [email, setEmail] = useState("");
   const [country, setCountry] = useState("");
   const [timezone, setTimezone] = useState("");
+  const [whatsappNumber, setWhatsappNumber] = useState("");
+  const [telegramId, setTelegramId] = useState("");
   const [linkedin, setLinkedin] = useState("");
   const [xProfile, setXProfile] = useState("");
-  const [githubProfile, setGithubProfile] = useState("");
   const [youtubeProfile, setYoutubeProfile] = useState("");
   const [communities, setCommunities] = useState("");
   const [audienceSize, setAudienceSize] = useState("");
@@ -106,12 +107,13 @@ export function PartnersPageContent() {
     try {
       const socialProfiles = [
         { platform: "X", url: xProfile.trim() },
-        { platform: "GitHub", url: githubProfile.trim() },
         { platform: "YouTube", url: youtubeProfile.trim() },
       ].filter((row) => row.url);
       const created = await submitReferralPartnerApplication({
         full_name: fullName.trim(),
         email: email.trim(),
+        whatsapp_number: whatsappNumber.trim(),
+        telegram_id: telegramId.trim(),
         country: country.trim() || undefined,
         timezone: timezone.trim() || undefined,
         linkedin_url: linkedin.trim() || undefined,
@@ -128,7 +130,7 @@ export function PartnersPageContent() {
         terms_version: guide?.terms_version || "referral-partner-v1",
       });
       setApplication(created);
-      setSuccess("Application received. Our team will review it and contact you using the email provided.");
+      setSuccess("Application received. Our team will review it and contact you using the details provided. Selected partners will be added to the official Referral Partners group after acceptance.");
     } catch (err) {
       setError(err instanceof ApiError ? err.detail : "Could not submit your application. Please try again.");
     } finally {
@@ -191,7 +193,8 @@ export function PartnersPageContent() {
           <section id="partner-apply" className="scroll-mt-24 space-y-5">
             <div>
               <h2 className="text-2xl font-semibold text-[#0B1F3A]">Apply to become a Referral Partner</h2>
-              <p className="mt-2 text-sm text-muted-foreground">Tell us about your audience, the courses you can promote and how you would reach potential learners. A large audience is not required; relevant and engaged communities matter.</p>
+              <p className="mt-2 text-sm text-muted-foreground">Tell us about your audience, the courses you can promote and how you would reach potential learners. A large audience is not required; relevant and engaged communities matter. We welcome applications from everyone who meets the programme criteria; the team selects partners based on fit, not an automatic application cap.</p>
+              <p className="text-sm text-muted-foreground">If selected and onboarded, you will be added to the official Referral Partners group for updates, resources and coordination.</p>
             </div>
             <form onSubmit={onApply} className="space-y-6">
               <div className="grid gap-4 sm:grid-cols-2">
@@ -199,10 +202,11 @@ export function PartnersPageContent() {
                 <div className="space-y-2"><Label htmlFor="partner-email">Email address *</Label><Input id="partner-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required maxLength={320} disabled={!!accountUser?.email} /></div>
                 <div className="space-y-2"><Label htmlFor="partner-country">Country</Label><Input id="partner-country" value={country} onChange={(e) => setCountry(e.target.value)} maxLength={100} /></div>
                 <div className="space-y-2"><Label htmlFor="partner-timezone">Time zone</Label><Input id="partner-timezone" value={timezone} onChange={(e) => setTimezone(e.target.value)} placeholder="e.g. Africa/Lagos" maxLength={100} /></div>
+                <div className="space-y-2"><Label htmlFor="partner-whatsapp">WhatsApp number *</Label><Input id="partner-whatsapp" type="tel" value={whatsappNumber} onChange={(e) => setWhatsappNumber(e.target.value)} placeholder="Include country code, e.g. +234…" required minLength={7} maxLength={40} /></div>
+                <div className="space-y-2"><Label htmlFor="partner-telegram">Telegram ID / username *</Label><Input id="partner-telegram" value={telegramId} onChange={(e) => setTelegramId(e.target.value)} placeholder="@username" required minLength={2} maxLength={100} /></div>
                 <div className="space-y-2 sm:col-span-2"><Label htmlFor="partner-linkedin">LinkedIn profile</Label><Input id="partner-linkedin" type="url" value={linkedin} onChange={(e) => setLinkedin(e.target.value)} placeholder="https://www.linkedin.com/in/…" /></div>
                 <div className="space-y-2"><Label htmlFor="partner-x">X profile</Label><Input id="partner-x" value={xProfile} onChange={(e) => setXProfile(e.target.value)} placeholder="Profile URL" /></div>
-                <div className="space-y-2"><Label htmlFor="partner-github">GitHub profile</Label><Input id="partner-github" value={githubProfile} onChange={(e) => setGithubProfile(e.target.value)} placeholder="Profile URL" /></div>
-                <div className="space-y-2 sm:col-span-2"><Label htmlFor="partner-youtube">YouTube / other profile</Label><Input id="partner-youtube" value={youtubeProfile} onChange={(e) => setYoutubeProfile(e.target.value)} placeholder="Profile URL" /></div>
+                <div className="space-y-2 sm:col-span-2"><Label htmlFor="partner-youtube">YouTube / other public profile</Label><Input id="partner-youtube" value={youtubeProfile} onChange={(e) => setYoutubeProfile(e.target.value)} placeholder="Profile URL" /></div>
               </div>
 
               <div className="space-y-2"><Label htmlFor="partner-communities">Communities, organizations or audiences you can reach</Label><textarea id="partner-communities" value={communities} onChange={(e) => setCommunities(e.target.value)} maxLength={2000} rows={3} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder="Name relevant communities and explain your access to them." /></div>
