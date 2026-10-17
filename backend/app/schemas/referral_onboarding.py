@@ -115,6 +115,10 @@ class ReferralLinkPublic(BaseModel):
     course_slug: str | None = None
     cohort_id: UUID | None = None
     cohort_name: str | None = None
+    target_type: str = "general"
+    target_slug: str | None = None
+    target_available: bool = True
+    unavailable_reason: str | None = None
     campaign_label: str | None = None
     campaign_channel: str | None = None
     code: str
