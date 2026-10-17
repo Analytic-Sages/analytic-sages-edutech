@@ -204,7 +204,7 @@ class ReferralOnboardingService:
                 raise HTTPException(status_code=400, detail="Choose an active referral-partner cohort.")
             self._assert_capacity(cohort, application)
             application.cohort_id = cohort.id
-        if next_status == "approved":
+        if next_status == "approved" and application.status != "approved":
             if application.status != "interviewed":
                 raise HTTPException(status_code=409, detail="Interview and record a decision before approval.")
             if application.interview_status != "completed" or application.interview_decision != "recommend":
@@ -223,7 +223,7 @@ class ReferralOnboardingService:
             self._attach_partner_if_account_exists(application)
             if not application.partner_id:
                 raise HTTPException(status_code=409, detail="The applicant must claim the approved application using a verified account first.")
-        if next_status == "active":
+        if next_status == "active" and application.status != "active":
             if application.status not in {"suspended", "inactive"} or not application.partner_id:
                 raise HTTPException(status_code=409, detail="Partners can only become active through onboarding completion.")
             partner = self.db.get(ReferralPartner, application.partner_id)
@@ -231,6 +231,12 @@ class ReferralOnboardingService:
                 raise HTTPException(status_code=409, detail="Complete onboarding before reactivation.")
             partner.status = ReferralPartnerStatus.ACTIVE
             self._set_link_statuses(partner.id, "active")
+        review_fields = {"scores", "review_notes", "rejection_reason", "cohort_id"}
+        interview_fields = {"interview_at", "interview_status", "interview_notes", "interview_decision", "interview_reason", "follow_up_actions"}
+        if review_fields.intersection(updates):
+            application.reviewer_id = actor.id
+        if interview_fields.intersection(updates):
+            application.interview_reviewer_id = actor.id
         if next_status == "rejected" and not (updates.get("rejection_reason") or application.rejection_reason):
             raise HTTPException(status_code=400, detail="Record a rejection reason.")
         for key, value in updates.items():
