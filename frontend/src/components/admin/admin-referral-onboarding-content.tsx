@@ -77,7 +77,7 @@ function ApplicationReviewRow({ application, cohorts, onSaved }: {
     <details className="rounded-lg border p-4">
       <summary className="cursor-pointer list-none">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div><p className="font-semibold">{application.full_name}</p><p className="text-sm text-muted-foreground">{application.email} · {application.country || "Country not supplied"}</p><p className="mt-1 text-xs text-muted-foreground">Submitted {new Date(application.created_at).toLocaleDateString()} · Score {application.score_total ?? "not scored"}/100</p></div>
+          <div><p className="font-semibold">{application.full_name}</p><p className="text-sm text-muted-foreground">{application.email} · {application.country || "Country not supplied"}</p><p className="mt-1 text-xs text-muted-foreground">Submitted {new Date(application.created_at).toLocaleDateString()} · Score {application.score_total ?? "not scored"}/100</p><p className="mt-1 text-xs text-muted-foreground">Reviewer: {application.reviewer_id || "—"} · Interview reviewer: {application.interview_reviewer_id || "—"} · Approved by: {application.approved_by || "—"}{application.approved_at ? ` · Approved ${new Date(application.approved_at).toLocaleDateString()}` : ""}</p></div>
           <span className="rounded-full border px-3 py-1 text-xs capitalize">{application.status.replaceAll("_", " ")}</span>
         </div>
       </summary>
