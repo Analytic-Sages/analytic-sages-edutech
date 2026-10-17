@@ -108,6 +108,8 @@ def upgrade() -> None:
         sa.Column("partner_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("course_id", postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column("cohort_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("target_type", sa.String(16), nullable=False, server_default="general"),
+        sa.Column("target_slug", sa.String(160), nullable=True),
         sa.Column("campaign_label", sa.String(120), nullable=True),
         sa.Column("campaign_channel", sa.String(80), nullable=True),
         sa.Column("code", sa.String(32), nullable=False, unique=True),
@@ -123,6 +125,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["revoked_by"], ["users.id"], ondelete="SET NULL"),
         sa.CheckConstraint("status IN ('inactive','active','revoked')", name="ck_referral_links_status"),
         sa.CheckConstraint("course_id IS NULL OR cohort_id IS NULL", name="ck_referral_links_one_target"),
+        sa.CheckConstraint("target_type IN ('general','course','programme')", name="ck_referral_links_target_type"),
     )
     op.create_index("ix_referral_links_partner", "referral_links", ["partner_id"])
     op.create_index("ix_referral_links_course", "referral_links", ["course_id"])
