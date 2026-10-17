@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field
 class ReferralPartnerApplicationCreate(BaseModel):
     full_name: str = Field(min_length=2, max_length=160)
     email: str = Field(min_length=5, max_length=320)
+    whatsapp_number: str = Field(min_length=7, max_length=40)
+    telegram_id: str = Field(min_length=2, max_length=100)
     country: str | None = Field(default=None, max_length=100)
     timezone: str | None = Field(default=None, max_length=100)
     linkedin_url: str | None = Field(default=None, max_length=512)
@@ -30,6 +32,8 @@ class ReferralPartnerApplicationPublic(BaseModel):
     id: UUID
     full_name: str
     email: str
+    whatsapp_number: str | None = None
+    telegram_id: str | None = None
     country: str | None = None
     timezone: str | None = None
     linkedin_url: str | None = None
