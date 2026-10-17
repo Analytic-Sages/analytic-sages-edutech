@@ -100,10 +100,12 @@ class ReferralOnboardingService:
                 status_code=409,
                 detail=f"An application already exists for this email (status: {existing.status}).",
             )
-        if user and self.db.scalar(
-            select(ReferralPartner.id).where(ReferralPartner.user_id == user.id)
-        ):
-            raise HTTPException(status_code=409, detail="This account already has a Referral Partner profile.")
+        if user:
+            existing_partner = self.db.scalar(
+                select(ReferralPartner).where(ReferralPartner.user_id == user.id)
+            )
+            if existing_partner and existing_partner.status != ReferralPartnerStatus.PENDING:
+                raise HTTPException(status_code=409, detail="This account already has a non-pending Referral Partner profile.")
         valid_slugs = set()
         if payload.interested_courses:
             valid_slugs = set(self.db.scalars(
