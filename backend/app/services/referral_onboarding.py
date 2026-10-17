@@ -361,21 +361,29 @@ class ReferralOnboardingService:
         if payload.course_id and payload.cohort_id:
             raise HTTPException(status_code=400, detail="A link can target a course or a programme, not both.")
         destination = self.settings.referral_default_redirect_path
+        target_type = "general"
+        target_slug = None
         if payload.course_id:
             course = self.db.get(Course, payload.course_id)
             if not course or not course.published or not course.referral_commission_eligible or course.is_free:
                 raise HTTPException(status_code=400, detail="That course is not currently eligible for referrals.")
             destination = f"/courses/{course.slug}"
+            target_type = "course"
+            target_slug = course.slug
         elif payload.cohort_id:
             cohort = self.db.get(Cohort, payload.cohort_id)
             if not cohort or not cohort.referral_commission_eligible or cohort.price <= 0 or cohort.status.value not in {"open", "active"}:
                 raise HTTPException(status_code=400, detail="That programme is not currently eligible for referrals.")
             destination = f"/programs/{cohort.slug}"
+            target_type = "programme"
+            target_slug = cohort.slug
         code = self._unique_code()
         link = ReferralLink(
             partner_id=partner.id,
             course_id=payload.course_id,
             cohort_id=payload.cohort_id,
+            target_type=target_type,
+            target_slug=target_slug,
             campaign_label=(payload.campaign_label or "").strip() or None,
             campaign_channel=(payload.campaign_channel or "").strip() or None,
             code=code,
