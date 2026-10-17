@@ -10,9 +10,11 @@ import {
   createPartnerReferralLink,
   getPartnerReferralLinkTargets,
   getPartnerReferralLinks,
+  getReferralProgramGuide,
   patchPartnerReferralLink,
   type ReferralLink,
   type ReferralLinkTargets,
+  type ReferralProgramGuide,
 } from "@/lib/api";
 
 export function ReferralLinksManager({
@@ -24,6 +26,7 @@ export function ReferralLinksManager({
 }) {
   const [links, setLinks] = useState<ReferralLink[]>([]);
   const [targets, setTargets] = useState<ReferralLinkTargets>({ courses: [], programmes: [] });
+  const [guide, setGuide] = useState<ReferralProgramGuide | null>(null);
   const [target, setTarget] = useState("");
   const [campaign, setCampaign] = useState("");
   const [channel, setChannel] = useState("");
@@ -48,11 +51,16 @@ export function ReferralLinksManager({
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([getPartnerReferralLinks(), getPartnerReferralLinkTargets()])
-      .then(([nextLinks, nextTargets]) => {
+    Promise.all([
+      getPartnerReferralLinks(),
+      getPartnerReferralLinkTargets(),
+      getReferralProgramGuide().catch(() => null),
+    ])
+      .then(([nextLinks, nextTargets, nextGuide]) => {
         if (cancelled) return;
         setLinks(nextLinks);
         setTargets(nextTargets);
+        setGuide(nextGuide);
         if (nextTargets.courses[0]) setTarget(`course:${nextTargets.courses[0].id}`);
         else if (nextTargets.programmes[0]) setTarget(`programme:${nextTargets.programmes[0].id}`);
       })
@@ -108,7 +116,7 @@ export function ReferralLinksManager({
         profile_completed: true,
         terms_accepted: terms,
         marketing_guidelines_accepted: guidelines,
-        terms_version: "referral-partner-v1",
+        terms_version: guide?.terms_version || "referral-partner-v1",
       });
       setMessage("Onboarding completed. Your referral links are active.");
       await load();
@@ -158,10 +166,11 @@ export function ReferralLinksManager({
           ))}</TableBody>
         </Table>
       ) : <p className="text-sm text-muted-foreground">No referral links have been created yet.</p>}
+      {guide ? <div className="rounded-lg border bg-muted/20 p-4 text-sm"><h3 className="font-semibold">Programme guide</h3><p className="mt-2">{guide.commission_policy}</p><p className="mt-2">{guide.attribution_policy}</p><p className="mt-2">{guide.payout_policy}</p><p className="mt-2">{guide.marketing_guidelines}</p><p className="mt-2 text-muted-foreground">Questions: {guide.support_contact}</p></div> : null}
       {onboarding ? (
         <div className="space-y-3 rounded-lg border p-4">
           <h3 className="font-semibold">Activation checklist</h3>
-          <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} className="mt-1" /><span>I accept the current Referral Partner programme terms (referral-partner-v1).</span></label>
+          <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} className="mt-1" /><span>I accept the current Referral Partner programme terms ({guide?.terms_version || "referral-partner-v1"}).</span></label>
           <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={guidelines} onChange={(e) => setGuidelines(e.target.checked)} className="mt-1" /><span>I have read and will follow the marketing guidelines, avoid spam and misleading claims, and make no unapproved promises.</span></label>
           <Button onClick={activate} disabled={busy || !terms || !guidelines || links.length === 0}>{busy ? "Completing…" : "Complete onboarding and activate"}</Button>
         </div>
