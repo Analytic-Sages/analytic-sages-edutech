@@ -3117,6 +3117,10 @@ export type ReferralPartnerApplication = {
   score_total: number | null;
   cohort_id: string | null;
   partner_id: string | null;
+  reviewer_id: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
+  interview_reviewer_id: string | null;
   created_at: string;
   updated_at: string;
   terms_version: string;
