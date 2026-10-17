@@ -346,7 +346,7 @@ class ReferralOnboardingService:
             partner.referral_code = self._unique_code()
         application.marketing_guidelines_accepted_at = now
         application.status = "active"
-        self._set_link_statuses(partner.id, "active")
+        self._set_link_statuses(partner.id, "active", actor.id)
         self._audit(
             actor_id=actor.id,
             action="partner.onboarding_completed",
