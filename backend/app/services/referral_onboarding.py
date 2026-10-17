@@ -21,6 +21,7 @@ from app.models.referral import (
     ReferralAttribution,
     ReferralAuditEvent,
     ReferralClick,
+    ReferralConversion,
     ReferralLink,
     ReferralPartner,
     ReferralPartnerApplication,
