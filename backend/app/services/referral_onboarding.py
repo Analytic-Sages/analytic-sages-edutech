@@ -91,6 +91,12 @@ class ReferralOnboardingService:
             raise HTTPException(status_code=400, detail="Use the email address on your signed-in account.")
         if user and not user.email_verified:
             raise HTTPException(status_code=400, detail="Verify your account email before applying.")
+        whatsapp_number = payload.whatsapp_number.strip()
+        telegram_id = payload.telegram_id.strip()
+        if len(re.sub(r"\D", "", whatsapp_number)) < 7:
+            raise HTTPException(status_code=400, detail="Enter a WhatsApp number with at least seven digits, including country code.")
+        if not telegram_id:
+            raise HTTPException(status_code=400, detail="Enter your Telegram ID or username.")
         existing = self.db.scalar(
             select(ReferralPartnerApplication).where(
                 ReferralPartnerApplication.email_normalized == email
@@ -128,6 +134,8 @@ class ReferralOnboardingService:
             email_normalized=email,
             country=(payload.country or "").strip() or None,
             timezone=(payload.timezone or "").strip() or None,
+            whatsapp_number=whatsapp_number,
+            telegram_id=telegram_id,
             linkedin_url=(payload.linkedin_url or "").strip() or None,
             social_profiles=payload.social_profiles,
             communities=(payload.communities or "").strip() or None,
@@ -156,7 +164,7 @@ class ReferralOnboardingService:
         self.db.refresh(application)
         return application
 
-    def list_applications(self, *, status_filter: str | None = None, limit: int = 200):
+    def list_applications(self, *, status_filter: str | None = None, limit: int = 500):
         stmt = select(ReferralPartnerApplication).order_by(ReferralPartnerApplication.created_at.desc())
         if status_filter:
             if status_filter not in APPLICATION_STATUSES:
@@ -208,7 +216,6 @@ class ReferralOnboardingService:
             cohort = self._lock_cohort(cohort_id)
             if not cohort or not cohort.is_active:
                 raise HTTPException(status_code=400, detail="Choose an active referral-partner cohort.")
-            self._assert_capacity(cohort, application)
             application.cohort_id = cohort.id
             if application.partner_id:
                 assigned_partner = self.db.get(ReferralPartner, application.partner_id)
@@ -230,7 +237,6 @@ class ReferralOnboardingService:
             cohort = self._lock_cohort(application.cohort_id) if application.cohort_id else self._default_cohort_for_update()
             if not cohort or not cohort.is_active:
                 raise HTTPException(status_code=409, detail="No active cohort is available.")
-            self._assert_capacity(cohort, application)
             application.cohort_id = cohort.id
             application.approved_at = datetime.now(UTC)
             application.approved_by = actor.id
@@ -566,9 +572,7 @@ class ReferralOnboardingService:
             raise HTTPException(status_code=404, detail="Cohort not found.")
         before = {"capacity": cohort.capacity, "is_active": cohort.is_active}
         if capacity is not None:
-            count = self._approved_count(cohort.id)
-            if capacity < count:
-                raise HTTPException(status_code=409, detail=f"Capacity cannot be below the {count} already approved cohort members.")
+            # Capacity is an informational target, never a hard approval limit.
             cohort.capacity = capacity
         if is_active is not None:
             cohort.is_active = is_active
@@ -628,13 +632,6 @@ class ReferralOnboardingService:
                 ReferralPartnerApplication.status.in_(COHORT_MEMBER_STATUSES),
             )
         ) or 0)
-
-    def _assert_capacity(self, cohort: ReferralPartnerCohort, application: ReferralPartnerApplication) -> None:
-        count = self._approved_count(cohort.id)
-        if application.cohort_id == cohort.id and application.status in COHORT_MEMBER_STATUSES:
-            count -= 1
-        if count >= cohort.capacity:
-            raise HTTPException(status_code=409, detail=f"{cohort.name} is full ({cohort.capacity} approved partners). Waitlist the applicant or choose another cohort.")
 
     def _cohort_payload(self, cohort: ReferralPartnerCohort) -> dict:
         count = self._approved_count(cohort.id)

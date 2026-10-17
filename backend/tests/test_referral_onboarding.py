@@ -1,4 +1,4 @@
-"""Regression tests for referral applications, cohort capacity and link attribution."""
+"""Regression tests for referral applications, cohort targets and link attribution."""
 
 from __future__ import annotations
 
@@ -55,10 +55,12 @@ def _application_payload(email: str) -> ReferralPartnerApplicationCreate:
     return ReferralPartnerApplicationCreate(
         full_name="Referral Applicant",
         email=email,
+        whatsapp_number="+2348012345678",
+        telegram_id="@referral_applicant",
         country="Nigeria",
         timezone="Africa/Lagos",
         linkedin_url="https://www.linkedin.com/in/referral-applicant",
-        social_profiles=[{"platform": "GitHub", "url": "https://github.com/referral-applicant"}],
+        social_profiles=[{"platform": "X", "url": "https://x.com/referral-applicant"}],
         communities="A focused developer community",
         audience_size="300 members",
         audience_engagement="Weekly discussions and event attendance",
@@ -107,6 +109,8 @@ def test_referral_application_rejects_duplicates_and_records_terms():
         assert application.status == "submitted"
         assert application.terms_accepted_at is not None
         assert application.terms_version == "referral-partner-v1"
+        assert application.whatsapp_number == "+2348012345678"
+        assert application.telegram_id == "@referral_applicant"
         with pytest.raises(HTTPException) as exc:
             service.submit_application(payload=_application_payload(email), user=None)
         assert exc.value.status_code == 409
@@ -118,7 +122,7 @@ def test_referral_application_rejects_duplicates_and_records_terms():
         db.close()
 
 
-def test_cohort_capacity_is_enforced_when_approving_interviewed_applicants():
+def test_cohort_target_is_informational_when_approving_more_than_target():
     db = SessionLocal()
     suffix = uuid.uuid4().hex[:10]
     admin_email = f"ref-admin-{suffix}@example.test"
@@ -135,25 +139,27 @@ def test_cohort_capacity_is_enforced_when_approving_interviewed_applicants():
         first = service.submit_application(payload=_application_payload(f"ref-first-{suffix}@example.test"), user=None)
         app_ids.append(first.id)
         _prepare_interview(service, first, admin)
-        approved = service.patch_application(
+        approved_first = service.patch_application(
             application_id=first.id,
             payload=ReferralPartnerApplicationPatch(status="approved", cohort_id=cohort_id),
             actor=admin,
         )
-        assert approved.status == "approved"
-        assert approved.cohort_id == cohort_id
+        assert approved_first.status == "approved"
+        assert approved_first.cohort_id == cohort_id
 
         second = service.submit_application(payload=_application_payload(f"ref-second-{suffix}@example.test"), user=None)
         app_ids.append(second.id)
         _prepare_interview(service, second, admin)
-        with pytest.raises(HTTPException) as exc:
-            service.patch_application(
-                application_id=second.id,
-                payload=ReferralPartnerApplicationPatch(status="approved", cohort_id=cohort_id),
-                actor=admin,
-            )
-        assert exc.value.status_code == 409
-        assert "full" in str(exc.value.detail).lower()
+        approved_second = service.patch_application(
+            application_id=second.id,
+            payload=ReferralPartnerApplicationPatch(status="approved", cohort_id=cohort_id),
+            actor=admin,
+        )
+        assert approved_second.status == "approved"
+        assert approved_second.cohort_id == cohort_id
+        cohort_row = next(row for row in service.list_cohorts() if row["id"] == cohort_id)
+        assert cohort_row["approved_count"] == 2
+        assert cohort_row["remaining_slots"] == 0
     finally:
         if app_ids:
             db.query(ReferralAuditEvent).filter(ReferralAuditEvent.entity_id.in_(app_ids)).delete(synchronize_session=False)

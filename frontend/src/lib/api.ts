@@ -3115,6 +3115,8 @@ export type ReferralPartnerApplication = {
   id: string;
   full_name: string;
   email: string;
+  whatsapp_number: string | null;
+  telegram_id: string | null;
   country: string | null;
   timezone: string | null;
   linkedin_url: string | null;
@@ -3407,6 +3409,8 @@ export function getReferralEligibleCourses() {
 export function submitReferralPartnerApplication(payload: {
   full_name: string;
   email: string;
+  whatsapp_number: string;
+  telegram_id: string;
   country?: string;
   timezone?: string;
   linkedin_url?: string;
@@ -3485,9 +3489,10 @@ export function patchPartnerReferralLink(linkId: string, status: "inactive" | "r
   });
 }
 
-export function getAdminReferralApplications(status?: string) {
-  const q = status ? `?status=${encodeURIComponent(status)}` : "";
-  return apiFetch<ReferralPartnerApplication[]>(`/api/v1/admin/referrals/applications${q}`);
+export function getAdminReferralApplications(status?: string, limit = 500) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (status) params.set("status", status);
+  return apiFetch<ReferralPartnerApplication[]>(`/api/v1/admin/referrals/applications?${params.toString()}`);
 }
 
 export function patchAdminReferralApplication(applicationId: string, payload: {

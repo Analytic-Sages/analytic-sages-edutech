@@ -366,6 +366,8 @@ class ReferralPartnerApplication(Base):
     email_normalized: Mapped[str] = mapped_column(String(320), nullable=False, unique=True)
     country: Mapped[str | None] = mapped_column(String(100), nullable=True)
     timezone: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    whatsapp_number: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    telegram_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     linkedin_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     social_profiles: Mapped[list[dict[str, str]]] = mapped_column(JSONB, nullable=False, default=list)
     communities: Mapped[str | None] = mapped_column(Text, nullable=True)
