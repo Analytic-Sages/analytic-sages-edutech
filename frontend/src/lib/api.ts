@@ -3097,6 +3097,20 @@ export type ReferralAuditRow = {
   created_at: string;
 };
 
+export type ReferralPartnerApplicationStatus = {
+  id: string;
+  full_name: string;
+  email: string;
+  status: string;
+  cohort_id: string | null;
+  partner_id: string | null;
+  terms_version: string;
+  terms_accepted_at: string;
+  approved_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type ReferralPartnerApplication = {
   id: string;
   full_name: string;
@@ -3407,18 +3421,18 @@ export function submitReferralPartnerApplication(payload: {
   terms_accepted: boolean;
   terms_version: string;
 }) {
-  return apiFetch<ReferralPartnerApplication>("/api/v1/partners/applications", {
+  return apiFetch<ReferralPartnerApplicationStatus>("/api/v1/partners/applications", {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
 export function getMyReferralApplication() {
-  return apiFetch<ReferralPartnerApplication | null>("/api/v1/partner/application/me");
+  return apiFetch<ReferralPartnerApplicationStatus | null>("/api/v1/partner/application/me");
 }
 
 export function claimApprovedReferralApplication() {
-  return apiFetch<ReferralPartnerApplication>("/api/v1/partner/onboarding/claim", { method: "POST" });
+  return apiFetch<ReferralPartnerApplicationStatus>("/api/v1/partner/onboarding/claim", { method: "POST" });
 }
 
 export function completePartnerOnboarding(payload: {
