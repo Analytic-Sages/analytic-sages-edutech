@@ -42,6 +42,7 @@ from app.models.referral import (
     ReferralAuditEvent,
     ReferralClick,
     ReferralConversion,
+    ReferralLink,
     ReferralPartner,
 )
 from app.models.user import User
@@ -257,19 +258,39 @@ class ReferralAttributionService:
         destination: str | None = None,
     ) -> tuple[bool, str]:
         """Record click + first-touch attribution. Returns (ok, redirect_path)."""
-        redirect = safe_referral_redirect(
-            destination, default=self.settings.referral_default_redirect_path
-        )
-
-        partner = self.partners.get_active_by_code(code)
-        if not partner or not partner.referral_code:
-            return False, redirect
+        normalized_code = code.strip().upper()
+        link = self.db.scalar(select(ReferralLink).where(ReferralLink.code == normalized_code))
+        if link:
+            partner = self.db.get(ReferralPartner, link.partner_id)
+            if (
+                link.status != "active"
+                or not partner
+                or partner.status != ReferralPartnerStatus.ACTIVE
+            ):
+                return False, self.settings.referral_default_redirect_path
+            # A link's server-generated destination is authoritative; clients cannot
+            # override it with an arbitrary URL or a different course.
+            redirect = safe_referral_redirect(
+                link.destination_path, default=self.settings.referral_default_redirect_path
+            )
+            referral_code = link.code
+            referral_link_id = link.id
+        else:
+            redirect = safe_referral_redirect(
+                destination, default=self.settings.referral_default_redirect_path
+            )
+            partner = self.partners.get_active_by_code(normalized_code)
+            if not partner or not partner.referral_code:
+                return False, redirect
+            referral_code = partner.referral_code
+            referral_link_id = None
 
         secret = self.settings.secret_key
         self.db.add(
             ReferralClick(
                 partner_id=partner.id,
-                referral_code=partner.referral_code,
+                referral_link_id=referral_link_id,
+                referral_code=referral_code,
                 anonymous_visitor_id=anonymous_visitor_id,
                 landing_path=landing_path,
                 ip_hash=hash_privacy_value(ip, secret=secret),
@@ -295,8 +316,9 @@ class ReferralAttributionService:
         self.db.add(
             ReferralAttribution(
                 partner_id=partner.id,
+                referral_link_id=referral_link_id,
                 anonymous_visitor_id=anonymous_visitor_id,
-                referral_code=partner.referral_code,
+                referral_code=referral_code,
                 landing_path=landing_path,
                 attributed_at=now,
                 expires_at=now + timedelta(days=self.settings.referral_attribution_days),
@@ -512,6 +534,7 @@ class ReferralCommissionService:
 
         conversion = ReferralConversion(
             partner_id=partner.id,
+            referral_link_id=attr.referral_link_id,
             referred_user_id=payment.user_id,
             course_id=payment.course_id,
             cohort_id=payment.cohort_id,
