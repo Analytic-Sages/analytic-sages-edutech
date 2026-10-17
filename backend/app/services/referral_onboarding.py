@@ -324,6 +324,8 @@ class ReferralOnboardingService:
         )
         if not application or application.status not in {"approved", "onboarding"}:
             raise HTTPException(status_code=409, detail="An approved application is required to complete onboarding.")
+        if partner.status != ReferralPartnerStatus.PENDING:
+            raise HTTPException(status_code=409, detail="Only a pending partner can complete onboarding. Ask an administrator to review your current status.")
         if not payload.profile_completed or not payload.terms_accepted or not payload.marketing_guidelines_accepted:
             raise HTTPException(status_code=400, detail="Complete your profile and acknowledge both program terms and marketing guidelines.")
         resources = self.db.get(ReferralProgramResources, 1)
@@ -593,8 +595,8 @@ class ReferralOnboardingService:
             )
             self.db.add(partner)
             self.db.flush()
-        elif partner.status == ReferralPartnerStatus.ACTIVE:
-            raise HTTPException(status_code=409, detail="This account already has an active Referral Partner profile.")
+        elif partner.status != ReferralPartnerStatus.PENDING:
+            raise HTTPException(status_code=409, detail="This account already has a non-pending Referral Partner profile. Contact an administrator.")
         application.user_id = user.id
         application.partner_id = partner.id
         partner.cohort_id = application.cohort_id
