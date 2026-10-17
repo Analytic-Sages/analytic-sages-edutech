@@ -7,6 +7,8 @@ remains the source of truth.
 from __future__ import annotations
 
 from datetime import UTC, datetime
+import re
+from urllib.parse import urlparse
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status
@@ -72,6 +74,13 @@ class ReferralOnboardingService:
         if not payload.terms_accepted:
             raise HTTPException(status_code=400, detail="You must accept the Referral Partner terms.")
         email = normalize_email(payload.email)
+        if not re.fullmatch(r"[^@\\s]+@[^@\\s]+\\.[^@\\s]+", email):
+            raise HTTPException(status_code=400, detail="Enter a valid email address.")
+        for candidate in [payload.linkedin_url, *(item.get("url", "") for item in payload.social_profiles)]:
+            if candidate:
+                parsed = urlparse(candidate.strip())
+                if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+                    raise HTTPException(status_code=400, detail="Social profile links must use a valid http or https URL.")
         if user and normalize_email(user.email) != email:
             raise HTTPException(status_code=400, detail="Use the email address on your signed-in account.")
         if user and not user.email_verified:
