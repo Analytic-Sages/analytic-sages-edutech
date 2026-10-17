@@ -122,8 +122,9 @@ class ReferralLinkPublic(BaseModel):
     status: str
     clicks: int = 0
     paid_enrollments: int = 0
-    commission_amount: Decimal = Decimal("0.00")
+    commission_amount: Decimal | None = None
     commission_currency: str | None = None
+    commission_by_currency: dict[str, Decimal] = Field(default_factory=dict)
     created_at: datetime
     revoked_at: datetime | None = None
 
