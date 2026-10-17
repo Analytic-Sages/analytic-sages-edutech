@@ -191,6 +191,12 @@ class ReferralOnboardingService:
         if next_status == "approved":
             if application.status != "interviewed":
                 raise HTTPException(status_code=409, detail="Interview and record a decision before approval.")
+            if application.interview_status != "completed" or application.interview_decision != "recommend":
+                raise HTTPException(status_code=409, detail="Record a completed interview and a 'recommend' decision before approval.")
+            if not application.interview_notes or not application.interview_reason:
+                raise HTTPException(status_code=409, detail="Record interview notes and the decision reason before approval.")
+            if not set(SCORE_WEIGHTS).issubset(set(application.scores or {})):
+                raise HTTPException(status_code=409, detail="Score all five application criteria before approval.")
             cohort = self._lock_cohort(application.cohort_id) if application.cohort_id else self._default_cohort_for_update()
             if not cohort or not cohort.is_active:
                 raise HTTPException(status_code=409, detail="No active cohort is available.")
@@ -202,7 +208,13 @@ class ReferralOnboardingService:
             if not application.partner_id:
                 raise HTTPException(status_code=409, detail="The applicant must claim the approved application using a verified account first.")
         if next_status == "active":
-            raise HTTPException(status_code=409, detail="Partners can only become active through the onboarding-completion endpoint.")
+            if application.status not in {"suspended", "inactive"} or not application.partner_id:
+                raise HTTPException(status_code=409, detail="Partners can only become active through onboarding completion.")
+            partner = self.db.get(ReferralPartner, application.partner_id)
+            if not partner or partner.onboarding_completed_at is None:
+                raise HTTPException(status_code=409, detail="Complete onboarding before reactivation.")
+            partner.status = ReferralPartnerStatus.ACTIVE
+            self._set_link_statuses(partner.id, "active")
         if next_status == "rejected" and not (updates.get("rejection_reason") or application.rejection_reason):
             raise HTTPException(status_code=400, detail="Record a rejection reason.")
         for key, value in updates.items():
@@ -260,6 +272,8 @@ class ReferralOnboardingService:
         return application
 
     def complete_onboarding(self, *, partner: ReferralPartner, payload, actor: User) -> ReferralPartner:
+        if partner.user_id != actor.id:
+            raise HTTPException(status_code=403, detail="You can only complete onboarding for your own partner account.")
         application = self.db.scalar(
             select(ReferralPartnerApplication)
             .where(ReferralPartnerApplication.partner_id == partner.id)
