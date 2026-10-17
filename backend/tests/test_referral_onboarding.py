@@ -175,7 +175,7 @@ def test_course_campaign_link_tracks_link_identity_and_uses_server_destination()
     user_id = None
     partner_id = None
     course_id = None
-    link_id = None
+    link_ids = []
     try:
         user = _make_user(db, email)
         user_id = user.id
@@ -223,31 +223,47 @@ def test_course_campaign_link_tracks_link_identity_and_uses_server_destination()
             ),
             actor=user,
         )
-        link_id = link.id
+        link_ids.append(link.id)
         assert link.status == "active"
         assert link.destination_path == f"/courses/{course.slug}"
-
-        ok, redirect = ReferralAttributionService(db, get_settings()).track_click(
-            code=link.code,
-            anonymous_visitor_id=f"visitor-{suffix}",
-            landing_path=f"/ref/{link.code}",
-            ip="192.0.2.10",
-            user_agent="Referral test",
-            destination="/programs",
+        second_link = service.create_link(
+            partner=partner,
+            payload=SimpleNamespace(
+                course_id=course.id,
+                cohort_id=None,
+                campaign_label="Telegram community",
+                campaign_channel="Telegram",
+            ),
+            actor=user,
         )
-        assert ok is True
-        assert redirect == f"/courses/{course.slug}"
-        click = db.scalar(select(ReferralClick).where(ReferralClick.referral_link_id == link.id))
-        attribution = db.scalar(select(ReferralAttribution).where(ReferralAttribution.referral_link_id == link.id))
-        assert click is not None
-        assert attribution is not None
-        assert click.partner_id == partner.id
-        assert attribution.partner_id == partner.id
+        link_ids.append(second_link.id)
+        assert second_link.id != link.id
+        assert second_link.code != link.code
+        assert second_link.campaign_label == "Telegram community"
+
+        tracker = ReferralAttributionService(db, get_settings())
+        for index, created_link in enumerate((link, second_link), start=1):
+            ok, redirect = tracker.track_click(
+                code=created_link.code,
+                anonymous_visitor_id=f"visitor-{suffix}-{index}",
+                landing_path=f"/ref/{created_link.code}",
+                ip="192.0.2.10",
+                user_agent="Referral test",
+                destination="/programs",
+            )
+            assert ok is True
+            assert redirect == f"/courses/{course.slug}"
+            click = db.scalar(select(ReferralClick).where(ReferralClick.referral_link_id == created_link.id))
+            attribution = db.scalar(select(ReferralAttribution).where(ReferralAttribution.referral_link_id == created_link.id))
+            assert click is not None
+            assert attribution is not None
+            assert click.partner_id == partner.id
+            assert attribution.partner_id == partner.id
     finally:
-        if link_id:
-            db.query(ReferralClick).filter(ReferralClick.referral_link_id == link_id).delete(synchronize_session=False)
-            db.query(ReferralAttribution).filter(ReferralAttribution.referral_link_id == link_id).delete(synchronize_session=False)
-            db.query(ReferralLink).filter(ReferralLink.id == link_id).delete(synchronize_session=False)
+        if link_ids:
+            db.query(ReferralClick).filter(ReferralClick.referral_link_id.in_(link_ids)).delete(synchronize_session=False)
+            db.query(ReferralAttribution).filter(ReferralAttribution.referral_link_id.in_(link_ids)).delete(synchronize_session=False)
+            db.query(ReferralLink).filter(ReferralLink.id.in_(link_ids)).delete(synchronize_session=False)
         if partner_id:
             db.query(ReferralAttribution).filter(ReferralAttribution.partner_id == partner_id).delete(synchronize_session=False)
             db.query(ReferralClick).filter(ReferralClick.partner_id == partner_id).delete(synchronize_session=False)
