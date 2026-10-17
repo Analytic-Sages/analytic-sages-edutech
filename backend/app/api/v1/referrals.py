@@ -692,14 +692,17 @@ def admin_patch_partner(
         # New applicants must complete the onboarding checklist before activation.
         # Preserve admin reactivation for established legacy partners that were
         # active before this onboarding workflow was introduced.
-        if (
-            existing_partner.status == ReferralPartnerStatus.PENDING
-            and existing_partner.onboarding_completed_at is None
-        ):
-            raise HTTPException(
-                status_code=409,
-                detail="Complete partner onboarding before activation.",
+        if existing_partner.onboarding_completed_at is None:
+            linked_application = db.scalar(
+                select(ReferralPartnerApplication.id).where(
+                    ReferralPartnerApplication.partner_id == existing_partner.id
+                )
             )
+            if linked_application or existing_partner.status == ReferralPartnerStatus.PENDING:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Complete partner onboarding before activation.",
+                )
     if payload.regenerate_code and not payload.status:
         partner = partners.regenerate_code(partner_id=partner_id, actor=admin)
         return PartnerPublic.model_validate(partner)
