@@ -193,7 +193,7 @@ export function PartnersPageContent() {
           <section id="partner-apply" className="scroll-mt-24 space-y-5">
             <div>
               <h2 className="text-2xl font-semibold text-[#0B1F3A]">Apply to become a Referral Partner</h2>
-              <p className="mt-2 text-sm text-muted-foreground">Tell us about your audience, the courses you can promote and how you would reach potential learners. A large audience is not required; relevant and engaged communities matter. We welcome applications from everyone who meets the programme criteria; the team selects partners based on fit, not an automatic application cap.</p>
+              <p className="mt-2 text-sm text-muted-foreground">Tell us about your audience, the courses you can promote and how you would reach potential learners. A large audience is not required; relevant and engaged communities matter. Cohort 1 is designed for an initial group of 10 selected partners, but we may accept more than 10 applicants when additional candidates meet our selection criteria. Every application is reviewed on merit.</p>
               <p className="text-sm text-muted-foreground">If selected and onboarded, you will be added to the official Referral Partners group for updates, resources and coordination.</p>
             </div>
             <form onSubmit={onApply} className="space-y-6">
