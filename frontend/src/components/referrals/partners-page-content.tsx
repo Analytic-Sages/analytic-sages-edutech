@@ -17,7 +17,7 @@ import {
   submitReferralPartnerApplication,
   type AuthUser,
   type PartnerPublic,
-  type ReferralPartnerApplication,
+  type ReferralPartnerApplicationStatus,
   type ReferralProgramGuide,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -30,7 +30,7 @@ const PROMOTION_CHANNELS = [
 export function PartnersPageContent() {
   const [accountUser, setAccountUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<PartnerPublic | null>(null);
-  const [application, setApplication] = useState<ReferralPartnerApplication | null>(null);
+  const [application, setApplication] = useState<ReferralPartnerApplicationStatus | null>(null);
   const [courses, setCourses] = useState<{ id: string; slug: string; title: string }[]>([]);
   const [guide, setGuide] = useState<ReferralProgramGuide | null>(null);
   const [fullName, setFullName] = useState("");
