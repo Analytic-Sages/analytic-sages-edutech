@@ -3074,6 +3074,29 @@ export type PartnerPublic = {
   approved_at: string | null;
 };
 
+export type ReferralProgramGuide = {
+  terms_version: string;
+  program_overview: string;
+  commission_policy: string;
+  attribution_policy: string;
+  payout_policy: string;
+  marketing_guidelines: string;
+  support_contact: string;
+  updated_at: string;
+};
+
+export type ReferralAuditRow = {
+  id: string;
+  actor_id: string | null;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  note: string | null;
+  before_json: Record<string, unknown> | null;
+  after_json: Record<string, unknown> | null;
+  created_at: string;
+};
+
 export type ReferralPartnerApplication = {
   id: string;
   full_name: string;
@@ -3473,4 +3496,24 @@ export function patchAdminReferralLink(linkId: string, status: "inactive" | "act
     method: "PATCH",
     body: JSON.stringify({ status, revocation_reason: reason || null }),
   });
+}
+
+
+export function getReferralProgramGuide() {
+  return apiFetch<ReferralProgramGuide>("/api/v1/referrals/program-guide");
+}
+
+export function getAdminReferralProgramGuide() {
+  return apiFetch<ReferralProgramGuide>("/api/v1/admin/referrals/program-guide");
+}
+
+export function updateAdminReferralProgramGuide(payload: Omit<ReferralProgramGuide, "updated_at">) {
+  return apiFetch<ReferralProgramGuide>("/api/v1/admin/referrals/program-guide", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getAdminReferralAudit(limit = 200) {
+  return apiFetch<ReferralAuditRow[]>(`/api/v1/admin/referrals/audit?limit=${limit}`);
 }
