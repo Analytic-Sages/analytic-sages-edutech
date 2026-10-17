@@ -93,7 +93,7 @@ class ReferralOnboardingService:
             raise HTTPException(status_code=400, detail="Verify your account email before applying.")
         whatsapp_number = payload.whatsapp_number.strip()
         telegram_id = payload.telegram_id.strip()
-        if len(re.sub(r"\\D", "", whatsapp_number)) < 7:
+        if len(re.sub(r"\D", "", whatsapp_number)) < 7:
             raise HTTPException(status_code=400, detail="Enter a WhatsApp number with at least seven digits, including country code.")
         if not telegram_id:
             raise HTTPException(status_code=400, detail="Enter your Telegram ID or username.")
