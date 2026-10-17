@@ -125,6 +125,7 @@ export function PartnersPageContent() {
         promotion_channels: channels,
         marketing_plan: marketingPlan.trim(),
         terms_accepted: terms,
+        terms_version: guide?.terms_version || "referral-partner-v1",
       });
       setApplication(created);
       setSuccess("Application received. Our team will review it and contact you using the email provided.");
