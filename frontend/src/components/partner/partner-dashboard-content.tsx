@@ -27,7 +27,7 @@ import {
   type PartnerDashboard,
   type PartnerPayoutRow,
   type PartnerPublic,
-  type ReferralPartnerApplication,
+  type ReferralPartnerApplicationStatus,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { ReferralLinksManager } from "@/components/partner/referral-links-manager";
@@ -39,7 +39,7 @@ function money(value: string | number | null | undefined, currency: string) {
 
 export function PartnerDashboardContent() {
   const [profile, setProfile] = useState<PartnerPublic | null | undefined>(undefined);
-  const [application, setApplication] = useState<ReferralPartnerApplication | null>(null);
+  const [application, setApplication] = useState<ReferralPartnerApplicationStatus | null>(null);
   const [claimBusy, setClaimBusy] = useState(false);
   const [claimMessage, setClaimMessage] = useState<string | null>(null);
   const [dash, setDash] = useState<PartnerDashboard | null>(null);
