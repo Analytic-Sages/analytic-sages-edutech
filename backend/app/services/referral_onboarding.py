@@ -7,6 +7,7 @@ remains the source of truth.
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from decimal import Decimal
 import re
 from urllib.parse import urlparse
 from uuid import UUID, uuid4
