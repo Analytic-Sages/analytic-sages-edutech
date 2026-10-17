@@ -436,6 +436,18 @@ class ReferralOnboardingService:
         for link in links:
             course = self.db.get(Course, link.course_id) if link.course_id else None
             cohort = self.db.get(Cohort, link.cohort_id) if link.cohort_id else None
+            target_available = True
+            unavailable_reason = None
+            if link.target_type == "course":
+                if not course:
+                    target_available, unavailable_reason = False, "The original course is no longer available."
+                elif not course.published or not course.referral_commission_eligible or course.is_free:
+                    target_available, unavailable_reason = False, "The original course is unpublished or no longer eligible."
+            elif link.target_type == "programme":
+                if not cohort:
+                    target_available, unavailable_reason = False, "The original programme is no longer available."
+                elif not cohort.referral_commission_eligible or cohort.price <= 0 or cohort.status not in {"open", "active"}:
+                    target_available, unavailable_reason = False, "The original programme is closed or no longer eligible."
             click_stmt = select(func.count(ReferralClick.id)).where(ReferralClick.referral_link_id == link.id)
             conversion_stmt = select(ReferralConversion).where(ReferralConversion.referral_link_id == link.id)
             if start_at:
@@ -457,12 +469,14 @@ class ReferralOnboardingService:
             single_currency = next(iter(currencies)) if len(currencies) == 1 else None
             result.append({
                 "id": link.id, "partner_id": link.partner_id,
-                "course_id": link.course_id, "course_title": course.title if course else None,
+                "course_id": link.course_id, "course_title": course.title if course else (link.target_slug if link.target_type == "course" else None),
                 "course_slug": course.slug if course else None,
-                "cohort_id": link.cohort_id, "cohort_name": cohort.name if cohort else None,
+                "cohort_id": link.cohort_id, "cohort_name": cohort.name if cohort else (link.target_slug if link.target_type == "programme" else None),
                 "campaign_label": link.campaign_label, "campaign_channel": link.campaign_channel,
                 "code": link.code, "destination_path": link.destination_path,
                 "url": f"{self.settings.frontend_url.rstrip('/')}/ref/{link.code}",
+                "target_type": link.target_type, "target_slug": link.target_slug,
+                "target_available": target_available, "unavailable_reason": unavailable_reason,
                 "status": link.status, "clicks": clicks,
                 "paid_enrollments": len(paid_products),
                 "commission_amount": commission_by_currency[single_currency] if single_currency else None,
