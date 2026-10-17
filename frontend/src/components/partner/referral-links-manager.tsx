@@ -174,7 +174,7 @@ export function ReferralLinksManager({
           <label className="text-sm font-medium">Course or programme</label>
           <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={target} onChange={(e) => setTarget(e.target.value)} required>
             <option value="">Choose an eligible destination</option>
-            {targets.courses.length ? <optgroup label="Courses">{targets.courses.map((row) => <option key={row.id} value={`course:${row.id}`}>{row.title}</option>)}</optgroup> : null}
+            {targets.courses.length ? <optgroup label="Courses">{targets.courses.map((row) => <option key={row.id} value={`course:${row.id}`}>{row.title} — {row.currency} {row.price}</option>)}</optgroup> : null}
             {targets.programmes.length ? <optgroup label="Programmes">{targets.programmes.map((row) => <option key={row.id} value={`programme:${row.id}`}>{row.title}</option>)}</optgroup> : null}
           </select>
         </div>
