@@ -3,6 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import type { Country } from "react-phone-number-input";
+import { isValidPhoneNumber } from "react-phone-number-input";
+import { PhoneField } from "@/components/forms/phone-country-fields";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +27,9 @@ export function PartnersPageContent() {
   const [accountUser, setAccountUser] = useState<AuthUser | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [telegramHandle, setTelegramHandle] = useState("");
+  const [whatsappNumber, setWhatsappNumber] = useState("");
+  const [whatsappCountry, setWhatsappCountry] = useState<Country | undefined>("NG");
+  const [whatsappError, setWhatsappError] = useState<string | null>(null);
   const [social, setSocial] = useState("");
   const [channels, setChannels] = useState("");
   const [terms, setTerms] = useState(false);
@@ -41,6 +47,7 @@ export function PartnersPageContent() {
             setAccountUser(user);
             setDisplayName(user.full_name?.trim() || "");
             setTelegramHandle(user.telegram_username || "");
+            setWhatsappNumber(user.phone_number || "");
           })
           .catch(() => setAccountUser(null));
         getMyPartnerProfile()
@@ -55,8 +62,11 @@ export function PartnersPageContent() {
     setError(null);
     setSuccess(null);
     const normalizedTelegram = telegramHandle.trim().replace(/^@+/, "");
-    if (!accountUser?.email && !accountUser?.phone_number) {
-      setError("Add an email address or WhatsApp number to your account before applying.");
+    const normalizedWhatsApp = whatsappNumber.trim();
+    setWhatsappError(null);
+    if (!normalizedWhatsApp || !isValidPhoneNumber(normalizedWhatsApp)) {
+      setWhatsappError("Enter a valid, active WhatsApp number including the country code.");
+      setError("Add a valid WhatsApp number before submitting your application.");
       return;
     }
     if (!normalizedTelegram) {
@@ -65,6 +75,10 @@ export function PartnersPageContent() {
     }
     setSubmitting(true);
     try {
+      if (normalizedWhatsApp !== (accountUser?.phone_number || "")) {
+        const updatedUser = await updateMyProfile({ phone_number: normalizedWhatsApp });
+        setAccountUser(updatedUser);
+      }
       if (normalizedTelegram !== (accountUser?.telegram_username || "").replace(/^@+/, "")) {
         const updatedUser = await updateMyProfile({ telegram_username: normalizedTelegram });
         setAccountUser(updatedUser);
@@ -245,9 +259,8 @@ export function PartnersPageContent() {
             <form onSubmit={onApply} className="max-w-md space-y-4">
               <div className="rounded-lg border border-[#0B1F3A]/15 bg-[#F7F9FC] p-4 text-sm text-[#0B1F3A]">
                 <p className="font-semibold">Contact details</p>
-                <p className="mt-1">We’ll use your account email for application updates.</p>
+                <p className="mt-1">Provide an active WhatsApp number so our team can contact you about your application.</p>
                 {accountUser?.email ? <p className="mt-2"><span className="font-medium">Email:</span> {accountUser.email}</p> : null}
-                {accountUser?.phone_number ? <p><span className="font-medium">WhatsApp:</span> {accountUser.phone_number}</p> : null}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="display_name">Display name</Label>
@@ -259,6 +272,19 @@ export function PartnersPageContent() {
                   minLength={2}
                 />
               </div>
+              <PhoneField
+                id="whatsapp_number"
+                label="Active WhatsApp number"
+                hint="Include your country code. Our team may contact you on this number about your application."
+                value={whatsappNumber}
+                country={whatsappCountry}
+                onChange={(phone, country) => {
+                  setWhatsappNumber(phone);
+                  setWhatsappCountry(country);
+                  setWhatsappError(null);
+                }}
+                error={whatsappError || undefined}
+              />
               <div className="space-y-2">
                 <Label htmlFor="telegram_handle">Telegram handle</Label>
                 <Input
