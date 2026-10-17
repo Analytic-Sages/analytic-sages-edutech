@@ -558,7 +558,9 @@ def referral_program_guide(
     current_user: User | None = Depends(get_current_user_optional),
     db: Session = Depends(get_db),
 ) -> ReferralProgramResourcesPublic:
-    if not settings.partners_public and (current_user is None or current_user.role != UserRole.ADMIN):
+    partner_exists = current_user is not None and db.scalar(select(ReferralPartner.id).where(ReferralPartner.user_id == current_user.id)) is not None
+    is_admin = current_user is not None and current_user.role == UserRole.ADMIN
+    if not settings.partners_public and not partner_exists and not is_admin:
         raise HTTPException(status_code=404, detail="Not found")
     resources = db.get(ReferralProgramResources, 1)
     if not resources:
