@@ -157,7 +157,9 @@ def test_cohort_target_is_informational_when_approving_more_than_target():
         )
         assert approved_second.status == "approved"
         assert approved_second.cohort_id == cohort_id
-        assert service.list_cohorts()[0]["capacity"] >= 1
+        cohort_row = next(row for row in service.list_cohorts() if row["id"] == cohort_id)
+        assert cohort_row["approved_count"] == 2
+        assert cohort_row["remaining_slots"] == 0
     finally:
         if app_ids:
             db.query(ReferralAuditEvent).filter(ReferralAuditEvent.entity_id.in_(app_ids)).delete(synchronize_session=False)
