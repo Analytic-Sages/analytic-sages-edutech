@@ -75,6 +75,8 @@ def upgrade() -> None:
         sa.Column("scores", postgresql.JSONB(astext_type=sa.Text()), nullable=False, server_default=sa.text("'{}'::jsonb")),
         sa.Column("score_total", sa.Integer(), nullable=True),
         sa.Column("reviewer_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("approved_by", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("approved_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("review_notes", sa.Text(), nullable=True),
         sa.Column("rejection_reason", sa.Text(), nullable=True),
         sa.Column("interview_at", sa.DateTime(timezone=True), nullable=True),
@@ -95,6 +97,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["partner_id"], ["referral_partners.id"], ondelete="SET NULL"),
         sa.ForeignKeyConstraint(["cohort_id"], ["referral_partner_cohorts.id"], ondelete="SET NULL"),
         sa.ForeignKeyConstraint(["reviewer_id"], ["users.id"], ondelete="SET NULL"),
+        sa.ForeignKeyConstraint(["approved_by"], ["users.id"], ondelete="SET NULL"),
         sa.ForeignKeyConstraint(["interview_reviewer_id"], ["users.id"], ondelete="SET NULL"),
     )
     op.create_index("uq_referral_partner_applications_email", "referral_partner_applications", ["email_normalized"], unique=True)
