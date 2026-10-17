@@ -298,6 +298,10 @@ class ReferralOnboardingService:
             raise HTTPException(status_code=409, detail="An approved application is required to complete onboarding.")
         if not payload.profile_completed or not payload.terms_accepted or not payload.marketing_guidelines_accepted:
             raise HTTPException(status_code=400, detail="Complete your profile and acknowledge both program terms and marketing guidelines.")
+        resources = self.db.get(ReferralProgramResources, 1)
+        current_terms_version = resources.terms_version if resources else "referral-partner-v1"
+        if payload.terms_version != current_terms_version:
+            raise HTTPException(status_code=409, detail="The programme terms have changed. Review and accept the current version.")
         if not application.cohort_id:
             raise HTTPException(status_code=409, detail="Your application must be assigned to a cohort.")
         link_count = self.db.scalar(
