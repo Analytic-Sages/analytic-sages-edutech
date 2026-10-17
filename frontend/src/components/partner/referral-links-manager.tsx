@@ -199,7 +199,7 @@ export function ReferralLinksManager({
               <TableCell>{row.clicks}</TableCell>
               <TableCell>{row.paid_enrollments}</TableCell>
               <TableCell>{Object.keys(row.commission_by_currency || {}).length ? Object.entries(row.commission_by_currency).map(([currency, amount]) => `${currency} ${amount}`).join(" · ") : "—"}</TableCell>
-              <TableCell className="capitalize">{row.status}</TableCell>
+              <TableCell className="capitalize" title={row.unavailable_reason || undefined}>{row.target_available ? row.status : "Unavailable"}</TableCell>
               <TableCell><div className="flex flex-wrap gap-2"><code className="max-w-[220px] break-all text-xs">{row.url}</code><Button size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(row.url)}>Copy</Button></div></TableCell>
               <TableCell>{row.status !== "revoked" ? <Button size="sm" variant="outline" onClick={() => revoke(row)}>Revoke</Button> : "—"}</TableCell>
             </TableRow>
