@@ -1326,8 +1326,11 @@ class OpportunityService:
         return self.get_admin(opportunity.id)
 
     def _apply_publish(self, opportunity: Opportunity, actor: User, notes: str | None = None) -> None:
+        was_published = opportunity.status == OpportunityStatus.PUBLISHED
         opportunity.status = OpportunityStatus.PUBLISHED
-        if opportunity.published_at is None:
+        # Re-publishing a previously unpublished/archived record must surface it as
+        # newly published; only keep the timestamp if it is already live.
+        if opportunity.published_at is None or not was_published:
             opportunity.published_at = self._utcnow()
         opportunity.approved_by = actor.id
         if opportunity.trust_status in {
