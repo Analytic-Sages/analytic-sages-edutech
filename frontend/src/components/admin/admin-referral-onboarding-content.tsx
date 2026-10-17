@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ApiError, getAdminReferralApplications, getAdminReferralCohorts, getAdminReferralLinks, patchAdminReferralApplication, patchAdminReferralCohort, createAdminReferralCohort, patchAdminReferralLink, getAdminReferralProgramGuide, updateAdminReferralProgramGuide, getAdminReferralAudit, type ReferralPartnerApplication, type ReferralCohort, type ReferralLink, type ReferralProgramGuide, type ReferralAuditRow } from "@/lib/api";
+import { ApiError, getAdminReferralApplications, getAdminReferralCohorts, getAdminReferralLinks, patchAdminReferralApplication, patchAdminReferralCohort, createAdminReferralCohort, patchAdminReferralLink, getAdminReferralProgramGuide, updateAdminReferralProgramGuide, getAdminReferralAudit, getReferralEligibleCourses, type ReferralPartnerApplication, type ReferralCohort, type ReferralLink, type ReferralProgramGuide, type ReferralAuditRow } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -136,6 +136,13 @@ export function AdminReferralOnboardingContent() {
   const [applications, setApplications] = useState<ReferralPartnerApplication[]>([]);
   const [cohorts, setCohorts] = useState<ReferralCohort[]>([]);
   const [links, setLinks] = useState<ReferralLink[]>([]);
+  const [eligibleCourses, setEligibleCourses] = useState<{ id: string; slug: string; title: string }[]>([]);
+  const [linkFilterPartner, setLinkFilterPartner] = useState("");
+  const [linkFilterCourse, setLinkFilterCourse] = useState("");
+  const [linkFilterCampaign, setLinkFilterCampaign] = useState("");
+  const [linkFilterStatus, setLinkFilterStatus] = useState("");
+  const [linkStartDate, setLinkStartDate] = useState("");
+  const [linkEndDate, setLinkEndDate] = useState("");
   const [guide, setGuide] = useState<ReferralProgramGuide | null>(null);
   const [audit, setAudit] = useState<ReferralAuditRow[]>([]);
   const [guideSaving, setGuideSaving] = useState(false);
@@ -146,15 +153,16 @@ export function AdminReferralOnboardingContent() {
 
   async function load() {
     setError(null);
-    const [apps, nextCohorts, nextLinks, nextGuide, nextAudit] = await Promise.all([
+    const [apps, nextCohorts, nextLinks, nextGuide, nextAudit, nextCourses] = await Promise.all([
       getAdminReferralApplications(), getAdminReferralCohorts(), getAdminReferralLinks(),
-      getAdminReferralProgramGuide(), getAdminReferralAudit(),
+      getAdminReferralProgramGuide(), getAdminReferralAudit(), getReferralEligibleCourses().catch(() => []),
     ]);
     setApplications(apps);
     setCohorts(nextCohorts);
     setLinks(nextLinks);
     setGuide(nextGuide);
     setAudit(nextAudit);
+    setEligibleCourses(nextCourses);
   }
 
   useEffect(() => { load().catch((err) => setError(err instanceof ApiError ? err.detail : "Could not load onboarding data.")); }, []);
@@ -177,6 +185,23 @@ export function AdminReferralOnboardingContent() {
     setError(null);
     try { await patchAdminReferralCohort(cohort.id, updates); await load(); }
     catch (err) { setError(err instanceof ApiError ? err.detail : "Could not update cohort."); }
+  }
+
+  async function applyLinkFilters() {
+    setError(null);
+    try {
+      const start_at = linkStartDate ? new Date(`${linkStartDate}T00:00:00.000Z`).toISOString() : undefined;
+      const end_at = linkEndDate ? new Date(new Date(`${linkEndDate}T00:00:00.000Z`).getTime() + 24 * 60 * 60 * 1000).toISOString() : undefined;
+      setLinks(await getAdminReferralLinks({
+        partner_id: linkFilterPartner.trim() || undefined,
+        course_id: linkFilterCourse || undefined,
+        campaign: linkFilterCampaign.trim() || undefined,
+        status: linkFilterStatus || undefined,
+        start_at, end_at,
+      }));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.detail : "Could not filter referral links.");
+    }
   }
 
   async function saveGuide(e: React.FormEvent<HTMLFormElement>) {
@@ -215,7 +240,17 @@ export function AdminReferralOnboardingContent() {
       {tab === "cohorts" ? <div className="space-y-4"><form onSubmit={createCohort} className="grid gap-3 rounded-lg border p-4 sm:grid-cols-[1fr_140px_auto]"><div className="space-y-1"><label className="text-sm font-medium">Cohort name</label><Input value={newCohortName} onChange={(e) => setNewCohortName(e.target.value)} minLength={2} required placeholder="e.g. Cohort 2" /></div><div className="space-y-1"><label className="text-sm font-medium">Capacity</label><Input type="number" min={1} max={1000} value={newCohortCapacity} onChange={(e) => setNewCohortCapacity(e.target.value)} required /></div><div className="flex items-end"><Button type="submit" disabled={busy || !newCohortName.trim()}>{busy ? "Creating…" : "Create cohort"}</Button></div></form><Table><TableHeader><TableRow><TableHead>Cohort</TableHead><TableHead>Approved / capacity</TableHead><TableHead>Remaining</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader><TableBody>{cohorts.map((row) => <TableRow key={row.id}><TableCell>{row.name}</TableCell><TableCell>{row.approved_count} / {row.capacity}</TableCell><TableCell>{row.remaining_slots}</TableCell><TableCell>{row.is_active ? "Active" : "Inactive"}</TableCell><TableCell className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => { const value = window.prompt("New cohort capacity", String(row.capacity)); if (value && Number.isInteger(Number(value))) void updateCohort(row, { capacity: Number(value) }); }}>Change capacity</Button><Button size="sm" variant="outline" onClick={() => void updateCohort(row, { is_active: !row.is_active })}>{row.is_active ? "Deactivate" : "Activate"}</Button></TableCell></TableRow>)}</TableBody></Table></div> : null}
       {tab === "guide" && guide ? <form onSubmit={saveGuide} className="space-y-4 rounded-lg border p-4"><div><h3 className="font-semibold">Referral program guide and terms</h3><p className="mt-1 text-sm text-muted-foreground">These settings feed the public programme page and partner onboarding. Changing the terms version identifies the current acknowledgement version; coordinate any policy change before publishing.</p></div><div className="space-y-1"><label className="text-sm font-medium">Terms version</label><Input name="terms_version" defaultValue={guide.terms_version} required maxLength={40} /></div>{([["program_overview","Programme overview"],["commission_policy","Commission policy"],["attribution_policy","Attribution policy"],["payout_policy","Payout policy"],["marketing_guidelines","Marketing guidelines"]] as const).map(([name,label]) => <div key={name} className="space-y-1"><label className="text-sm font-medium">{label}</label><textarea name={name} defaultValue={guide[name]} rows={4} required className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" /></div>)}<div className="space-y-1"><label className="text-sm font-medium">Support contact</label><Input name="support_contact" defaultValue={guide.support_contact} required maxLength={320} /></div><Button type="submit" disabled={guideSaving}>{guideSaving ? "Saving…" : "Save programme guide"}</Button></form> : null}
       {tab === "audit" ? <div className="space-y-3"><p className="text-sm text-muted-foreground">Administrative changes to applications, cohorts, links, guide settings and partner actions are recorded here.</p><Table><TableHeader><TableRow><TableHead>Time</TableHead><TableHead>Actor ID</TableHead><TableHead>Action</TableHead><TableHead>Target</TableHead><TableHead>Details</TableHead></TableRow></TableHeader><TableBody>{audit.map((row) => <TableRow key={row.id}><TableCell>{new Date(row.created_at).toLocaleString()}</TableCell><TableCell className="font-mono text-xs">{row.actor_id || "System"}</TableCell><TableCell>{row.action}</TableCell><TableCell>{row.entity_type}{row.entity_id ? ` · ${row.entity_id.slice(0, 8)}` : ""}</TableCell><TableCell><details><summary className="cursor-pointer text-sm">View</summary><pre className="mt-2 max-w-xl whitespace-pre-wrap break-words text-xs">{JSON.stringify({ note: row.note, before: row.before_json, after: row.after_json }, null, 2)}</pre></details></TableCell></TableRow>)}</TableBody></Table></div> : null}
-      {tab === "links" ? <Table><TableHeader><TableRow><TableHead>Partner</TableHead><TableHead>Destination</TableHead><TableHead>Campaign</TableHead><TableHead>Clicks</TableHead><TableHead>Paid enrollments</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader><TableBody>{links.map((row) => <TableRow key={row.id}><TableCell>{row.partner_id.slice(0, 8)}</TableCell><TableCell>{row.course_title || row.cohort_name || row.destination_path}</TableCell><TableCell>{row.campaign_label || row.campaign_channel || "—"}</TableCell><TableCell>{row.clicks}</TableCell><TableCell>{row.paid_enrollments}</TableCell><TableCell className="capitalize">{row.status}</TableCell><TableCell className="flex flex-wrap gap-2">{row.status === "active" ? <Button size="sm" variant="outline" onClick={() => void updateLink(row, "inactive")}>Pause</Button> : null}{row.status === "inactive" ? <Button size="sm" variant="outline" onClick={() => void updateLink(row, "active")}>Activate</Button> : null}{row.status !== "revoked" ? <Button size="sm" variant="outline" onClick={() => void updateLink(row, "revoked")}>Revoke</Button> : "—"}</TableCell></TableRow>)}</TableBody></Table> : null}
+      {tab === "links" ? <div className="space-y-3">
+        <div className="grid gap-3 rounded-lg border p-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="space-y-1"><label className="text-sm font-medium">Partner ID</label><Input value={linkFilterPartner} onChange={(e) => setLinkFilterPartner(e.target.value)} placeholder="Exact partner UUID" /></div>
+          <div className="space-y-1"><label className="text-sm font-medium">Course</label><select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={linkFilterCourse} onChange={(e) => setLinkFilterCourse(e.target.value)}><option value="">All courses</option>{eligibleCourses.map((row) => <option key={row.id} value={row.id}>{row.title}</option>)}</select></div>
+          <div className="space-y-1"><label className="text-sm font-medium">Campaign or channel</label><Input value={linkFilterCampaign} onChange={(e) => setLinkFilterCampaign(e.target.value)} placeholder="Search campaign" /></div>
+          <div className="space-y-1"><label className="text-sm font-medium">Status</label><select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={linkFilterStatus} onChange={(e) => setLinkFilterStatus(e.target.value)}><option value="">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option><option value="revoked">Revoked</option></select></div>
+          <div className="space-y-1"><label className="text-sm font-medium">From date</label><Input type="date" value={linkStartDate} onChange={(e) => setLinkStartDate(e.target.value)} /></div>
+          <div className="space-y-1"><label className="text-sm font-medium">To date</label><Input type="date" value={linkEndDate} onChange={(e) => setLinkEndDate(e.target.value)} /></div>
+          <div className="sm:col-span-2 lg:col-span-3"><Button variant="outline" onClick={applyLinkFilters}>Apply filters</Button><Button className="ml-2" variant="ghost" onClick={() => { setLinkFilterPartner(""); setLinkFilterCourse(""); setLinkFilterCampaign(""); setLinkFilterStatus(""); setLinkStartDate(""); setLinkEndDate(""); void load(); }}>Clear filters</Button></div>
+        </div>
+        <Table><TableHeader><TableRow><TableHead>Partner</TableHead><TableHead>Destination</TableHead><TableHead>Campaign</TableHead><TableHead>Clicks</TableHead><TableHead>Paid enrollments</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader><TableBody>{links.map((row) => <TableRow key={row.id}><TableCell>{row.partner_id.slice(0, 8)}</TableCell><TableCell>{row.course_title || row.cohort_name || row.destination_path}</TableCell><TableCell>{row.campaign_label || row.campaign_channel || "—"}</TableCell><TableCell>{row.clicks}</TableCell><TableCell>{row.paid_enrollments}</TableCell><TableCell className="capitalize">{row.status}</TableCell><TableCell className="flex flex-wrap gap-2">{row.status === "active" ? <Button size="sm" variant="outline" onClick={() => void updateLink(row, "inactive")}>Pause</Button> : null}{row.status === "inactive" ? <Button size="sm" variant="outline" onClick={() => void updateLink(row, "active")}>Activate</Button> : null}{row.status !== "revoked" ? <Button size="sm" variant="outline" onClick={() => void updateLink(row, "revoked")}>Revoke</Button> : "—"}</TableCell></TableRow>)}</TableBody></Table></div> : null}
     </div>
   );
 }
