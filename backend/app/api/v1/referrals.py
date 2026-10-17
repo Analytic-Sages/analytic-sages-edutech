@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
@@ -424,8 +425,20 @@ def partner_referral_link_targets(
 def partner_referral_links(
     partner: ReferralPartner = Depends(_require_partner),
     service: ReferralOnboardingService = Depends(_onboarding),
+    start_at: datetime | None = Query(default=None),
+    end_at: datetime | None = Query(default=None),
+    course_id: UUID | None = Query(default=None),
+    campaign: str | None = Query(default=None, max_length=120),
+    status_filter: str | None = Query(default=None, alias="status"),
+    link_id: UUID | None = Query(default=None),
 ) -> list[ReferralLinkPublic]:
-    return [ReferralLinkPublic(**row) for row in service.list_links(partner=partner)]
+    if start_at and end_at and end_at <= start_at:
+        raise HTTPException(status_code=400, detail="end_at must be later than start_at.")
+    rows = service.list_links(
+        partner=partner, start_at=start_at, end_at=end_at, course_id=course_id,
+        campaign=campaign, status_filter=status_filter, link_id=link_id,
+    )
+    return [ReferralLinkPublic(**row) for row in rows]
 
 
 @router.post("/partner/links", response_model=ReferralLinkPublic, status_code=201)
@@ -516,16 +529,25 @@ def admin_list_referral_links(
     db: Session = Depends(get_db),
     service: ReferralOnboardingService = Depends(_onboarding),
     partner_id: UUID | None = None,
+    start_at: datetime | None = Query(default=None),
+    end_at: datetime | None = Query(default=None),
+    course_id: UUID | None = Query(default=None),
+    campaign: str | None = Query(default=None, max_length=120),
+    status_filter: str | None = Query(default=None, alias="status"),
+    link_id: UUID | None = Query(default=None),
 ) -> list[ReferralLinkPublic]:
+    if start_at and end_at and end_at <= start_at:
+        raise HTTPException(status_code=400, detail="end_at must be later than start_at.")
+    filters = dict(start_at=start_at, end_at=end_at, course_id=course_id, campaign=campaign, status_filter=status_filter, link_id=link_id)
     if partner_id:
         partner = db.get(ReferralPartner, partner_id)
         if not partner:
             raise HTTPException(status_code=404, detail="Partner not found.")
-        rows = service.list_links(partner=partner)
+        rows = service.list_links(partner=partner, **filters)
     else:
         rows = []
         for partner in db.scalars(select(ReferralPartner).order_by(ReferralPartner.created_at.desc()).limit(500)).all():
-            rows.extend(service.list_links(partner=partner))
+            rows.extend(service.list_links(partner=partner, **filters))
     return [ReferralLinkPublic(**row) for row in rows]
 
 
