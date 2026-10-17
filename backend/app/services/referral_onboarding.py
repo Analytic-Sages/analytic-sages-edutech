@@ -79,7 +79,7 @@ class ReferralOnboardingService:
         if payload.terms_version != current_terms_version:
             raise HTTPException(status_code=409, detail="The programme terms have changed. Refresh the page and accept the current version.")
         email = normalize_email(payload.email)
-        if not re.fullmatch(r"[^@\\s]+@[^@\\s]+\\.[^@\\s]+", email):
+        if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
             raise HTTPException(status_code=400, detail="Enter a valid email address.")
         for candidate in [payload.linkedin_url, *(item.get("url", "") for item in payload.social_profiles)]:
             if candidate:
@@ -111,6 +111,7 @@ class ReferralOnboardingService:
                     Course.slug.in_(payload.interested_courses),
                     Course.published.is_(True),
                     Course.referral_commission_eligible.is_(True),
+                    Course.is_free.is_(False),
                 )
             ).all())
             invalid = set(payload.interested_courses) - valid_slugs
