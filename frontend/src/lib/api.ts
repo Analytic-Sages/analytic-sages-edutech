@@ -3189,8 +3189,8 @@ export type ReferralCohort = {
 };
 
 export type ReferralLinkTargets = {
-  courses: { id: string; slug: string; title: string }[];
-  programmes: { id: string; slug: string; title: string }[];
+  courses: { id: string; slug: string; title: string; price: string; currency: string }[];
+  programmes: { id: string; slug: string; title: string; price: string; currency: string }[];
 };
 
 export type CurrencyBalanceRow = {
@@ -3401,7 +3401,7 @@ export function getAdminReferralReviewQueue() {
 
 
 export function getReferralEligibleCourses() {
-  return apiFetch<{ id: string; slug: string; title: string }[]>("/api/v1/partners/eligible-courses");
+  return apiFetch<{ id: string; slug: string; title: string; price: string; currency: string }[]>("/api/v1/partners/eligible-courses");
 }
 
 export function submitReferralPartnerApplication(payload: {
