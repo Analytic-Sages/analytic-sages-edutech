@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
@@ -409,7 +409,8 @@ class ReferralOnboardingService:
         if course_id:
             stmt = stmt.where(ReferralLink.course_id == course_id)
         if campaign:
-            stmt = stmt.where(ReferralLink.campaign_label.ilike(f"%{campaign.strip()}%"))
+            pattern = f"%{campaign.strip()}%"
+            stmt = stmt.where(or_(ReferralLink.campaign_label.ilike(pattern), ReferralLink.campaign_channel.ilike(pattern)))
         if status_filter:
             if status_filter not in {"inactive", "active", "revoked"}:
                 raise HTTPException(status_code=400, detail="Invalid referral link status.")
