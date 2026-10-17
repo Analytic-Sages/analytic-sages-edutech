@@ -139,3 +139,40 @@ class PartnerOnboardingComplete(BaseModel):
     terms_accepted: bool
     marketing_guidelines_accepted: bool
     terms_version: str = Field(min_length=1, max_length=40)
+
+
+class ReferralProgramResourcesPublic(BaseModel):
+    terms_version: str
+    program_overview: str
+    commission_policy: str
+    attribution_policy: str
+    payout_policy: str
+    marketing_guidelines: str
+    support_contact: str
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ReferralProgramResourcesPatch(BaseModel):
+    terms_version: str = Field(min_length=1, max_length=40)
+    program_overview: str = Field(min_length=10, max_length=5000)
+    commission_policy: str = Field(min_length=10, max_length=5000)
+    attribution_policy: str = Field(min_length=10, max_length=5000)
+    payout_policy: str = Field(min_length=10, max_length=5000)
+    marketing_guidelines: str = Field(min_length=10, max_length=8000)
+    support_contact: str = Field(min_length=3, max_length=320)
+
+
+class ReferralAuditRow(BaseModel):
+    id: UUID
+    actor_id: UUID | None = None
+    action: str
+    entity_type: str
+    entity_id: UUID | None = None
+    note: str | None = None
+    before_json: dict | None = None
+    after_json: dict | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
