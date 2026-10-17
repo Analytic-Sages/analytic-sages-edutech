@@ -92,6 +92,9 @@ class PartnerConversionRow(BaseModel):
     currency: str
     status: ReferralConversionStatus
     created_at: datetime
+    referral_link_id: UUID | None = None
+    campaign_label: str | None = None
+    commission_rate: Decimal | None = None
     reporting_usd_equivalent: Decimal | None = None
 
 
@@ -155,6 +158,10 @@ class AdminConversionRow(BaseModel):
     status: ReferralConversionStatus
     fraud_status: ReferralFraudStatus = ReferralFraudStatus.CLEAR
     created_at: datetime
+    referral_link_id: UUID | None = None
+    referral_code: str | None = None
+    campaign_label: str | None = None
+    commission_rate: Decimal | None = None
     reporting_usd_equivalent: Decimal | None = None
 
 
