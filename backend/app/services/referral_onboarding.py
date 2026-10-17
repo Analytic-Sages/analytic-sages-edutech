@@ -561,11 +561,11 @@ class ReferralOnboardingService:
         return self._cohort_payload(cohort)
 
     def _attach_partner_if_account_exists(self, application: ReferralPartnerApplication) -> None:
-        if application.partner_id:
+        if application.partner_id or not application.user_id:
+            # Public submissions are not attached to an account based only on an
+            # email address. The verified owner must explicitly claim the approval.
             return
-        user = self.db.get(User, application.user_id) if application.user_id else self.db.scalar(
-            select(User).where(func.lower(User.email) == application.email_normalized, User.email_verified.is_(True))
-        )
+        user = self.db.get(User, application.user_id)
         if user and user.email_verified:
             self._attach_partner(application, user)
 
