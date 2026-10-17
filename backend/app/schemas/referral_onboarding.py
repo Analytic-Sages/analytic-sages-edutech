@@ -23,6 +23,7 @@ class ReferralPartnerApplicationCreate(BaseModel):
     promotion_channels: list[str] = Field(min_length=1, max_length=10)
     marketing_plan: str = Field(min_length=30, max_length=3000)
     terms_accepted: bool
+    terms_version: str = Field(default="referral-partner-v1", min_length=1, max_length=40)
 
 
 class ReferralPartnerApplicationPublic(BaseModel):
