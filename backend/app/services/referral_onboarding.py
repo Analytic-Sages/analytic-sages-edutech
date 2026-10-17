@@ -391,18 +391,55 @@ class ReferralOnboardingService:
         self.db.refresh(link)
         return link
 
-    def list_links(self, *, partner: ReferralPartner, admin: bool = False, partner_id: UUID | None = None):
+    def list_links(
+        self,
+        *,
+        partner: ReferralPartner,
+        admin: bool = False,
+        partner_id: UUID | None = None,
+        start_at: datetime | None = None,
+        end_at: datetime | None = None,
+        course_id: UUID | None = None,
+        campaign: str | None = None,
+        status_filter: str | None = None,
+        link_id: UUID | None = None,
+    ):
         target_partner_id = partner_id if admin and partner_id else partner.id
-        links = list(self.db.scalars(
-            select(ReferralLink).where(ReferralLink.partner_id == target_partner_id)
-            .order_by(ReferralLink.created_at.desc())
-        ).all())
+        stmt = select(ReferralLink).where(ReferralLink.partner_id == target_partner_id)
+        if course_id:
+            stmt = stmt.where(ReferralLink.course_id == course_id)
+        if campaign:
+            stmt = stmt.where(ReferralLink.campaign_label.ilike(f"%{campaign.strip()}%"))
+        if status_filter:
+            if status_filter not in {"inactive", "active", "revoked"}:
+                raise HTTPException(status_code=400, detail="Invalid referral link status.")
+            stmt = stmt.where(ReferralLink.status == status_filter)
+        if link_id:
+            stmt = stmt.where(ReferralLink.id == link_id)
+        links = list(self.db.scalars(stmt.order_by(ReferralLink.created_at.desc())).all())
         result = []
         for link in links:
             course = self.db.get(Course, link.course_id) if link.course_id else None
             cohort = self.db.get(Cohort, link.cohort_id) if link.cohort_id else None
-            clicks = self.db.scalar(select(func.count(ReferralClick.id)).where(ReferralClick.referral_link_id == link.id)) or 0
-            conv_rows = list(self.db.scalars(select(ReferralConversion).where(ReferralConversion.referral_link_id == link.id)).all())
+            click_stmt = select(func.count(ReferralClick.id)).where(ReferralClick.referral_link_id == link.id)
+            conversion_stmt = select(ReferralConversion).where(ReferralConversion.referral_link_id == link.id)
+            if start_at:
+                click_stmt = click_stmt.where(ReferralClick.created_at >= start_at)
+                conversion_stmt = conversion_stmt.where(ReferralConversion.created_at >= start_at)
+            if end_at:
+                click_stmt = click_stmt.where(ReferralClick.created_at < end_at)
+                conversion_stmt = conversion_stmt.where(ReferralConversion.created_at < end_at)
+            clicks = int(self.db.scalar(click_stmt) or 0)
+            conv_rows = list(self.db.scalars(conversion_stmt).all())
+            paid_products = {
+                row.enrollment_id if row.enrollment_id else (row.referred_user_id, row.course_id, row.cohort_id)
+                for row in conv_rows
+            }
+            commission_by_currency: dict[str, Decimal] = {}
+            for row in conv_rows:
+                commission_by_currency[row.currency] = commission_by_currency.get(row.currency, Decimal("0.00")) + row.commission_amount
+            currencies = set(commission_by_currency)
+            single_currency = next(iter(currencies)) if len(currencies) == 1 else None
             result.append({
                 "id": link.id, "partner_id": link.partner_id,
                 "course_id": link.course_id, "course_title": course.title if course else None,
@@ -412,20 +449,10 @@ class ReferralOnboardingService:
                 "code": link.code, "destination_path": link.destination_path,
                 "url": f"{self.settings.frontend_url.rstrip('/')}/ref/{link.code}",
                 "status": link.status, "clicks": clicks,
-                "paid_enrollments": len({
-                    row.enrollment_id if row.enrollment_id else (row.referred_user_id, row.course_id, row.cohort_id)
-                    for row in conv_rows
-                }),
-                "commission_amount": (
-                    sum((row.commission_amount for row in conv_rows), start=Decimal("0.00"))
-                    if len({row.currency for row in conv_rows}) == 1 and conv_rows
-                    else None
-                ),
-                "commission_currency": next(iter({row.currency for row in conv_rows})) if len({row.currency for row in conv_rows}) == 1 and conv_rows else None,
-                "commission_by_currency": {
-                    currency: sum((row.commission_amount for row in conv_rows if row.currency == currency), start=Decimal("0.00"))
-                    for currency in {row.currency for row in conv_rows}
-                },
+                "paid_enrollments": len(paid_products),
+                "commission_amount": commission_by_currency[single_currency] if single_currency else None,
+                "commission_currency": single_currency,
+                "commission_by_currency": commission_by_currency,
                 "created_at": link.created_at, "revoked_at": link.revoked_at,
             })
         return result
