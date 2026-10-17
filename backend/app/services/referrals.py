@@ -269,12 +269,12 @@ class ReferralAttributionService:
                 or partner.status != ReferralPartnerStatus.ACTIVE
             ):
                 return False, self.settings.referral_default_redirect_path
-            if link.course_id:
-                target_course = self.db.get(Course, link.course_id)
+            if link.target_type == "course":
+                target_course = self.db.get(Course, link.course_id) if link.course_id else None
                 if not target_course or not target_course.published or not target_course.referral_commission_eligible or target_course.is_free:
                     return False, self.settings.referral_default_redirect_path
-            if link.cohort_id:
-                target_programme = self.db.get(Cohort, link.cohort_id)
+            elif link.target_type == "programme":
+                target_programme = self.db.get(Cohort, link.cohort_id) if link.cohort_id else None
                 if (
                     not target_programme
                     or not target_programme.referral_commission_eligible
@@ -282,6 +282,8 @@ class ReferralAttributionService:
                     or target_programme.status not in {"open", "active"}
                 ):
                     return False, self.settings.referral_default_redirect_path
+            elif link.target_type != "general":
+                return False, self.settings.referral_default_redirect_path
             # A link's server-generated destination is authoritative; clients cannot
             # override it with an arbitrary URL or a different course.
             redirect = safe_referral_redirect(
