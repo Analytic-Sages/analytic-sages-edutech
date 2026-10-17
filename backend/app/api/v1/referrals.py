@@ -21,7 +21,7 @@ from app.core.roles import UserRole
 from app.core.rate_limit import enforce_rate_limit
 from app.models.classroom import Cohort
 from app.models.course import Course
-from app.models.referral import PartnerPayoutRequest, ReferralConversion, ReferralLink, ReferralPartner, ReferralPartnerApplication, ReferralPartnerCohort
+from app.models.referral import PartnerPayoutRequest, ReferralConversion, ReferralAuditEvent, ReferralLink, ReferralPartner, ReferralPartnerApplication, ReferralPartnerCohort, ReferralProgramResources
 from app.models.user import User
 from app.schemas.referrals import (
     AdminAttributionOverride,
@@ -52,6 +52,9 @@ from app.schemas.referral_onboarding import (
     ReferralPartnerCohortCreate,
     ReferralPartnerCohortPatch,
     ReferralPartnerCohortPublic,
+    ReferralProgramResourcesPatch,
+    ReferralProgramResourcesPublic,
+    ReferralAuditRow,
 )
 from app.services.referral_onboarding import ReferralOnboardingService
 from app.services.referrals import (
@@ -545,6 +548,84 @@ def admin_patch_referral_link(
     if not item:
         raise HTTPException(status_code=404, detail="Referral link not found.")
     return ReferralLinkPublic(**item)
+
+
+
+
+@router.get("/referrals/program-guide", response_model=ReferralProgramResourcesPublic)
+def referral_program_guide(
+    settings: Settings = Depends(get_settings),
+    current_user: User | None = Depends(get_current_user_optional),
+    db: Session = Depends(get_db),
+) -> ReferralProgramResourcesPublic:
+    if not settings.partners_public and (current_user is None or current_user.role != UserRole.ADMIN):
+        raise HTTPException(status_code=404, detail="Not found")
+    resources = db.get(ReferralProgramResources, 1)
+    if not resources:
+        raise HTTPException(status_code=503, detail="Referral program guide is not configured.")
+    return ReferralProgramResourcesPublic.model_validate(resources)
+
+
+@router.get("/admin/referrals/program-guide", response_model=ReferralProgramResourcesPublic)
+def admin_referral_program_guide(
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> ReferralProgramResourcesPublic:
+    resources = db.get(ReferralProgramResources, 1)
+    if not resources:
+        raise HTTPException(status_code=503, detail="Referral program guide is not configured.")
+    return ReferralProgramResourcesPublic.model_validate(resources)
+
+
+@router.patch("/admin/referrals/program-guide", response_model=ReferralProgramResourcesPublic)
+def admin_update_referral_program_guide(
+    payload: ReferralProgramResourcesPatch,
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> ReferralProgramResourcesPublic:
+    resources = db.get(ReferralProgramResources, 1)
+    if not resources:
+        raise HTTPException(status_code=503, detail="Referral program guide is not configured. Run the database migration first.")
+    before = {
+        "terms_version": resources.terms_version,
+        "program_overview": resources.program_overview,
+        "commission_policy": resources.commission_policy,
+        "attribution_policy": resources.attribution_policy,
+        "payout_policy": resources.payout_policy,
+        "marketing_guidelines": resources.marketing_guidelines,
+        "support_contact": resources.support_contact,
+    }
+    for key, value in payload.model_dump().items():
+        setattr(resources, key, value.strip())
+    resources.updated_by = admin.id
+    db.add(ReferralAuditEvent(
+        actor_id=admin.id,
+        action="program_guide.updated",
+        entity_type="referral_program_resources",
+        entity_id=None,
+        before_json=before,
+        after_json=payload.model_dump(),
+    ))
+    db.commit()
+    db.refresh(resources)
+    return ReferralProgramResourcesPublic.model_validate(resources)
+
+
+@router.get("/admin/referrals/audit", response_model=list[ReferralAuditRow])
+def admin_referral_audit(
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+    entity_type: str | None = None,
+    entity_id: UUID | None = None,
+    limit: int = Query(default=200, ge=1, le=500),
+) -> list[ReferralAuditRow]:
+    stmt = select(ReferralAuditEvent).order_by(ReferralAuditEvent.created_at.desc())
+    if entity_type:
+        stmt = stmt.where(ReferralAuditEvent.entity_type == entity_type)
+    if entity_id:
+        stmt = stmt.where(ReferralAuditEvent.entity_id == entity_id)
+    rows = db.scalars(stmt.limit(limit)).all()
+    return [ReferralAuditRow.model_validate(row) for row in rows]
 
 
 @router.get("/admin/referrals/overview", response_model=AdminReferralOverview)
