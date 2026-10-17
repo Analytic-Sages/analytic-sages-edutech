@@ -33,6 +33,7 @@ export function ReferralLinksManager({
   const [filterCourse, setFilterCourse] = useState("");
   const [filterCampaign, setFilterCampaign] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const [filterLinkId, setFilterLinkId] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [terms, setTerms] = useState(false);
@@ -85,6 +86,7 @@ export function ReferralLinksManager({
         course_id: filterCourse || undefined,
         campaign: filterCampaign.trim() || undefined,
         status: filterStatus || undefined,
+        link_id: filterLinkId || undefined,
       });
       setLinks(rows);
     } catch (err) {
@@ -96,6 +98,7 @@ export function ReferralLinksManager({
     setFilterCourse("");
     setFilterCampaign("");
     setFilterStatus("");
+    setFilterLinkId("");
     setStartDate("");
     setEndDate("");
     try { setLinks(await getPartnerReferralLinks()); }
@@ -185,6 +188,7 @@ export function ReferralLinksManager({
         <div className="space-y-1"><label className="text-sm font-medium">Course</label><select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={filterCourse} onChange={(e) => setFilterCourse(e.target.value)}><option value="">All courses</option>{targets.courses.map((row) => <option key={row.id} value={row.id}>{row.title}</option>)}</select></div>
         <div className="space-y-1"><label className="text-sm font-medium">Campaign or channel</label><Input value={filterCampaign} onChange={(e) => setFilterCampaign(e.target.value)} placeholder="Search campaign" /></div>
         <div className="space-y-1"><label className="text-sm font-medium">Link status</label><select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}><option value="">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option><option value="revoked">Revoked</option></select></div>
+        <div className="space-y-1"><label className="text-sm font-medium">Specific link</label><select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={filterLinkId} onChange={(e) => setFilterLinkId(e.target.value)}><option value="">All links</option>{links.map((row) => <option key={row.id} value={row.id}>{row.course_title || row.cohort_name || row.destination_path} · {row.campaign_label || row.code}</option>)}</select></div>
         <div className="space-y-1"><label className="text-sm font-medium">From date</label><Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></div>
         <div className="space-y-1"><label className="text-sm font-medium">To date</label><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></div>
         <div className="flex items-end gap-2"><Button type="button" variant="outline" onClick={applyFilters}>Apply filters</Button><Button type="button" variant="ghost" onClick={clearFilters}>Clear</Button></div>
