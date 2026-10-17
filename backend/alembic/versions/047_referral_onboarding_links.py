@@ -155,6 +155,37 @@ def upgrade() -> None:
         )
         op.create_index(f"ix_{table}_referral_link_id", table, ["referral_link_id"])
 
+    op.create_table(
+        "referral_program_resources",
+        sa.Column("id", sa.Integer(), primary_key=True),
+        sa.Column("terms_version", sa.String(40), nullable=False),
+        sa.Column("program_overview", sa.Text(), nullable=False),
+        sa.Column("commission_policy", sa.Text(), nullable=False),
+        sa.Column("attribution_policy", sa.Text(), nullable=False),
+        sa.Column("payout_policy", sa.Text(), nullable=False),
+        sa.Column("marketing_guidelines", sa.Text(), nullable=False),
+        sa.Column("support_contact", sa.String(320), nullable=False),
+        sa.Column("updated_by", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.CheckConstraint("id = 1", name="ck_referral_program_resources_singleton"),
+        sa.ForeignKeyConstraint(["updated_by"], ["users.id"], ondelete="SET NULL"),
+    )
+    op.execute(
+        """
+        INSERT INTO referral_program_resources
+            (id, terms_version, program_overview, commission_policy, attribution_policy, payout_policy, marketing_guidelines, support_contact)
+        VALUES
+            (1, 'referral-partner-v1',
+             'The Referral Partner Programme helps learners discover eligible paid Analytic Sages courses and programmes through trusted recommendations.',
+             'Standard commission is 7% of each eligible, confirmed payment, including eligible installments. Commissions are payment-level and idempotent. Refunds, reversals, fraud review and eligibility rules apply. A 14-day hold applies before funds become available.',
+             'Attribution lasts 30 days. The existing first-valid-referral and account-locking rules apply. A link may point to one course while the learner purchases another eligible course within the attribution window, subject to the established attribution policy.',
+             'Payout requests are reviewed and approved manually by an administrator. Existing currency-specific minimums apply. Balances remain in their original transaction currencies; USD figures are estimates for reporting only. A commission is not payable until it is eligible and available.',
+             'Be transparent that you are sharing a referral link. Do not spam, impersonate Analytic Sages, make unsupported earnings or employment claims, promise discounts or scholarships without written approval, or misrepresent course content. Respect platform rules, privacy and consent. Use only approved brand assets and current course information.',
+             'support@analyticsages.io')
+        ON CONFLICT (id) DO NOTHING
+        """
+    )
+
     # Cohort 1 is the initial, configurable ten-person cohort. A fixed ID keeps
     # this seed deterministic across deployments without requiring an extension.
     op.execute(
@@ -167,6 +198,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    op.drop_table("referral_program_resources")
     for table in ("referral_conversions", "referral_attributions", "referral_clicks"):
         op.drop_index(f"ix_{table}_referral_link_id", table_name=table)
         op.drop_constraint(f"fk_{table}_referral_link_id", table, type_="foreignkey")
