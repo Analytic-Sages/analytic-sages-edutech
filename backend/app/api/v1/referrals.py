@@ -223,6 +223,7 @@ def partner_dashboard(
 def _admin_conversion_row(db: Session, row: ReferralConversion) -> AdminConversionRow:
     partner = db.get(ReferralPartner, row.partner_id)
     user = db.get(User, row.referred_user_id)
+    link = db.get(ReferralLink, row.referral_link_id) if row.referral_link_id else None
     return AdminConversionRow(
         id=row.id,
         partner_name=partner.display_name if partner else "—",
@@ -235,6 +236,10 @@ def _admin_conversion_row(db: Session, row: ReferralConversion) -> AdminConversi
         status=row.status,
         fraud_status=row.fraud_status,
         created_at=row.created_at,
+        referral_link_id=row.referral_link_id,
+        referral_code=link.code if link else (partner.referral_code if partner else None),
+        campaign_label=link.campaign_label if link else None,
+        commission_rate=row.commission_rate,
         reporting_usd_equivalent=row.reporting_usd_equivalent,
     )
 
@@ -255,6 +260,7 @@ def partner_conversions(
     out: list[PartnerConversionRow] = []
     for row in rows:
         user = db.get(User, row.referred_user_id)
+        link = db.get(ReferralLink, row.referral_link_id) if row.referral_link_id else None
         out.append(
             PartnerConversionRow(
                 id=row.id,
@@ -268,6 +274,9 @@ def partner_conversions(
                 currency=row.currency,
                 status=row.status,
                 created_at=row.created_at,
+                referral_link_id=row.referral_link_id,
+                campaign_label=link.campaign_label if link else None,
+                commission_rate=row.commission_rate,
                 reporting_usd_equivalent=row.reporting_usd_equivalent,
             )
         )
