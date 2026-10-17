@@ -211,7 +211,8 @@ class ReferralPartnerService:
             exists = self.db.scalar(
                 select(ReferralPartner.id).where(ReferralPartner.referral_code == code)
             )
-            if not exists:
+            link_exists = self.db.scalar(select(ReferralLink.id).where(ReferralLink.code == code))
+            if not exists and not link_exists:
                 return code
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -268,6 +269,19 @@ class ReferralAttributionService:
                 or partner.status != ReferralPartnerStatus.ACTIVE
             ):
                 return False, self.settings.referral_default_redirect_path
+            if link.course_id:
+                target_course = self.db.get(Course, link.course_id)
+                if not target_course or not target_course.published or not target_course.referral_commission_eligible or target_course.is_free:
+                    return False, self.settings.referral_default_redirect_path
+            if link.cohort_id:
+                target_programme = self.db.get(Cohort, link.cohort_id)
+                if (
+                    not target_programme
+                    or not target_programme.referral_commission_eligible
+                    or target_programme.price <= 0
+                    or target_programme.status not in {"open", "active"}
+                ):
+                    return False, self.settings.referral_default_redirect_path
             # A link's server-generated destination is authoritative; clients cannot
             # override it with an arbitrary URL or a different course.
             redirect = safe_referral_redirect(
