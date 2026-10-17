@@ -129,7 +129,7 @@ export function AdminReferralOnboardingContent() {
   const [applicationFilter, setApplicationFilter] = useState("");
   const [cohorts, setCohorts] = useState<ReferralCohort[]>([]);
   const [links, setLinks] = useState<ReferralLink[]>([]);
-  const [eligibleCourses, setEligibleCourses] = useState<{ id: string; slug: string; title: string }[]>([]);
+  const [eligibleCourses, setEligibleCourses] = useState<{ id: string; slug: string; title: string; price: string; currency: string }[]>([]);
   const [linkFilterPartner, setLinkFilterPartner] = useState("");
   const [linkFilterCourse, setLinkFilterCourse] = useState("");
   const [linkFilterCampaign, setLinkFilterCampaign] = useState("");
@@ -250,7 +250,7 @@ export function AdminReferralOnboardingContent() {
       {tab === "links" ? <div className="space-y-3">
         <div className="grid gap-3 rounded-lg border p-4 sm:grid-cols-2 lg:grid-cols-3">
           <div className="space-y-1"><label className="text-sm font-medium">Partner ID</label><Input value={linkFilterPartner} onChange={(e) => setLinkFilterPartner(e.target.value)} placeholder="Exact partner UUID" /></div>
-          <div className="space-y-1"><label className="text-sm font-medium">Course</label><select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={linkFilterCourse} onChange={(e) => setLinkFilterCourse(e.target.value)}><option value="">All courses</option>{eligibleCourses.map((row) => <option key={row.id} value={row.id}>{row.title}</option>)}</select></div>
+          <div className="space-y-1"><label className="text-sm font-medium">Course</label><select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={linkFilterCourse} onChange={(e) => setLinkFilterCourse(e.target.value)}><option value="">All courses</option>{eligibleCourses.map((row) => <option key={row.id} value={row.id}>{row.title} — {row.currency} {row.price}</option>)}</select></div>
           <div className="space-y-1"><label className="text-sm font-medium">Campaign or channel</label><Input value={linkFilterCampaign} onChange={(e) => setLinkFilterCampaign(e.target.value)} placeholder="Search campaign" /></div>
           <div className="space-y-1"><label className="text-sm font-medium">Specific link</label><select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={linkFilterId} onChange={(e) => setLinkFilterId(e.target.value)}><option value="">All links</option>{links.map((row) => <option key={row.id} value={row.id}>{row.course_title || row.cohort_name || row.destination_path} · {row.campaign_label || row.code}</option>)}</select></div>
           <div className="space-y-1"><label className="text-sm font-medium">Status</label><select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={linkFilterStatus} onChange={(e) => setLinkFilterStatus(e.target.value)}><option value="">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option><option value="revoked">Revoked</option></select></div>
