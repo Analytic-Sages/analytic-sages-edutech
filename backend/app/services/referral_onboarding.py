@@ -216,9 +216,13 @@ class ReferralOnboardingService:
         if next_status == "approved" and application.status != "approved":
             if application.status != "interviewed":
                 raise HTTPException(status_code=409, detail="Interview and record a decision before approval.")
-            if application.interview_status != "completed" or application.interview_decision != "recommend":
+            interview_status = updates.get("interview_status", application.interview_status)
+            interview_decision = updates.get("interview_decision", application.interview_decision)
+            interview_notes = updates.get("interview_notes", application.interview_notes)
+            interview_reason = updates.get("interview_reason", application.interview_reason)
+            if interview_status != "completed" or interview_decision != "recommend":
                 raise HTTPException(status_code=409, detail="Record a completed interview and a 'recommend' decision before approval.")
-            if not application.interview_notes or not application.interview_reason:
+            if not interview_notes or not interview_reason:
                 raise HTTPException(status_code=409, detail="Record interview notes and the decision reason before approval.")
             if not set(SCORE_WEIGHTS).issubset(set(application.scores or {})):
                 raise HTTPException(status_code=409, detail="Score all five application criteria before approval.")
