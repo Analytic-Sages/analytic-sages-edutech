@@ -46,6 +46,10 @@ class ReferralPartnerApplicationPublic(BaseModel):
     score_total: int | None = None
     cohort_id: UUID | None = None
     partner_id: UUID | None = None
+    reviewer_id: UUID | None = None
+    approved_by: UUID | None = None
+    approved_at: datetime | None = None
+    interview_reviewer_id: UUID | None = None
     created_at: datetime
     updated_at: datetime
     terms_version: str
