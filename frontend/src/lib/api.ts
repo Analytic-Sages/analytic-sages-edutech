@@ -3429,8 +3429,18 @@ export function getPartnerReferralLinkTargets() {
   return apiFetch<ReferralLinkTargets>("/api/v1/partner/link-targets");
 }
 
-export function getPartnerReferralLinks() {
-  return apiFetch<ReferralLink[]>("/api/v1/partner/links");
+export function getPartnerReferralLinks(filters: {
+  start_at?: string;
+  end_at?: string;
+  course_id?: string;
+  campaign?: string;
+  status?: string;
+  link_id?: string;
+} = {}) {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => { if (value) params.set(key, value); });
+  const query = params.toString();
+  return apiFetch<ReferralLink[]>(`/api/v1/partner/links${query ? `?${query}` : ""}`);
 }
 
 export function createPartnerReferralLink(payload: {
@@ -3494,9 +3504,19 @@ export function patchAdminReferralCohort(cohortId: string, payload: { capacity?:
   });
 }
 
-export function getAdminReferralLinks(partnerId?: string) {
-  const q = partnerId ? `?partner_id=${encodeURIComponent(partnerId)}` : "";
-  return apiFetch<ReferralLink[]>(`/api/v1/admin/referrals/links${q}`);
+export function getAdminReferralLinks(filters: {
+  partner_id?: string;
+  start_at?: string;
+  end_at?: string;
+  course_id?: string;
+  campaign?: string;
+  status?: string;
+  link_id?: string;
+} = {}) {
+  const params = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => { if (value) params.set(key, value); });
+  const query = params.toString();
+  return apiFetch<ReferralLink[]>(`/api/v1/admin/referrals/links${query ? `?${query}` : ""}`);
 }
 
 export function patchAdminReferralLink(linkId: string, status: "inactive" | "active" | "revoked", reason?: string) {
