@@ -175,6 +175,9 @@ class ReferralOnboardingService:
             "status": application.status,
             "cohort_id": str(application.cohort_id) if application.cohort_id else None,
             "score_total": application.score_total,
+            "scores": application.scores,
+            "approved_by": str(application.approved_by) if application.approved_by else None,
+            "approved_at": application.approved_at.isoformat() if application.approved_at else None,
         }
         updates = payload.model_dump(exclude_unset=True)
         next_status = updates.get("status")
@@ -257,6 +260,8 @@ class ReferralOnboardingService:
                 continue
             setattr(application, key, value)
         if next_status is not None:
+            if next_status != application.status:
+                application.reviewer_id = actor.id
             application.status = next_status
         if application.status in {"suspended", "inactive"} and application.partner_id:
             partner = self.db.get(ReferralPartner, application.partner_id)
@@ -274,6 +279,9 @@ class ReferralOnboardingService:
                 "status": application.status,
                 "cohort_id": str(application.cohort_id) if application.cohort_id else None,
                 "score_total": application.score_total,
+                "scores": application.scores,
+                "approved_by": str(application.approved_by) if application.approved_by else None,
+                "approved_at": application.approved_at.isoformat() if application.approved_at else None,
             },
         )
         self.db.commit()
