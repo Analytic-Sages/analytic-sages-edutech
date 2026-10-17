@@ -492,6 +492,7 @@ class ReferralOnboardingService:
                 "target_available": target_available, "unavailable_reason": unavailable_reason,
                 "status": link.status, "clicks": clicks,
                 "paid_enrollments": len(paid_products),
+                "conversion_rate": (Decimal(len(paid_products)) * Decimal("100") / Decimal(clicks)).quantize(Decimal("0.01")) if clicks else Decimal("0.00"),
                 "commission_amount": commission_by_currency[single_currency] if single_currency else None,
                 "commission_currency": single_currency,
                 "commission_by_currency": commission_by_currency,
