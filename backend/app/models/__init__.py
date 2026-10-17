@@ -46,6 +46,9 @@ from app.models.referral import (
     ReferralClick,
     ReferralConversion,
     ReferralPartner,
+    ReferralLink,
+    ReferralPartnerApplication,
+    ReferralPartnerCohort,
 )
 from app.models.user import (
     EmailVerificationToken,
@@ -108,6 +111,9 @@ __all__ = [
     "UserCareerInterest",
     "OpportunityDigestRun",
     "ReferralPartner",
+    "ReferralLink",
+    "ReferralPartnerApplication",
+    "ReferralPartnerCohort",
     "ReferralClick",
     "ReferralAttribution",
     "ReferralConversion",
