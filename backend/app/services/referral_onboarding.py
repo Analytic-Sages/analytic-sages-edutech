@@ -40,7 +40,7 @@ APPLICATION_STATUSES = {
 ALLOWED_TRANSITIONS = {
     "submitted": {"under_review", "rejected", "waitlisted"},
     "under_review": {"shortlisted", "interviewed", "rejected", "waitlisted"},
-    "shortlisted": {"interviewed", "approved", "rejected", "waitlisted", "under_review"},
+    "shortlisted": {"interviewed", "rejected", "waitlisted", "under_review"},
     "interviewed": {"approved", "rejected", "waitlisted", "under_review"},
     "approved": {"onboarding", "rejected", "waitlisted"},
     "onboarding": {"active", "suspended", "inactive"},
