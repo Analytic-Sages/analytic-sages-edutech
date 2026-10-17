@@ -185,3 +185,19 @@ class ReferralAuditRow(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class ReferralPartnerApplicationStatusPublic(BaseModel):
+    id: UUID
+    full_name: str
+    email: str
+    status: str
+    cohort_id: UUID | None = None
+    partner_id: UUID | None = None
+    terms_version: str
+    terms_accepted_at: datetime
+    approved_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
