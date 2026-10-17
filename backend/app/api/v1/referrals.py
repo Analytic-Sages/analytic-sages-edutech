@@ -20,7 +20,7 @@ from app.core.referrals import (
 from app.core.roles import UserRole
 from app.models.classroom import Cohort
 from app.models.course import Course
-from app.models.referral import PartnerPayoutRequest, ReferralConversion, ReferralPartner
+from app.models.referral import PartnerPayoutRequest, ReferralConversion, ReferralLink, ReferralPartner, ReferralPartnerApplication, ReferralPartnerCohort
 from app.models.user import User
 from app.schemas.referrals import (
     AdminAttributionOverride,
@@ -40,6 +40,19 @@ from app.schemas.referrals import (
     ReferralTrackResponse,
     ReleaseCommissionsResponse,
 )
+from app.schemas.referral_onboarding import (
+    PartnerOnboardingComplete,
+    ReferralLinkCreate,
+    ReferralLinkPatch,
+    ReferralLinkPublic,
+    ReferralPartnerApplicationCreate,
+    ReferralPartnerApplicationPatch,
+    ReferralPartnerApplicationPublic,
+    ReferralPartnerCohortCreate,
+    ReferralPartnerCohortPatch,
+    ReferralPartnerCohortPublic,
+)
+from app.services.referral_onboarding import ReferralOnboardingService
 from app.services.referrals import (
     VISITOR_COOKIE,
     ReferralAttributionService,
@@ -67,6 +80,10 @@ def _dashboard(db: Session = Depends(get_db), settings: Settings = Depends(get_s
 
 def _payouts(db: Session = Depends(get_db), settings: Settings = Depends(get_settings)):
     return ReferralPayoutService(db, settings)
+
+
+def _onboarding(db: Session = Depends(get_db), settings: Settings = Depends(get_settings)):
+    return ReferralOnboardingService(db, settings)
 
 
 def _require_partner(
@@ -286,6 +303,214 @@ def request_payout(
         payment_details_reference=payload.payment_details_reference,
     )
     return PartnerPayoutRow.model_validate(payout)
+
+
+
+
+@router.get("/partners/eligible-courses")
+def referral_eligible_courses(
+    settings: Settings = Depends(get_settings),
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_current_user_optional),
+) -> list[dict]:
+    if not settings.partners_public and (current_user is None or current_user.role != UserRole.ADMIN):
+        raise HTTPException(status_code=404, detail="Not found")
+    courses = db.scalars(
+        select(Course).where(
+            Course.published.is_(True),
+            Course.referral_commission_eligible.is_(True),
+            Course.is_free.is_(False),
+        ).order_by(Course.title.asc())
+    ).all()
+    return [{"id": str(course.id), "slug": course.slug, "title": course.title} for course in courses]
+
+
+@router.post("/partners/applications", response_model=ReferralPartnerApplicationPublic, status_code=201)
+def submit_referral_application(
+    payload: ReferralPartnerApplicationCreate,
+    settings: Settings = Depends(get_settings),
+    current_user: User | None = Depends(get_current_user_optional),
+    service: ReferralOnboardingService = Depends(_onboarding),
+) -> ReferralPartnerApplicationPublic:
+    if not settings.partners_public and (current_user is None or current_user.role != UserRole.ADMIN):
+        raise HTTPException(status_code=404, detail="Not found")
+    application = service.submit_application(payload=payload, user=current_user, actor_id=current_user.id if current_user else None)
+    return ReferralPartnerApplicationPublic.model_validate(application)
+
+
+@router.post("/partner/onboarding/claim", response_model=ReferralPartnerApplicationPublic)
+def claim_referral_application(
+    user: User = Depends(get_current_user),
+    service: ReferralOnboardingService = Depends(_onboarding),
+) -> ReferralPartnerApplicationPublic:
+    application = service.claim_approved_application(user=user)
+    return ReferralPartnerApplicationPublic.model_validate(application)
+
+
+@router.post("/partner/onboarding/complete", response_model=PartnerPublic)
+def complete_referral_onboarding(
+    payload: PartnerOnboardingComplete,
+    user: User = Depends(get_current_user),
+    partner: ReferralPartner = Depends(_require_partner),
+    service: ReferralOnboardingService = Depends(_onboarding),
+) -> PartnerPublic:
+    updated = service.complete_onboarding(partner=partner, payload=payload, actor=user)
+    return PartnerPublic.model_validate(updated)
+
+
+@router.get("/partner/link-targets")
+def partner_referral_link_targets(
+    _: ReferralPartner = Depends(_require_partner),
+    db: Session = Depends(get_db),
+) -> dict:
+    courses = db.scalars(
+        select(Course).where(
+            Course.published.is_(True),
+            Course.referral_commission_eligible.is_(True),
+            Course.is_free.is_(False),
+        ).order_by(Course.title.asc())
+    ).all()
+    programmes = db.scalars(
+        select(Cohort).where(
+            Cohort.referral_commission_eligible.is_(True),
+            Cohort.price > 0,
+            Cohort.status.in_(["open", "active"]),
+        ).order_by(Cohort.name.asc())
+    ).all()
+    return {
+        "courses": [{"id": str(row.id), "slug": row.slug, "title": row.title} for row in courses],
+        "programmes": [{"id": str(row.id), "slug": row.slug, "title": row.name} for row in programmes],
+    }
+
+
+@router.get("/partner/links", response_model=list[ReferralLinkPublic])
+def partner_referral_links(
+    partner: ReferralPartner = Depends(_require_partner),
+    service: ReferralOnboardingService = Depends(_onboarding),
+) -> list[ReferralLinkPublic]:
+    return [ReferralLinkPublic(**row) for row in service.list_links(partner=partner)]
+
+
+@router.post("/partner/links", response_model=ReferralLinkPublic, status_code=201)
+def create_partner_referral_link(
+    payload: ReferralLinkCreate,
+    user: User = Depends(get_current_user),
+    partner: ReferralPartner = Depends(_require_partner),
+    service: ReferralOnboardingService = Depends(_onboarding),
+) -> ReferralLinkPublic:
+    link = service.create_link(partner=partner, payload=payload, actor=user)
+    rows = service.list_links(partner=partner)
+    item = next((row for row in rows if row["id"] == link.id), None)
+    if not item:
+        raise HTTPException(status_code=500, detail="Created link could not be loaded.")
+    return ReferralLinkPublic(**item)
+
+
+@router.patch("/partner/links/{link_id}", response_model=ReferralLinkPublic)
+def patch_partner_referral_link(
+    link_id: UUID,
+    payload: ReferralLinkPatch,
+    user: User = Depends(get_current_user),
+    partner: ReferralPartner = Depends(_require_partner),
+    service: ReferralOnboardingService = Depends(_onboarding),
+) -> ReferralLinkPublic:
+    if payload.status not in {"inactive", "revoked"}:
+        raise HTTPException(status_code=400, detail="Partners may only pause or revoke their own links.")
+    service.patch_link(link_id=link_id, actor=user, partner=partner, status_value=payload.status, reason=payload.revocation_reason)
+    rows = service.list_links(partner=partner)
+    item = next((row for row in rows if row["id"] == link_id), None)
+    if not item:
+        raise HTTPException(status_code=404, detail="Referral link not found.")
+    return ReferralLinkPublic(**item)
+
+
+@router.get("/admin/referrals/applications", response_model=list[ReferralPartnerApplicationPublic])
+def admin_referral_applications(
+    _: User = Depends(require_admin),
+    service: ReferralOnboardingService = Depends(_onboarding),
+    status_filter: str | None = Query(default=None, alias="status"),
+) -> list[ReferralPartnerApplicationPublic]:
+    return [ReferralPartnerApplicationPublic.model_validate(row) for row in service.list_applications(status_filter=status_filter)]
+
+
+@router.patch("/admin/referrals/applications/{application_id}", response_model=ReferralPartnerApplicationPublic)
+def admin_patch_referral_application(
+    application_id: UUID,
+    payload: ReferralPartnerApplicationPatch,
+    admin: User = Depends(require_admin),
+    service: ReferralOnboardingService = Depends(_onboarding),
+) -> ReferralPartnerApplicationPublic:
+    application = service.patch_application(application_id=application_id, payload=payload, actor=admin)
+    return ReferralPartnerApplicationPublic.model_validate(application)
+
+
+@router.get("/admin/referrals/cohorts", response_model=list[ReferralPartnerCohortPublic])
+def admin_referral_cohorts(
+    _: User = Depends(require_admin),
+    service: ReferralOnboardingService = Depends(_onboarding),
+) -> list[ReferralPartnerCohortPublic]:
+    return [ReferralPartnerCohortPublic(**row) for row in service.list_cohorts()]
+
+
+@router.post("/admin/referrals/cohorts", response_model=ReferralPartnerCohortPublic, status_code=201)
+def admin_create_referral_cohort(
+    payload: ReferralPartnerCohortCreate,
+    admin: User = Depends(require_admin),
+    service: ReferralOnboardingService = Depends(_onboarding),
+) -> ReferralPartnerCohortPublic:
+    row = service.create_cohort(name=payload.name, capacity=payload.capacity, is_active=payload.is_active, actor=admin)
+    return ReferralPartnerCohortPublic(**row)
+
+
+@router.patch("/admin/referrals/cohorts/{cohort_id}", response_model=ReferralPartnerCohortPublic)
+def admin_patch_referral_cohort(
+    cohort_id: UUID,
+    payload: ReferralPartnerCohortPatch,
+    admin: User = Depends(require_admin),
+    service: ReferralOnboardingService = Depends(_onboarding),
+) -> ReferralPartnerCohortPublic:
+    row = service.patch_cohort(cohort_id=cohort_id, capacity=payload.capacity, is_active=payload.is_active, actor=admin)
+    return ReferralPartnerCohortPublic(**row)
+
+
+@router.get("/admin/referrals/links", response_model=list[ReferralLinkPublic])
+def admin_list_referral_links(
+    _: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+    service: ReferralOnboardingService = Depends(_onboarding),
+    partner_id: UUID | None = None,
+) -> list[ReferralLinkPublic]:
+    if partner_id:
+        partner = db.get(ReferralPartner, partner_id)
+        if not partner:
+            raise HTTPException(status_code=404, detail="Partner not found.")
+        rows = service.list_links(partner=partner)
+    else:
+        rows = []
+        for partner in db.scalars(select(ReferralPartner).order_by(ReferralPartner.created_at.desc()).limit(500)).all():
+            rows.extend(service.list_links(partner=partner))
+    return [ReferralLinkPublic(**row) for row in rows]
+
+
+@router.patch("/admin/referrals/links/{link_id}", response_model=ReferralLinkPublic)
+def admin_patch_referral_link(
+    link_id: UUID,
+    payload: ReferralLinkPatch,
+    admin: User = Depends(require_admin),
+    service: ReferralOnboardingService = Depends(_onboarding),
+) -> ReferralLinkPublic:
+    if payload.status is None:
+        raise HTTPException(status_code=400, detail="status is required.")
+    service.patch_link(link_id=link_id, actor=admin, status_value=payload.status, reason=payload.revocation_reason)
+    link = service.db.get(ReferralLink, link_id)
+    if not link:
+        raise HTTPException(status_code=404, detail="Referral link not found.")
+    partner = service.db.get(ReferralPartner, link.partner_id)
+    rows = service.list_links(partner=partner) if partner else []
+    item = next((row for row in rows if row["id"] == link_id), None)
+    if not item:
+        raise HTTPException(status_code=404, detail="Referral link not found.")
+    return ReferralLinkPublic(**item)
 
 
 @router.get("/admin/referrals/overview", response_model=AdminReferralOverview)
