@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, R
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_current_user_optional, get_db, require_admin
+from app.api.deps import get_current_user, get_current_user_optional, get_db, get_rate_limiter, require_admin
 from app.core.config import Settings, get_settings
 from app.core.referrals import (
     PartnerPayoutStatus,
@@ -18,6 +18,7 @@ from app.core.referrals import (
     ReferralPartnerStatus,
 )
 from app.core.roles import UserRole
+from app.core.rate_limit import enforce_rate_limit
 from app.models.classroom import Cohort
 from app.models.course import Course
 from app.models.referral import PartnerPayoutRequest, ReferralConversion, ReferralLink, ReferralPartner, ReferralPartnerApplication, ReferralPartnerCohort
@@ -336,11 +337,14 @@ def referral_eligible_courses(
 
 @router.post("/partners/applications", response_model=ReferralPartnerApplicationPublic, status_code=201)
 def submit_referral_application(
+    request: Request,
     payload: ReferralPartnerApplicationCreate,
     settings: Settings = Depends(get_settings),
     current_user: User | None = Depends(get_current_user_optional),
     service: ReferralOnboardingService = Depends(_onboarding),
+    rate_limiter=Depends(get_rate_limiter),
 ) -> ReferralPartnerApplicationPublic:
+    enforce_rate_limit(rate_limiter, request, scope="referral-application")
     if not settings.partners_public and (current_user is None or current_user.role != UserRole.ADMIN):
         raise HTTPException(status_code=404, detail="Not found")
     application = service.submit_application(payload=payload, user=current_user, actor_id=current_user.id if current_user else None)
