@@ -3170,6 +3170,7 @@ export type ReferralLink = {
   status: string;
   clicks: number;
   paid_enrollments: number;
+  conversion_rate: string;
   commission_amount: string | null;
   commission_currency: string | null;
   commission_by_currency: Record<string, string>;
