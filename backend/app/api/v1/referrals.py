@@ -338,6 +338,27 @@ def submit_referral_application(
     return ReferralPartnerApplicationPublic.model_validate(application)
 
 
+
+
+
+@router.get("/partner/application/me", response_model=ReferralPartnerApplicationPublic | None)
+def my_referral_application(
+    user: User = Depends(get_current_user),
+    service: ReferralOnboardingService = Depends(_onboarding),
+) -> ReferralPartnerApplicationPublic | None:
+    if not user.email_verified:
+        return None
+    from app.services.referral_onboarding import normalize_email
+    application = service.db.scalar(
+        select(ReferralPartnerApplication).where(
+            ReferralPartnerApplication.email_normalized == normalize_email(user.email)
+        )
+    )
+    if application and application.user_id and application.user_id != user.id:
+        return None
+    return ReferralPartnerApplicationPublic.model_validate(application) if application else None
+
+
 @router.post("/partner/onboarding/claim", response_model=ReferralPartnerApplicationPublic)
 def claim_referral_application(
     user: User = Depends(get_current_user),
@@ -536,7 +557,23 @@ def admin_patch_partner(
     payload: AdminPartnerPatch,
     admin: User = Depends(require_admin),
     partners: ReferralPartnerService = Depends(_partners),
+    db: Session = Depends(get_db),
 ) -> PartnerPublic:
+    if payload.status == ReferralPartnerStatus.ACTIVE:
+        existing_partner = db.get(ReferralPartner, partner_id)
+        if not existing_partner:
+            raise HTTPException(status_code=404, detail="Partner not found")
+        # New applicants must complete the onboarding checklist before activation.
+        # Preserve admin reactivation for established legacy partners that were
+        # active before this onboarding workflow was introduced.
+        if (
+            existing_partner.status == ReferralPartnerStatus.PENDING
+            and existing_partner.onboarding_completed_at is None
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail="Complete partner onboarding before activation.",
+            )
     if payload.regenerate_code and not payload.status:
         partner = partners.regenerate_code(partner_id=partner_id, actor=admin)
         return PartnerPublic.model_validate(partner)
