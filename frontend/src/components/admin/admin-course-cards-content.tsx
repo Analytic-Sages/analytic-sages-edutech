@@ -28,6 +28,8 @@ export function AdminCourseCardsContent() {
 
   useEffect(() => {
     let cancelled = false;
+    setError(null);
+    setMessage(null);
     listAdminCourseCardPlacements()
       .then((rows) => {
         if (cancelled) return;
@@ -39,7 +41,10 @@ export function AdminCourseCardsContent() {
         setPlacements(current.length ? current : MANAGED_COURSE_CARDS.map((card) => ({ card_key: card.key, visible: true })));
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof ApiError ? err.detail : "Could not load course card settings.");
+        if (!cancelled) {
+          setPlacements(MANAGED_COURSE_CARDS.map((card) => ({ card_key: card.key, visible: true })));
+          setError(err instanceof ApiError ? err.detail : "Could not load course card settings.");
+        }
       })
       .finally(() => { if (!cancelled) setLoadedPage(pageKey); });
     return () => { cancelled = true; };
@@ -146,7 +151,7 @@ export function AdminCourseCardsContent() {
           {error ? <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{error}</p> : null}
           {message ? <p role="status" className="rounded-lg border border-green-600/20 bg-green-600/5 p-3 text-sm text-green-700">{message}</p> : null}
           <div className="flex justify-end">
-            <Button onClick={save} disabled={saving}><Save className="mr-2 size-4" />{saving ? "Saving…" : "Save placements"}</Button>
+            <Button onClick={save} disabled={saving || loadedPage !== pageKey || Boolean(error)}><Save className="mr-2 size-4" />{saving ? "Saving…" : "Save placements"}</Button>
           </div>
         </div>
       )}
