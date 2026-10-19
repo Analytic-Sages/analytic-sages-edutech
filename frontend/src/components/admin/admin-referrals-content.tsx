@@ -37,6 +37,7 @@ export function AdminReferralsContent() {
   const [conversions, setConversions] = useState<AdminConversionRow[]>([]);
   const [payouts, setPayouts] = useState<PartnerPayoutRow[]>([]);
   const [review, setReview] = useState<AdminConversionRow[]>([]);
+  const [focusedPartnerId, setFocusedPartnerId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -173,12 +174,29 @@ export function AdminReferralsContent() {
                     : "—",
                 ],
               ] as const
-            ).map(([label, value]) => (
-              <div key={label} className="border-b pb-3">
-                <p className="text-xs uppercase text-muted-foreground">{label}</p>
-                <p className="mt-1 text-xl font-semibold">{String(value)}</p>
-              </div>
-            ))}
+            ).map(([label, value]) => {
+              const content = (
+                <>
+                  <p className="text-xs uppercase text-muted-foreground">{label}</p>
+                  <p className="mt-1 text-xl font-semibold">{String(value)}</p>
+                </>
+              );
+              return label === "Pending apps" ? (
+                <button
+                  key={label}
+                  type="button"
+                  className="border-b pb-3 text-left transition-colors hover:text-brand-orange focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+                  onClick={() => setTab("onboarding")}
+                  aria-label={`Open applications queue: ${String(value)} pending applications`}
+                >
+                  {content}
+                </button>
+              ) : (
+                <div key={label} className="border-b pb-3">
+                  {content}
+                </div>
+              );
+            })}
           </div>
           {overview.balances_by_currency?.length ? (
             <Table>
@@ -230,7 +248,7 @@ export function AdminReferralsContent() {
           <TableBody>
             {partners.map((p) => (
               <TableRow key={p.id}>
-                <TableCell>{p.display_name}</TableCell>
+                <TableCell><Button type="button" variant="link" className="h-auto p-0 font-medium" onClick={() => { setFocusedPartnerId(p.id); setTab("onboarding"); }} title="Open this partner’s application and profile">{p.display_name}<span className="sr-only"> — open profile and application</span></Button></TableCell>
                 <TableCell>{p.referral_code || "—"}</TableCell>
                 <TableCell className="capitalize">{p.status}</TableCell>
                 <TableCell className="space-x-2">
@@ -362,7 +380,9 @@ export function AdminReferralsContent() {
         </Table>
       ) : null}
 
-      {tab === "onboarding" ? <AdminReferralOnboardingContent /> : null}\n\n      {tab === "review" ? (
+      {tab === "onboarding" ? <AdminReferralOnboardingContent focusPartnerId={focusedPartnerId || undefined} /> : null}
+
+      {tab === "review" ? (
         review.length === 0 ? (
           <p className="text-sm text-muted-foreground">No items need review.</p>
         ) : (

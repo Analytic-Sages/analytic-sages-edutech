@@ -27,7 +27,7 @@ from app.models.referral import (
 from app.models.user import User
 from app.schemas.referral_onboarding import ReferralPartnerApplicationCreate, ReferralPartnerApplicationPatch
 from app.services.referral_onboarding import ReferralOnboardingService
-from app.services.referrals import ReferralAttributionService
+from app.services.referrals import ReferralAttributionService, ReferralDashboardService
 
 SCORES = {
     "audience_relevance": 28,
@@ -104,6 +104,7 @@ def test_referral_application_rejects_duplicates_and_records_terms():
     app_id = None
     try:
         service = ReferralOnboardingService(db, get_settings())
+        pending_before = ReferralDashboardService(db, get_settings()).admin_overview()["pending_applications"]
         application = service.submit_application(payload=_application_payload(email), user=None)
         app_id = application.id
         assert application.status == "submitted"
@@ -111,6 +112,8 @@ def test_referral_application_rejects_duplicates_and_records_terms():
         assert application.terms_version == "referral-partner-v1"
         assert application.whatsapp_number == "+2348012345678"
         assert application.telegram_id == "@referral_applicant"
+        pending_after = ReferralDashboardService(db, get_settings()).admin_overview()["pending_applications"]
+        assert pending_after == pending_before + 1
         with pytest.raises(HTTPException) as exc:
             service.submit_application(payload=_application_payload(email), user=None)
         assert exc.value.status_code == 409
