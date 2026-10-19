@@ -10,13 +10,17 @@ import { MANAGED_COURSE_CARDS } from "@/lib/course-card-registry";
 type Props = { pageKey?: string };
 
 export function CourseSidebar({ pageKey = "insights" }: Props) {
-  const [cards, setCards] = useState(MANAGED_COURSE_CARDS);
+  const [cards, setCards] = useState<Array<(typeof MANAGED_COURSE_CARDS)[number]> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     listCourseCardPlacements(pageKey, "sidebar")
       .then((placements) => {
-        if (cancelled || placements.length === 0) return;
+        if (cancelled) return;
+        if (placements.length === 0) {
+          setCards([...MANAGED_COURSE_CARDS]);
+          return;
+        }
         const byKey = new Map(MANAGED_COURSE_CARDS.map((card) => [card.key, card]));
         setCards(
           placements
@@ -27,12 +31,31 @@ export function CourseSidebar({ pageKey = "insights" }: Props) {
         );
       })
       .catch(() => {
-        // Keep the established cards visible if the placement service is temporarily unavailable.
+        if (!cancelled) {
+          // Keep the established cards visible if the placement service is temporarily unavailable.
+          setCards([...MANAGED_COURSE_CARDS]);
+        }
       });
     return () => {
       cancelled = true;
     };
   }, [pageKey]);
+
+  if (cards === null) {
+    return (
+      <aside aria-label="Analytic Sages courses" className="space-y-4" aria-busy="true">
+        <div className="flex items-center gap-2">
+          <BookOpen className="size-4 text-brand-orange" />
+          <h2 className="font-heading text-sm font-bold uppercase tracking-[0.14em]">Learn with us</h2>
+        </div>
+        <div className="space-y-3" role="status">
+          <p className="text-sm text-muted-foreground">Loading course cards…</p>
+          <div className="h-40 animate-pulse rounded-xl border bg-muted/40" />
+          <div className="h-40 animate-pulse rounded-xl border bg-muted/40" />
+        </div>
+      </aside>
+    );
+  }
 
   return (
     <aside aria-label="Analytic Sages courses" className="space-y-4">
