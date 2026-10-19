@@ -79,7 +79,7 @@ export function SessionRecordingButton({ session, className, label = "Watch reco
       </Button>
       {error ? <span className="text-xs text-destructive">{error}</span> : null}
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="gap-0 overflow-hidden bg-brand-navy p-0 text-white sm:max-w-4xl [&_[data-slot=dialog-close]]:text-white [&_[data-slot=dialog-close]]:hover:bg-white/10">
+        <DialogContent className="max-h-[95vh] w-[calc(100vw-1rem)] gap-0 overflow-y-auto bg-brand-navy p-0 text-white sm:w-[96vw] sm:max-w-[1440px] [&_[data-slot=dialog-close]]:text-white [&_[data-slot=dialog-close]]:hover:bg-white/10">
           <DialogHeader className="gap-1 px-5 py-4 pr-12 text-left">
             <p className="text-[11px] font-medium tracking-[0.14em] text-white/70 uppercase">
               Analytic Sages
@@ -114,6 +114,9 @@ export function SessionRecordingButton({ session, className, label = "Watch reco
               </video>
             ) : null}
           </div>
+          <p className="bg-brand-navy px-5 py-3 text-xs text-white/70">
+            Tip: use the player’s full-screen control when following code, queries, or small on-screen text.
+          </p>
         </DialogContent>
       </Dialog>
     </span>
