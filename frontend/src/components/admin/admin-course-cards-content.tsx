@@ -11,6 +11,7 @@ import { ApiError, listAdminCourseCardPlacements, saveCourseCardPlacements } fro
 const PAGE_OPTIONS = [
   { key: "insights", label: "Insights" },
   { key: "opportunities", label: "Opportunities" },
+  { key: "events", label: "Events" },
 ] as const;
 
 type Placement = { card_key: string; visible: boolean };
