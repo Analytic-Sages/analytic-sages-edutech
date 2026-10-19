@@ -242,7 +242,11 @@ export function PartnerDashboardContent() {
       </section>
 
       <section className="space-y-3">
-        <ReferralLinksManager />\n      </section>\n\n      <section className="space-y-3">\n        <h2 className="text-lg font-semibold">My referral link</h2>
+        <ReferralLinksManager />
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold">My referral link</h2>
         <div className="flex flex-wrap items-center gap-2">
           <code className="rounded bg-muted px-3 py-2 text-sm">{link}</code>
           <Button

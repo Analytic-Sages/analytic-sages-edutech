@@ -44,6 +44,7 @@ from app.models.referral import (
     ReferralConversion,
     ReferralLink,
     ReferralPartner,
+    ReferralPartnerApplication,
 )
 from app.models.user import User
 
@@ -1211,8 +1212,10 @@ class ReferralDashboardService:
             )
         ) or 0
         pending_apps = self.db.scalar(
-            select(func.count()).select_from(ReferralPartner).where(
-                ReferralPartner.status == ReferralPartnerStatus.PENDING
+            select(func.count()).select_from(ReferralPartnerApplication).where(
+                ReferralPartnerApplication.status.in_(
+                    ("submitted", "under_review", "shortlisted", "interviewed", "approved", "onboarding", "waitlisted")
+                )
             )
         ) or 0
         clicks = self.db.scalar(select(func.count()).select_from(ReferralClick)) or 0
