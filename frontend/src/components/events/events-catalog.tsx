@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { CalendarDays, Loader2 } from "lucide-react";
 import { EventCard } from "@/components/events/event-card";
+import { CourseSidebar } from "@/components/marketing/course-sidebar";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ApiError, listPublicEvents, type EventCardPublic } from "@/lib/api";
@@ -33,7 +34,8 @@ export function EventsCatalog() {
   const { upcoming, past } = splitEvents(events);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+    <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_19rem] lg:px-8">
+      <main className="min-w-0">
       <PageHeader
         title="Events"
         description="Free workshops, webinars, and live sessions. Browse without an account; register with the same Analytic Sages login you use for courses."
@@ -83,6 +85,10 @@ export function EventsCatalog() {
           </div>
         </section>
       )}
+      </main>
+      <div className="lg:sticky lg:top-6 lg:self-start">
+        <CourseSidebar pageKey="events" />
+      </div>
     </div>
   );
 }
