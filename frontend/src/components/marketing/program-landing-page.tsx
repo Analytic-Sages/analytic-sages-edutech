@@ -35,6 +35,11 @@ function formatDate(iso: string | null) {
 export function ProgramLandingPage({ program }: { program: ProgramPageContent }) {
   const [cohort, setCohort] = useState<PublicCohortCard | null>(null);
   const [loading, setLoading] = useState(true);
+  const [deadlineCheckTime, setDeadlineCheckTime] = useState<number | null>(null);
+
+  useEffect(() => {
+    setDeadlineCheckTime(Date.now());
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,7 +63,14 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
   const checkoutHref = `/checkout/cohort/${program.cohortSlug}`;
   const waitlistHref = `/waitlist/${program.pageSlug}`;
   const isComingSoon = Boolean(program.comingSoon);
-  const isRegistrationClosed = !isComingSoon && (Boolean(program.registrationClosed) || Boolean(program.registrationDeadline && Date.now() > Date.parse(program.registrationDeadline)));
+  const isRegistrationClosed =
+    !isComingSoon &&
+    (Boolean(program.registrationClosed) ||
+      Boolean(
+        deadlineCheckTime !== null &&
+          program.registrationDeadline &&
+          deadlineCheckTime > Date.parse(program.registrationDeadline),
+      ));
   const primaryHref = isComingSoon ? "/contact" : isRegistrationClosed ? waitlistHref : checkoutHref;
   const primaryLabel = isComingSoon ? "Get notified" : isRegistrationClosed ? "Join waitlist" : "Register now";
   const priceLabel = cohort && cohort.price > 0 ? `${cohort.price}` : null;
