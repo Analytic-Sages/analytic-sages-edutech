@@ -36,6 +36,8 @@ export type ProgramPageContent = {
   duration: string;
   timeCommitment: string;
   paymentOptions: string;
+  registrationDeadline: string;
+  startDate: string;
   /** When true, show Coming soon - do not sell checkout as open. */
   comingSoon?: boolean;
   audienceFor: string[];
@@ -74,7 +76,9 @@ const cohort9: ProgramPageContent = {
   format: "Instructor-led training, practical labs, weekly projects and office hours",
   duration: "6 weeks",
   timeCommitment: "5–8 hours per week · Mondays and Wednesdays training, Fridays office hours",
-  paymentOptions: "Pay in full: $50 / ₦70,000. Flexible 2-part plan: $28 / ₦40,000 to secure your seat, followed by $28 / ₦40,000 in Week 3. Registration closes 31 October 2026.",
+  paymentOptions: "Registration closed on 7 October 2026. Join the waitlist for the next intake. Tuition for this six-week programme is $50 / ₦70,000.",
+  registrationDeadline: "2026-10-07T22:59:59Z",
+  startDate: "2026-11-09T00:00:00Z",
   comingSoon: false,
   audienceFor: [
     "You want practical SQL, Excel and AI skills for Web3 research",
@@ -227,7 +231,7 @@ const cohort9: ProgramPageContent = {
     {
       question: "When does the programme start and what does it cost?",
       answer:
-        "The six-week programme runs from 2 November to 11 December 2026. Cohort 1 launch pricing is $50 / ₦70,000. Registration closes on 31 October 2026.",
+        "The six-week programme runs from 9 November to 18 December 2026. Tuition is $50 / ₦70,000. Registration closed on 7 October 2026.",
     },
     {
       question: "What do I need to start?",
