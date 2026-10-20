@@ -111,7 +111,7 @@ export const studioNav: NavItem[] = [
 
 export const staffNav: NavItem[] = [
   { title: "Classroom", href: "/staff", icon: "classroom" },
-  { title: "Assignments", href: "/staff#assignments", icon: "courses" },
+  { title: "Assignments", href: "/staff/assignments", icon: "courses" },
   { title: "My learning", href: "/dashboard", icon: "dashboard" },
   { title: "Join class", href: "/classroom", icon: "classroom" },
 ];
