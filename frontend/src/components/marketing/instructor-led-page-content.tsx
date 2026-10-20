@@ -287,12 +287,12 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
   const [deadlineCheckTime, setDeadlineCheckTime] = useState<number | null>(null);
 
   useEffect(() => {
-    // Schedule a one-shot clock read after mount without setting state in the
-    // effect body, which would trigger an avoidable cascading render.
-    const frame = window.requestAnimationFrame(() => {
+    // Update the timestamp from an asynchronous browser callback, keeping React
+    // render and effect execution free of synchronous setState calls.
+    const timer = window.setTimeout(() => {
       setDeadlineCheckTime(Date.now());
-    });
-    return () => window.cancelAnimationFrame(frame);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const isProgramRegistrationClosed = Boolean(
