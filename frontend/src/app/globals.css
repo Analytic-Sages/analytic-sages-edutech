@@ -240,14 +240,19 @@
   .dark [class~="text-black"],
   .dark [class~="text-gray-900"],
   .dark [class~="text-gray-800"],
+  .dark [class~="text-gray-700"],
   .dark [class~="text-slate-900"],
   .dark [class~="text-slate-800"],
+  .dark [class~="text-slate-700"],
   .dark [class~="text-zinc-900"],
   .dark [class~="text-zinc-800"],
+  .dark [class~="text-zinc-700"],
   .dark [class~="text-neutral-900"],
   .dark [class~="text-neutral-800"],
+  .dark [class~="text-neutral-700"],
   .dark [class~="text-stone-900"],
-  .dark [class~="text-stone-800"] {
+  .dark [class~="text-stone-800"],
+  .dark [class~="text-stone-700"] {
     color: var(--foreground) !important;
   }
 
