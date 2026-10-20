@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ApiError, getAdminReferralApplications, getAllAdminReferralApplications, getAdminReferralCohorts, getAdminReferralLinks, patchAdminReferralApplication, patchAdminReferralCohort, createAdminReferralCohort, patchAdminReferralLink, getAdminReferralProgramGuide, updateAdminReferralProgramGuide, getAdminReferralAudit, getReferralEligibleCourses, type ReferralPartnerApplication, type ReferralCohort, type ReferralLink, type ReferralProgramGuide, type ReferralAuditRow } from "@/lib/api";
+import { ApiError, getAllAdminReferralApplications, getAdminReferralCohorts, getAdminReferralLinks, patchAdminReferralApplication, patchAdminReferralCohort, createAdminReferralCohort, patchAdminReferralLink, getAdminReferralProgramGuide, updateAdminReferralProgramGuide, getAdminReferralAudit, getReferralEligibleCourses, type ReferralPartnerApplication, type ReferralCohort, type ReferralLink, type ReferralProgramGuide, type ReferralAuditRow } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
