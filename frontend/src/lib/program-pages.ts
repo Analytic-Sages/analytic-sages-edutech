@@ -38,6 +38,7 @@ export type ProgramPageContent = {
   paymentOptions: string;
   registrationDeadline: string;
   startDate: string;
+  registrationClosed?: boolean;
   /** When true, show Coming soon - do not sell checkout as open. */
   comingSoon?: boolean;
   audienceFor: string[];
@@ -79,6 +80,7 @@ const cohort9: ProgramPageContent = {
   paymentOptions: "Registration closed on 7 October 2026. Join the waitlist for the next intake. Tuition for this six-week programme is $50 / ₦70,000.",
   registrationDeadline: "2026-10-07T22:59:59Z",
   startDate: "2026-11-09T00:00:00Z",
+  registrationClosed: true,
   comingSoon: false,
   audienceFor: [
     "You want practical SQL, Excel and AI skills for Web3 research",
