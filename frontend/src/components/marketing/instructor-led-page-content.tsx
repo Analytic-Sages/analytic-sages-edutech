@@ -343,7 +343,7 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
           <>
             {isProgramRegistrationLive ? (
               <p className="text-sm font-semibold leading-relaxed text-brand-orange">
-                Registration closed: 7 October 2026 · Classes start: 9 November 2026 · Fully remote · Live sessions
+                Registration closes: 7 October 2026 · Classes start: 9 November 2026 · Fully remote · Live sessions
               </p>
             ) : (
             <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
