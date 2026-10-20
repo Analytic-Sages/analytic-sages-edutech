@@ -543,8 +543,12 @@ class ClassroomService:
         # Start the custom content-first recorder only when instructional staff
         # enter the room. Students joining first must not trigger a recording that
         # begins on an empty classroom, and repeated staff joins are idempotent.
+        instructional_staff = staff or (
+            member is not None
+            and member.role in {CohortMemberRole.INSTRUCTOR, CohortMemberRole.TA}
+        )
         if (
-            staff
+            instructional_staff
             and self.realtimekit.configured
             and self.settings.realtimekit_recording_app_url
         ):
