@@ -6,18 +6,18 @@ import { ButtonLink } from "@/components/ui/button-link";
 
 const weeks = [
   {
-    week: 1, dates: "2–6 November", title: "SQL for Onchain Data & Research Foundations",
+    week: 1, dates: "9–13 November", title: "SQL for Onchain Data & Research Foundations",
     focus: "Translate blockchain research questions into measurable metrics, then query real onchain datasets.",
     tools: ["Dune", "SQL", "AI assistants"],
     sessions: [
-      { date: "Monday, 2 November", title: "Session 1: Research Questions and Blockchain Data", topics: ["Onchain research workflows; blocks, transactions, wallets, smart contracts and events", "Introduction to Dune and blockchain data schemas", "Turning a research question into measurable metrics", "AI lab: formulate research questions and explain blockchain concepts"] },
-      { date: "Wednesday, 4 November", title: "Session 2: SQL for Analytical Queries", topics: ["Filtering, aggregation, joins, CTEs and window functions", "Date-based analysis and daily activity metrics", "Calculate transactions, active wallets, fees and growth rates", "AI lab: generate, explain, debug and validate SQL queries"] },
+      { date: "Monday, 14 December", title: "Session 1: Research Questions and Blockchain Data", topics: ["Onchain research workflows; blocks, transactions, wallets, smart contracts and events", "Introduction to Dune and blockchain data schemas", "Turning a research question into measurable metrics", "AI lab: formulate research questions and explain blockchain concepts"] },
+      { date: "Wednesday, 16 December", title: "Session 2: SQL for Analytical Queries", topics: ["Filtering, aggregation, joins, CTEs and window functions", "Date-based analysis and daily activity metrics", "Calculate transactions, active wallets, fees and growth rates", "AI lab: generate, explain, debug and validate SQL queries"] },
     ],
-    office: "Friday, 6 November — SQL troubleshooting, query reviews, research question refinement and project clinic.",
+    office: "Friday, 18 December — SQL troubleshooting, query reviews, research question refinement and project clinic.",
     project: "Analyze a selected blockchain’s activity and produce a documented SQL analysis with an initial set of findings.",
   },
   {
-    week: 2, dates: "9–13 November", title: "Excel, APIs & Multi-Platform Data Integration",
+    week: 2, dates: "16–20 November", title: "Excel, APIs & Multi-Platform Data Integration",
     focus: "Clean, combine and analyze market and onchain datasets in a reusable Excel workbook.",
     tools: ["Excel", "Power Query", "CoinGecko API", "Dune"],
     sessions: [
@@ -28,7 +28,7 @@ const weeks = [
     project: "Build an interactive Excel workbook combining CoinGecko market data with a selected onchain dataset, including cleaned data, calculated metrics, pivot tables and charts.",
   },
   {
-    week: 3, dates: "16–20 November", title: "DeFi Protocol Intelligence",
+    week: 3, dates: "23–27 November", title: "DeFi Protocol Intelligence",
     focus: "Compare protocols using TVL, trading volume, fees, revenue, liquidity and onchain activity.",
     tools: ["SQL", "DefiLlama", "Excel", "Dune"],
     sessions: [
@@ -39,7 +39,7 @@ const weeks = [
     project: "Compare three DeFi protocols in the same category. Submit an Excel dashboard and short research brief on growth trends, performance differences and potential risks.",
   },
   {
-    week: 4, dates: "23–27 November", title: "RWA & Tokenization Research",
+    week: 4, dates: "30 November – 4 December", title: "RWA & Tokenization Research",
     focus: "Investigate tokenized real-world assets with careful definitions, source checks and comparable metrics.",
     tools: ["RWA data sources", "Excel", "SQL", "AI research tools"],
     sessions: [
@@ -50,7 +50,7 @@ const weeks = [
     project: "Produce an RWA market intelligence workbook and research memo examining a selected tokenized asset category, its major issuers and market trends.",
   },
   {
-    week: 5, dates: "30 November – 4 December", title: "Perpetual Futures & Market Structure",
+    week: 5, dates: "7–11 December", title: "Perpetual Futures & Market Structure",
     focus: "Use derivatives metrics to understand market activity, positioning and changing conditions.",
     tools: ["SQL", "Excel", "Perpetual futures datasets"],
     sessions: [
@@ -61,7 +61,7 @@ const weeks = [
     project: "Analyze a selected perpetual futures venue or group of markets. Produce a dashboard and short report describing market structure, observed trends and analytical limitations.",
   },
   {
-    week: 6, dates: "7–11 December", title: "AI-Assisted Research, Capstone & Publication",
+    week: 6, dates: "14–18 December", title: "AI-Assisted Research, Capstone & Publication",
     focus: "Bring SQL, Excel and research narrative together in a reproducible, portfolio-ready deliverable.",
     tools: ["SQL", "Excel", "AI assistants", "Research documentation"],
     sessions: [
