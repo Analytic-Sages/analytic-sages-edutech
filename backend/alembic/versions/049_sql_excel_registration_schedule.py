@@ -25,7 +25,7 @@ def upgrade() -> None:
             registration_deadline = TIMESTAMPTZ '2026-10-07 22:59:59+00',
             starts_at = TIMESTAMPTZ '2026-11-09 00:00:00+00',
             ends_at = TIMESTAMPTZ '2026-12-18 23:59:59+00',
-            status = 'closed',
+            status = 'open',
             updated_at = now()
         WHERE slug = 'cohort-9-blockchain-data'
         """
