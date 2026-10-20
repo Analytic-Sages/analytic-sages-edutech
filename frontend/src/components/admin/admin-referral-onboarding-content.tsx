@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ApiError, getAllAdminReferralApplications, getAdminReferralPartners, getAdminReferralCohorts, getAdminReferralLinks, patchAdminReferralApplication, patchAdminReferralCohort, createAdminReferralCohort, patchAdminReferralLink, getAdminReferralProgramGuide, updateAdminReferralProgramGuide, getAdminReferralAudit, getReferralEligibleCourses, type ReferralPartnerApplication, type PartnerPublic, type ReferralCohort, type ReferralLink, type ReferralProgramGuide, type ReferralAuditRow } from "@/lib/api";
+import { ApiError, getAllAdminReferralApplications, getAllAdminReferralPartners, getAdminReferralCohorts, getAdminReferralLinks, patchAdminReferralApplication, patchAdminReferralCohort, createAdminReferralCohort, patchAdminReferralLink, getAdminReferralProgramGuide, updateAdminReferralProgramGuide, getAdminReferralAudit, getReferralEligibleCourses, type ReferralPartnerApplication, type PartnerPublic, type ReferralCohort, type ReferralLink, type ReferralProgramGuide, type ReferralAuditRow } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -158,7 +158,7 @@ export function AdminReferralOnboardingContent({ focusPartnerId }: { focusPartne
     // Keep the application queue independently visible if another admin widget fails.
     const [appsResult, partnersResult, cohortsResult, linksResult, guideResult, auditResult, coursesResult] = await Promise.allSettled([
       getAllAdminReferralApplications(),
-      getAdminReferralPartners(),
+      getAllAdminReferralPartners(),
       getAdminReferralCohorts(),
       getAdminReferralLinks(),
       getAdminReferralProgramGuide(),
