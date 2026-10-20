@@ -34,7 +34,7 @@ COHORT_SLUG = "cohort-9-blockchain-data"
 COURSE_SLUG = "sql-for-blockchain-analytics"
 
 # Cohort 1 is the live SQL & Excel for Blockchain Data Analytics and Research cohort.
-REGISTRATION_DEADLINE = datetime(2026, 10, 7, 22, 59, 59, tzinfo=timezone.utc)
+REGISTRATION_DEADLINE = datetime(2026, 11, 7, 22, 59, 59, tzinfo=timezone.utc)
 START_DATE = datetime(2026, 11, 9, 0, 0, 0, tzinfo=timezone.utc)
 END_DATE = datetime(2026, 12, 18, 23, 59, 59, tzinfo=timezone.utc)
 COHORT_PRICE = 50
