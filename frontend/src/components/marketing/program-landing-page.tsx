@@ -77,7 +77,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
 
   return (
     <div className="min-h-screen bg-background pb-24 text-foreground md:pb-0">
-      <div className="bg-[linear-gradient(115deg,#102b4b_0%,#102744_55%,#3b3040_100%)]">
+      <div className="bg-[linear-gradient(115deg,#102b4b_0%,#102744_55%,#3b3040_100%)] text-white">
       <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
         <div className="grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="text-center lg:text-left">
