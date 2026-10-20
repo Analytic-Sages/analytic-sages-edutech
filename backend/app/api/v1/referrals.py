@@ -481,8 +481,14 @@ def admin_referral_applications(
     service: ReferralOnboardingService = Depends(_onboarding),
     status_filter: str | None = Query(default=None, alias="status"),
     limit: int = Query(default=500, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
 ) -> list[ReferralPartnerApplicationPublic]:
-    return [ReferralPartnerApplicationPublic.model_validate(row) for row in service.list_applications(status_filter=status_filter, limit=limit)]
+    return [
+        ReferralPartnerApplicationPublic.model_validate(row)
+        for row in service.list_applications(
+            status_filter=status_filter, limit=limit, offset=offset
+        )
+    ]
 
 
 @router.patch("/admin/referrals/applications/{application_id}", response_model=ReferralPartnerApplicationPublic)

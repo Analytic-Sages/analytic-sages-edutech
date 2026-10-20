@@ -3489,10 +3489,23 @@ export function patchPartnerReferralLink(linkId: string, status: "inactive" | "r
   });
 }
 
-export function getAdminReferralApplications(status?: string, limit = 500) {
-  const params = new URLSearchParams({ limit: String(limit) });
+export function getAdminReferralApplications(status?: string, limit = 500, offset = 0) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
   if (status) params.set("status", status);
   return apiFetch<ReferralPartnerApplication[]>(`/api/v1/admin/referrals/applications?${params.toString()}`);
+}
+
+/** Load every page so the admin queue never silently stops at the API's 500-row limit. */
+export async function getAllAdminReferralApplications(status?: string) {
+  const pageSize = 500;
+  const all: ReferralPartnerApplication[] = [];
+  let offset = 0;
+  while (true) {
+    const page = await getAdminReferralApplications(status, pageSize, offset);
+    all.push(...page);
+    if (page.length < pageSize) return all;
+    offset += page.length;
+  }
 }
 
 export function patchAdminReferralApplication(applicationId: string, payload: {

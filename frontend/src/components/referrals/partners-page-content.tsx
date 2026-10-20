@@ -144,17 +144,17 @@ export function PartnersPageContent() {
 
   return (
     <div>
-      <section className="relative overflow-hidden border-b border-[#0B1F3A]/10 bg-gradient-to-br from-white via-[#F7F9FC] to-[#EEF3F9]">
+      <section className="relative overflow-hidden border-b border-border/60 bg-gradient-to-br from-white via-[#F7F9FC] to-[#EEF3F9] dark:from-background dark:via-card dark:to-background">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(241,90,36,0.08),transparent_45%),radial-gradient(ellipse_at_bottom_right,rgba(11,31,58,0.06),transparent_50%)]" />
         <div className="relative mx-auto grid max-w-6xl items-center gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-12 lg:py-20">
           <div className="max-w-xl">
             <p className="text-sm font-semibold uppercase tracking-wide text-brand-orange">Referral Partner Programme</p>
-            <h1 className="mt-3 font-[family-name:var(--font-display)] text-4xl font-semibold tracking-tight text-[#0B1F3A] sm:text-5xl">
+            <h1 className="mt-3 font-[family-name:var(--font-display)] text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">
               Connect People to Opportunities That Matter.
             </h1>
-            <p className="mt-4 text-lg text-[#0B1F3A]/80">Help more learners build practical skills and earn commission on eligible paid course and programme payments.</p>
-            <p className="mt-5 text-base leading-relaxed text-[#0B1F3A]/90">{guide?.program_overview || "Approved partners receive trackable course and campaign links. Applications are reviewed before activation."}</p>
-            <div className="mt-6 space-y-2 text-sm text-[#0B1F3A]/80">
+            <p className="mt-4 text-lg text-foreground/80">Help more learners build practical skills and earn commission on eligible paid course and programme payments.</p>
+            <p className="mt-5 text-base leading-relaxed text-foreground/90">{guide?.program_overview || "Approved partners receive trackable course and campaign links. Applications are reviewed before activation."}</p>
+            <div className="mt-6 space-y-2 text-sm text-foreground/80">
               <p>• One partner account can have multiple course and campaign links.</p>
               <p>• Applications are reviewed by the team; submission does not activate referral privileges.</p>
               <p>• Payouts remain subject to eligibility, minimum thresholds and admin approval.</p>
@@ -192,7 +192,7 @@ export function PartnersPageContent() {
         ) : (
           <section id="partner-apply" className="scroll-mt-24 space-y-5">
             <div>
-              <h2 className="text-2xl font-semibold text-[#0B1F3A]">Apply to become a Referral Partner</h2>
+              <h2 className="text-2xl font-semibold text-foreground">Apply to become a Referral Partner</h2>
               <p className="mt-2 text-sm text-muted-foreground">Tell us about your audience, the courses you can promote and how you would reach potential learners. A large audience is not required; relevant and engaged communities matter. Cohort 1 is designed for an initial group of 10 selected partners, but we may accept more than 10 applicants when additional candidates meet our selection criteria. Every application is reviewed on merit.</p>
               <p className="text-sm text-muted-foreground">If selected and onboarded, you will be added to the official Referral Partners group for updates, resources and coordination.</p>
             </div>

@@ -18,8 +18,7 @@ export function HomeCtaSection() {
               you&apos;ll be ready when they arrive.
             </p>
             <p className="mt-4 text-base font-medium text-white/90 sm:text-lg">
-              Blockchain Data Engineering is open for registration. SQL & Excel for Blockchain Data Analytics and Research
-              is now open for enrolment at $50 / ₦70,000 until 31 October. Each is its own programme.
+              Blockchain Data Engineering is open for registration. Registration for SQL & Excel for Blockchain Data Analytics and Research closed on 7 October 2026; classes start 9 November. Join the waitlist for the next intake. Each is its own programme.
             </p>
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <ButtonLink
