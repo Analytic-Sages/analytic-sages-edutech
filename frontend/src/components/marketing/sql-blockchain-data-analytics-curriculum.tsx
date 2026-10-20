@@ -83,6 +83,7 @@ export function SqlBlockchainDataAnalyticsCurriculum() {
           <h1 className="mt-3 font-heading text-4xl font-bold tracking-tight sm:text-5xl">SQL & Excel for Blockchain Data Analytics and Research</h1>
           <p className="mt-4 max-w-2xl text-lg text-white/80">A six-week practical learning journey from blockchain data queries to market intelligence, dashboards and publishable research.</p>
           <p className="mt-6 text-sm font-medium tracking-wide text-brand-orange">6 Modules · 6 Weeks · 12 Live Sessions + Weekly Office Hours · Learn by Building</p>
+          <p className="mt-2 text-sm text-white/80">Registration closed on 7 October 2026 · Classes start 9 November 2026 · Final week ends 18 December 2026.</p>
           <p className="mt-2 text-sm text-white/65">Project-Based Learning · SQL · Excel · Blockchain Data · AI-Assisted Research</p>
           <div className="mt-8 flex flex-wrap gap-3">
             <ButtonLink href="/programs/cohort-9-sql-blockchain-data-analytics" className="h-11 bg-brand-orange text-white hover:bg-brand-orange/90">Programme overview <ArrowRight className="ml-2 size-4" /></ButtonLink>
