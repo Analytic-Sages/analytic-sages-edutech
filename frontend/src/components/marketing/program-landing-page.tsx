@@ -38,12 +38,12 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
   const [deadlineCheckTime, setDeadlineCheckTime] = useState<number | null>(null);
 
   useEffect(() => {
-    // Defer the clock read to the next frame so React effects stay side-effect
-    // free with respect to synchronous state scheduling.
-    const frame = window.requestAnimationFrame(() => {
+    // Update from an asynchronous callback rather than synchronously scheduling
+    // a state change inside the effect.
+    const timer = window.setTimeout(() => {
       setDeadlineCheckTime(Date.now());
-    });
-    return () => window.cancelAnimationFrame(frame);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
