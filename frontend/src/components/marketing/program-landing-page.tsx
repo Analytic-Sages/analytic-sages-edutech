@@ -101,7 +101,9 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
                 {isComingSoon
                   ? "Cohort 1 · Classes start 9 November 2026 · $50 / ₦70,000 · Registration closed 7 October · Fully remote · Live sessions"
                   : [
-                      deadline ? `Registration closes: ${deadline}` : null,
+                      deadline
+                        ? `${isRegistrationClosed ? "Registration closed:" : "Registration closes:"} ${deadline}`
+                        : null,
                       startDate ? `Classes start: ${startDate}` : null,
                       "Fully remote",
                       "Live sessions",
@@ -289,12 +291,12 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
             <div className="rounded-xl border border-white/10 bg-[#111C2D] p-6 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-orange">Pay in Full</p>
               <CurrencyPrice amount={50} className="mt-2 font-heading text-3xl font-bold text-[#0B1F3A] dark:text-foreground" />
-              <p className="mt-2 text-sm text-muted-foreground">Single payment. Full programme access is secured at registration.</p>
+              <p className="mt-2 text-sm text-muted-foreground">{isRegistrationClosed ? "Tuition for the next intake; registration for this cohort has closed." : "Single payment. Full programme access is secured at registration."}</p>
             </div>
             <div className="rounded-xl border border-brand-orange/40 bg-[#17243A] p-6 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-orange">Flexible Payment</p>
               <CurrencyPrice amount={28} className="mt-2 font-heading text-3xl font-bold text-[#0B1F3A] dark:text-foreground" />
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Secure your seat with the initial payment, followed by <CurrencyPrice amount={28} showBasePrice={false} /> in Week 3.</p>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{isRegistrationClosed ? "Flexible payment may be offered for the next intake; join the waitlist for updates." : <>Secure your seat with the initial payment, followed by <CurrencyPrice amount={28} showBasePrice={false} /> in Week 3.</>}</p>
             </div>
           </div>
           <p className="mt-6 text-sm text-muted-foreground">{isRegistrationClosed ? "Registration is closed. Join the waitlist to be notified about the next intake." : "Select your preferred tuition option below to finalize registration. Seats are limited to ensure direct project reviews."}</p>
