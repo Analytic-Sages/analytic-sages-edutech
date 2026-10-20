@@ -28,8 +28,6 @@ export function AdminCourseCardsContent() {
 
   useEffect(() => {
     let cancelled = false;
-    setError(null);
-    setMessage(null);
     listAdminCourseCardPlacements()
       .then((rows) => {
         if (cancelled) return;
