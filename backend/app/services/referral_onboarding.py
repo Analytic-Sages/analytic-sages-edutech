@@ -164,13 +164,22 @@ class ReferralOnboardingService:
         self.db.refresh(application)
         return application
 
-    def list_applications(self, *, status_filter: str | None = None, limit: int = 500):
-        stmt = select(ReferralPartnerApplication).order_by(ReferralPartnerApplication.created_at.desc())
+    def list_applications(
+        self, *, status_filter: str | None = None, limit: int = 500, offset: int = 0
+    ):
+        stmt = select(ReferralPartnerApplication).order_by(
+            ReferralPartnerApplication.created_at.desc(),
+            ReferralPartnerApplication.id.desc(),
+        )
         if status_filter:
             if status_filter not in APPLICATION_STATUSES:
                 raise HTTPException(status_code=400, detail="Invalid application status.")
             stmt = stmt.where(ReferralPartnerApplication.status == status_filter)
-        return list(self.db.scalars(stmt.limit(min(max(limit, 1), 500))).all())
+        return list(
+            self.db.scalars(
+                stmt.offset(max(offset, 0)).limit(min(max(limit, 1), 500))
+            ).all()
+        )
 
     def patch_application(
         self, *, application_id: UUID, payload, actor: User
