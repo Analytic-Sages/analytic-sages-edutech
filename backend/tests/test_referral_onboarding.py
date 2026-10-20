@@ -114,6 +114,14 @@ def test_referral_application_rejects_duplicates_and_records_terms():
         assert application.telegram_id == "@referral_applicant"
         pending_after = ReferralDashboardService(db, get_settings()).admin_overview()["pending_applications"]
         assert pending_after == pending_before + 1
+
+        # The newest application is returned on the first page, and pagination
+        # advances without duplicating that application on the next page.
+        first_page = service.list_applications(limit=1, offset=0)
+        next_page = service.list_applications(limit=1, offset=1)
+        assert first_page and first_page[0].id == application.id
+        assert all(row.id != application.id for row in next_page)
+
         with pytest.raises(HTTPException) as exc:
             service.submit_application(payload=_application_payload(email), user=None)
         assert exc.value.status_code == 409
