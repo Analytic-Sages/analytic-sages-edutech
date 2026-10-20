@@ -108,7 +108,7 @@ function guardDocumentTitle() {
 function replyFor(question: string): Pick<ChatMessage, "text" | "links"> {
   if (question === SUGGESTIONS[0]) {
     return {
-      text: "We run instructor-led live cohorts and a self-paced catalog. Blockchain Data Engineering is open for registration. SQL & Excel for Blockchain Data Analytics and Research (Cohort 1) is open for enrolment at $50 / ₦70,000 until 31 October. Self-paced courses are visible now and launch when the player is ready.",
+      text: "We run instructor-led live cohorts and a self-paced catalog. Blockchain Data Engineering is open for registration. SQL & Excel for Blockchain Data Analytics and Research (Cohort 1) registration closed on 7 October 2026, and classes start 9 November 2026. Tuition is $50 / ₦70,000; learners can join the waitlist for the next intake. Self-paced courses are visible now and launch when the player is ready.",
       links: [
         { href: "/instructor-led", label: "Instructor-led programs" },
         { href: "/courses", label: "Self-paced catalog" },
