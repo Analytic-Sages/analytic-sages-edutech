@@ -50,14 +50,14 @@ const weeks = [
     project: "Produce an RWA market intelligence workbook and research memo examining a selected tokenized asset category, its major issuers and market trends.",
   },
   {
-    week: 5, dates: "7–18 December", title: "Perpetual Futures & Market Structure",
+    week: 5, dates: "7–11 December", title: "Perpetual Futures & Market Structure",
     focus: "Use derivatives metrics to understand market activity, positioning and changing conditions.",
     tools: ["SQL", "Excel", "Perpetual futures datasets"],
     sessions: [
       { date: "Monday, 7 December", title: "Session 9: Derivatives Data and Market Metrics", topics: ["Introduction to perpetual futures and funding rates", "Open interest, trading volume and liquidations", "Identify historical data sources and available datasets", "Analyze market activity and changes over time with SQL; AI query-validation lab"] },
       { date: "Wednesday, 9 December", title: "Session 10: Market Research Dashboards", topics: ["Excel-based funding rate and open-interest analysis", "Rolling averages, percentage changes and market comparisons", "Compare price movements with derivatives metrics", "Build a perpetual futures dashboard; use AI to challenge assumptions and structure a report"] },
     ],
-    office: "Friday, 18 December — derivatives data troubleshooting, dashboard and calculation reviews, capstone topic selection.",
+    office: "Friday, 11 December — derivatives data troubleshooting, dashboard and calculation reviews, capstone topic selection.",
     project: "Analyze a selected perpetual futures venue or group of markets. Produce a dashboard and short report describing market structure, observed trends and analytical limitations.",
   },
   {
