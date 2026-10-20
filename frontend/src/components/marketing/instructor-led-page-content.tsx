@@ -284,7 +284,7 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
   const waitlistHref = getProgramWaitlistHref(cohort.slug);
   const postcard = getProgramPostcard(cohort.slug);
   const program = getProgramPage(cohort.slug);
-  const isProgramRegistrationClosed = Boolean(program?.registrationClosed);
+  const isProgramRegistrationClosed = Boolean(program && (program.registrationClosed || (program.registrationDeadline && Date.now() > Date.parse(program.registrationDeadline))));
   const isProgramRegistrationLive = Boolean(program && !program.comingSoon && !isProgramRegistrationClosed);
   // Keep expired registration deadlines authoritative even if a stale cohort status says open.
   const waitlistOpen = isProgramRegistrationClosed || (isProgramRegistrationLive ? false : Boolean(cohort.waitlist_open));
@@ -342,7 +342,7 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
           <>
             {isProgramRegistrationLive ? (
               <p className="text-sm font-semibold leading-relaxed text-brand-orange">
-                Registration closes: 7 October 2026 · Classes start: 9 November 2026 · Fully remote · Live sessions
+                Registration closes: 31 October 2026 · Classes start: 2 November 2026 · Fully remote · Live sessions
               </p>
             ) : (
             <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
