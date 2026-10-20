@@ -18,7 +18,7 @@ export const MANAGED_COURSE_CARDS: ManagedCourseCard[] = [
     price: "$50",
     href: "/programs/cohort-9-sql-blockchain-data-analytics",
     image: "/SQL and Excel for Blockchain Analytics.png",
-    label: "Registration closed",
+    label: "Registration open",
   },
   {
     key: "blockchain-data-engineering",
