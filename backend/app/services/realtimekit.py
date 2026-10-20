@@ -104,6 +104,20 @@ class RealtimeKitService:
             "title": title,
             "record_on_start": self.settings.realtimekit_record_on_start,
             "persist_chat": True,
+            # Per-meeting settings override the RealtimeKit app defaults. H.264
+            # is broadly playable and 1080p gives screen-shared code/queries
+            # more detail than the provider's common 720p composite default.
+            "recording_config": {
+                "video_config": {
+                    "codec": self.settings.realtimekit_recording_video_codec,
+                    "width": self.settings.realtimekit_recording_video_width,
+                    "height": self.settings.realtimekit_recording_video_height,
+                },
+                "audio_config": {
+                    "codec": "AAC",
+                    "channel": "stereo",
+                },
+            },
         }
         try:
             with httpx.Client(timeout=30.0) as client:
@@ -365,22 +379,36 @@ class RealtimeKitService:
         return False
 
     def start_recording(self, *, meeting_id: str) -> bool:
-        """Explicitly start recording a meeting (idempotent best-effort)."""
+        """Start a meeting recording with the same quality profile as auto-recording.
+
+        RealtimeKit's documented API is POST /recordings with meeting_id in the
+        body (not a /meetings/{id}/recording/start sub-route). The normal classroom
+        path uses record_on_start; this method is available for explicit recovery
+        and must not be called alongside an active auto-recording.
+        """
         if not self.configured or not meeting_id or str(meeting_id).startswith("mock-"):
             return False
-        url = f"{self._meetings_url(meeting_id)}/recording/start"
+        payload = {
+            "meeting_id": str(meeting_id),
+            "video_config": {
+                "codec": self.settings.realtimekit_recording_video_codec,
+                "width": self.settings.realtimekit_recording_video_width,
+                "height": self.settings.realtimekit_recording_video_height,
+            },
+            "audio_config": {"codec": "AAC", "channel": "stereo"},
+        }
         try:
             with httpx.Client(timeout=30.0) as client:
                 response = client.post(
-                    url,
+                    self._recordings_url(),
                     headers=self._headers(),
-                    json={"allow_livestream": False, "allow_transcript": False},
+                    json=payload,
                 )
                 if response.status_code >= 400:
                     logger.error(
                         "RealtimeKit start_recording failed: %s %s",
                         response.status_code,
-                        response.text,
+                        response.text[:500],
                     )
                     return False
                 return True

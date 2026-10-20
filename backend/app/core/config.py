@@ -91,6 +91,11 @@ class Settings(BaseSettings):
     # can sync their recording URL automatically. Requires recording enabled on the
     # Cloudflare account.
     realtimekit_record_on_start: bool = True
+    # Recording output is configured per meeting so code/query text stays legible
+    # in archived composite recordings. Cloudflare caps each dimension at 1920px.
+    realtimekit_recording_video_width: int = Field(default=1920, ge=1, le=1920)
+    realtimekit_recording_video_height: int = Field(default=1080, ge=1, le=1920)
+    realtimekit_recording_video_codec: Literal["H264", "VP8", "VP9"] = "H264"
     # When a class passes ends_at (or is marked ended/cancelled), kick the live
     # room and stop the recording even if every browser has already disconnected.
     classroom_close_enabled: bool = True
