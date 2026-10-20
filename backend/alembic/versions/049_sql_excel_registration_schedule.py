@@ -1,7 +1,7 @@
 """Update SQL & Excel registration deadline and shift the six-week timetable.
 
 Revision ID: 049_sql_excel_registration_schedule
-Revises: 048_referral_partner_contact_fields
+Revises: 048_ref_partner_contacts
 Create Date: 2026-10-20
 """
 
