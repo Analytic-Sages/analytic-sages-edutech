@@ -1,6 +1,6 @@
 """Update SQL & Excel registration deadline and shift the six-week timetable.
 
-Revision ID: 049_sql_excel_registration_schedule
+Revision ID: 049_sql_excel_dates
 Revises: 048_ref_partner_contacts
 Create Date: 2026-10-20
 """
@@ -9,7 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 
-revision: str = "049_sql_excel_registration_schedule"
+revision: str = "049_sql_excel_dates"
 down_revision: Union[str, Sequence[str], None] = "048_ref_partner_contacts"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
