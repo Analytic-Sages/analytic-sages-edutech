@@ -235,7 +235,7 @@ export function InstructorDashboardContent() {
         </Table>
       </div>
 
-      <section className="mt-8">
+      <section id="assignments" className="mt-8 scroll-mt-6">
         <h2 className="mb-4 font-heading text-lg font-semibold">Assignments</h2>
         <InstructorAssignmentsPanel cohortId={selectedId} />
       </section>
