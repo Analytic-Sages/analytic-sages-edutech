@@ -284,7 +284,6 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
   const waitlistHref = getProgramWaitlistHref(cohort.slug);
   const postcard = getProgramPostcard(cohort.slug);
   const program = getProgramPage(cohort.slug);
-  const registrationDeadline = program?.registrationDeadline ?? cohort.registration_deadline ?? null;
   const isProgramRegistrationClosed = Boolean(program?.registrationClosed);
   const isProgramRegistrationLive = Boolean(program && !program.comingSoon && !isProgramRegistrationClosed);
   // Keep expired registration deadlines authoritative even if a stale cohort status says open.
