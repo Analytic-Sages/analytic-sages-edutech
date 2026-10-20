@@ -230,8 +230,31 @@
   .dark [class*="text-[#101A8A]"],
   .dark [class*="text-[#101a8a]"],
   .dark [class*="text-[#0F172A]"],
-  .dark [class*="text-[#0f172a]"] {
+  .dark [class*="text-[#0f172a]"],
+  .dark [class*="text-[#1E293B]"],
+  .dark [class*="text-[#1e293b]"],
+  .dark [class*="text-[#334155]"],
+  .dark [class*="text-[#475569]"],
+  .dark [class*="text-[#1F2937]"],
+  .dark [class*="text-[#1f2937]"],
+  .dark [class~="text-black"],
+  .dark [class~="text-gray-900"],
+  .dark [class~="text-gray-800"],
+  .dark [class~="text-slate-900"],
+  .dark [class~="text-slate-800"],
+  .dark [class~="text-zinc-900"],
+  .dark [class~="text-zinc-800"],
+  .dark [class~="text-neutral-900"],
+  .dark [class~="text-neutral-800"],
+  .dark [class~="text-stone-900"],
+  .dark [class~="text-stone-800"] {
     color: var(--foreground) !important;
+  }
+
+  /* Ensure standard semantic text remains legible when a component uses a
+     legacy hard-coded dark foreground instead of the theme tokens. */
+  .dark [class~="text-muted-foreground"] {
+    color: var(--muted-foreground);
   }
 
   /* Readable brand navy text/icons on dark backgrounds */
