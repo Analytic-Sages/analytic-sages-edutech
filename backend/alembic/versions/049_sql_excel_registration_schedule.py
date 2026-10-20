@@ -10,7 +10,7 @@ from typing import Sequence, Union
 from alembic import op
 
 revision: str = "049_sql_excel_registration_schedule"
-down_revision: Union[str, Sequence[str], None] = "048_referral_partner_contact_fields"
+down_revision: Union[str, Sequence[str], None] = "048_ref_partner_contacts"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
