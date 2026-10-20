@@ -196,6 +196,15 @@ def test_partner_application_requires_telegram_profile_handle():
         )
         assert submitted.status_code == 200
         assert submitted.json()["display_name"] == "Referral Applicant"
+
+        # Legacy /partners/apply sign-ups must be visible to administrators too,
+        # not only in the newer detailed-application review queue.
+        admin_partners = client.get(
+            "/api/v1/admin/referrals/partners?limit=500&offset=0",
+            headers=_auth(applicant),
+        )
+        assert admin_partners.status_code == 200
+        assert any(row["id"] == submitted.json()["id"] for row in admin_partners.json())
     finally:
         _cleanup_emails(email)
 
