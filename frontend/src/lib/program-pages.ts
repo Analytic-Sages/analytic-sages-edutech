@@ -77,10 +77,9 @@ const cohort9: ProgramPageContent = {
   format: "Instructor-led training, practical labs, weekly projects and office hours",
   duration: "6 weeks",
   timeCommitment: "5–8 hours per week · Mondays and Wednesdays training, Fridays office hours",
-  paymentOptions: "Registration closed on 7 October 2026. Classes start on 9 November 2026. Join the waitlist for the next intake. Tuition for this six-week programme is $50 / ₦70,000.",
-  registrationDeadline: "2026-10-07T22:59:59Z",
-  startDate: "2026-11-09T00:00:00Z",
-  registrationClosed: true,
+  paymentOptions: "Registration is open until 31 October 2026. Classes start on 2 November 2026. Tuition for this six-week programme is $50 / ₦70,000.",
+  registrationDeadline: "2026-10-31T22:59:59Z",
+  startDate: "2026-11-02T00:00:00Z",
   comingSoon: false,
   audienceFor: [
     "You want practical SQL, Excel and AI skills for Web3 research",
@@ -233,7 +232,7 @@ const cohort9: ProgramPageContent = {
     {
       question: "When does the programme start and what does it cost?",
       answer:
-        "The six-week programme runs from 9 November to 18 December 2026. Tuition is $50 / ₦70,000. Registration closed on 7 October 2026.",
+        "The six-week programme runs from 2 November to 11 December 2026. Tuition is $50 / ₦70,000. Registration closes on 31 October 2026.",
     },
     {
       question: "What do I need to start?",
