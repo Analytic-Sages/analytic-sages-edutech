@@ -17,7 +17,7 @@ import {
   ApiError,
   getAdminReferralConversions,
   getAdminReferralOverview,
-  getAdminReferralPartners,
+  getAllAdminReferralPartners,
   getAdminReferralPayouts,
   getAdminReferralReviewQueue,
   patchAdminReferralPartner,
@@ -46,7 +46,7 @@ export function AdminReferralsContent() {
     getAdminReferralOverview()
       .then(async (o) => {
         const [p, c, pay, r] = await Promise.all([
-          getAdminReferralPartners(),
+          getAllAdminReferralPartners(),
           getAdminReferralConversions(),
           getAdminReferralPayouts(),
           getAdminReferralReviewQueue(),
@@ -77,7 +77,7 @@ export function AdminReferralsContent() {
     try {
       const [o, p, c, pay, r] = await Promise.all([
         getAdminReferralOverview(),
-        getAdminReferralPartners(),
+        getAllAdminReferralPartners(),
         getAdminReferralConversions(),
         getAdminReferralPayouts(),
         getAdminReferralReviewQueue(),

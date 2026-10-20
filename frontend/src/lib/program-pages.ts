@@ -77,7 +77,7 @@ const cohort9: ProgramPageContent = {
   format: "Instructor-led training, practical labs, weekly projects and office hours",
   duration: "6 weeks",
   timeCommitment: "5–8 hours per week · Mondays and Wednesdays training, Fridays office hours",
-  paymentOptions: "Registration closed on 7 October 2026. Join the waitlist for the next intake. Tuition for this six-week programme is $50 / ₦70,000.",
+  paymentOptions: "Registration closed on 7 October 2026. Classes start on 9 November 2026. Join the waitlist for the next intake. Tuition for this six-week programme is $50 / ₦70,000.",
   registrationDeadline: "2026-10-07T22:59:59Z",
   startDate: "2026-11-09T00:00:00Z",
   registrationClosed: true,

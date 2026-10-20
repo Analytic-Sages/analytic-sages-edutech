@@ -680,8 +680,15 @@ def admin_list_partners(
     _: User = Depends(require_admin),
     partners: ReferralPartnerService = Depends(_partners),
     status_filter: ReferralPartnerStatus | None = Query(default=None, alias="status"),
+    limit: int = Query(default=500, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
 ) -> list[PartnerPublic]:
-    return [PartnerPublic.model_validate(p) for p in partners.list_partners(status_filter=status_filter)]
+    return [
+        PartnerPublic.model_validate(partner)
+        for partner in partners.list_partners(
+            status_filter=status_filter, limit=limit, offset=offset
+        )
+    ]
 
 
 @router.patch("/admin/referrals/partners/{partner_id}", response_model=PartnerPublic)

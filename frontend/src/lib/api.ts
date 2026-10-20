@@ -3365,9 +3365,23 @@ export function getAdminReferralOverview() {
   return apiFetch<AdminReferralOverview>("/api/v1/admin/referrals/overview");
 }
 
-export function getAdminReferralPartners(status?: string) {
-  const q = status ? `?status=${encodeURIComponent(status)}` : "";
-  return apiFetch<PartnerPublic[]>(`/api/v1/admin/referrals/partners${q}`);
+export function getAdminReferralPartners(status?: string, limit = 500, offset = 0) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  if (status) params.set("status", status);
+  return apiFetch<PartnerPublic[]>(`/api/v1/admin/referrals/partners?${params.toString()}`);
+}
+
+/** Fetch every partner profile, not just the API's first page. */
+export async function getAllAdminReferralPartners(status?: string) {
+  const pageSize = 500;
+  const all: PartnerPublic[] = [];
+  let offset = 0;
+  while (true) {
+    const page = await getAdminReferralPartners(status, pageSize, offset);
+    all.push(...page);
+    if (page.length < pageSize) return all;
+    offset += page.length;
+  }
 }
 
 export function patchAdminReferralPartner(
