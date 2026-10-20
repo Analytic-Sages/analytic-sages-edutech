@@ -58,7 +58,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
   const checkoutHref = `/checkout/cohort/${program.cohortSlug}`;
   const waitlistHref = `/waitlist/${program.pageSlug}`;
   const isComingSoon = Boolean(program.comingSoon);
-  const isRegistrationClosed = !isComingSoon && Boolean(program.registrationClosed);
+  const isRegistrationClosed = !isComingSoon && (Boolean(program.registrationClosed) || Boolean(program.registrationDeadline && Date.now() > Date.parse(program.registrationDeadline)));
   const primaryHref = isComingSoon ? "/contact" : isRegistrationClosed ? waitlistHref : checkoutHref;
   const primaryLabel = isComingSoon ? "Get notified" : isRegistrationClosed ? "Join waitlist" : "Register now";
   const priceLabel = cohort && cohort.price > 0 ? `${cohort.price}` : null;
@@ -72,7 +72,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
     ["Format", program.format],
     ["Time Commitment", program.timeCommitment],
     ["Price", !isComingSoon ? <CurrencyPrice amount={50} showBasePrice={false} /> : null],
-    ["Payment", isRegistrationClosed ? "Registration closed on 7 October 2026. Join the waitlist for the next intake." : program.paymentOptions],
+    ["Payment", isRegistrationClosed ? "Registration closes on 31 October 2026. Register now." : program.paymentOptions],
   ];
 
   return (
@@ -113,8 +113,8 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
             )}
             <div className="mt-8 max-w-md rounded-lg border border-white/15 bg-white/5 px-4 py-4 backdrop-blur-sm">
               <CurrencyPrice amount={50} className="font-heading text-3xl font-bold tracking-tight text-white sm:text-4xl" tone="inverse" />
-              <div className="mt-3 flex flex-col gap-2 rounded-lg border border-brand-orange/30 bg-brand-orange/10 p-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-semibold text-white">Convert tuition to your currency</p><p className="text-xs text-white/65">Choose the currency you want to see across the course page.</p></div><CurrencySelector /></div><p className="mt-3 text-sm font-medium text-brand-orange">{isRegistrationClosed ? "Registration closed on 7 October 2026" : "Registration is open"}</p>
-              <p className="mt-2 text-sm leading-relaxed text-white/80">{isRegistrationClosed ? "The next class starts 9 November 2026. Join the waitlist to hear about the next intake." : <>Pay in full, or secure your seat with <CurrencyPrice amount={28} className="font-semibold text-white" tone="inverse" showBasePrice={false} /> now and complete the final <CurrencyPrice amount={28} className="font-semibold text-white" tone="inverse" showBasePrice={false} /> payment in Week 3.</>}</p>
+              <div className="mt-3 flex flex-col gap-2 rounded-lg border border-brand-orange/30 bg-brand-orange/10 p-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-semibold text-white">Convert tuition to your currency</p><p className="text-xs text-white/65">Choose the currency you want to see across the course page.</p></div><CurrencySelector /></div><p className="mt-3 text-sm font-medium text-brand-orange">{isRegistrationClosed ? "Registration closes on 31 October 2026" : "Registration is open"}</p>
+              <p className="mt-2 text-sm leading-relaxed text-white/80">{isRegistrationClosed ? "Classes start 2 November 2026. Register before 31 October to secure your seat." : <>Pay in full, or secure your seat with <CurrencyPrice amount={28} className="font-semibold text-white" tone="inverse" showBasePrice={false} /> now and complete the final <CurrencyPrice amount={28} className="font-semibold text-white" tone="inverse" showBasePrice={false} /> payment in Week 3.</>}</p>
             </div>
             <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row lg:justify-start">
               <ButtonLink
@@ -285,20 +285,20 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
       <section id="pricing" className="scroll-mt-24 border-t border-border/70 bg-muted">
         <div className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6 sm:py-20">
           <h2 className="font-heading text-3xl font-bold sm:text-4xl">Tuition & Payment Options</h2>
-          <p className="mt-3 text-muted-foreground">{isRegistrationClosed ? "Registration closed on 7 October 2026. Join the waitlist for the next intake." : "Choose the payment option that works best for you."}</p>
+          <p className="mt-3 text-muted-foreground">{isRegistrationClosed ? "Registration closes on 31 October 2026. Register now." : "Choose the payment option that works best for you."}</p>
           <div className="mt-10 grid gap-4 text-left sm:grid-cols-2">
             <div className="rounded-xl border border-border/70 bg-card p-6 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-orange">Pay in Full</p>
               <CurrencyPrice amount={50} className="mt-2 font-heading text-3xl font-bold text-foreground" />
-              <p className="mt-2 text-sm text-muted-foreground">{isRegistrationClosed ? "Tuition for the next intake; registration for this cohort has closed." : "Single payment. Full programme access is secured at registration."}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{isRegistrationClosed ? "Tuition for the current cohort; registration is open until 31 October." : "Single payment. Full programme access is secured at registration."}</p>
             </div>
             <div className="rounded-xl border border-brand-orange/40 bg-secondary p-6 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-orange">Flexible Payment</p>
               <CurrencyPrice amount={28} className="mt-2 font-heading text-3xl font-bold text-foreground" />
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{isRegistrationClosed ? "Flexible payment may be offered for the next intake; join the waitlist for updates." : <>Secure your seat with the initial payment, followed by <CurrencyPrice amount={28} showBasePrice={false} /> in Week 3.</>}</p>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{isRegistrationClosed ? "Secure your seat with the first payment; complete the second payment in Week 3." : <>Secure your seat with the initial payment, followed by <CurrencyPrice amount={28} showBasePrice={false} /> in Week 3.</>}</p>
             </div>
           </div>
-          <p className="mt-6 text-sm text-muted-foreground">{isRegistrationClosed ? "Registration is closed. Join the waitlist to be notified about the next intake." : "Select your preferred tuition option below to finalize registration. Seats are limited to ensure direct project reviews."}</p>
+          <p className="mt-6 text-sm text-muted-foreground">{isRegistrationClosed ? "Registration is open until 31 October 2026. Seats are limited to ensure direct project reviews." : "Select your preferred tuition option below to finalize registration. Seats are limited to ensure direct project reviews."}</p>
           <ButtonLink href={primaryHref} size="lg" className="mt-7 h-12 rounded-full bg-brand-orange px-10 text-base text-white hover:bg-brand-orange/90">
             {primaryLabel} <ArrowRight className="ml-2 size-4" />
           </ButtonLink>
