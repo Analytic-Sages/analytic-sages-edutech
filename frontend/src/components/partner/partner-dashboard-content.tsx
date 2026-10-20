@@ -203,7 +203,7 @@ export function PartnerDashboardContent() {
         ].map(([label, value]) => (
           <div key={label} className="border-b border-border/60 pb-3">
             <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
-            <p className="mt-1 text-xl font-semibold text-[#0B1F3A]">{value}</p>
+            <p className="mt-1 text-xl font-semibold text-foreground">{value}</p>
           </div>
         ))}
       </div>
