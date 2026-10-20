@@ -58,13 +58,13 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
   const checkoutHref = `/checkout/cohort/${program.cohortSlug}`;
   const waitlistHref = `/waitlist/${program.pageSlug}`;
   const isComingSoon = Boolean(program.comingSoon);
-  const registrationDeadlineIso = cohort?.registration_deadline ?? program.registrationDeadline;
+  const registrationDeadlineIso = program.registrationDeadline ?? cohort?.registration_deadline;
   const isRegistrationClosed = !isComingSoon && Boolean(registrationDeadlineIso && Date.parse(registrationDeadlineIso) < Date.now());
   const primaryHref = isComingSoon ? "/contact" : isRegistrationClosed ? waitlistHref : checkoutHref;
   const primaryLabel = isComingSoon ? "Get notified" : isRegistrationClosed ? "Join waitlist" : "Register now";
   const priceLabel = cohort && cohort.price > 0 ? `${cohort.price}` : null;
-  const startDate = formatDate(cohort?.starts_at ?? program.startDate ?? null);
-  const deadline = formatDate(cohort?.registration_deadline ?? program.registrationDeadline ?? null);
+  const startDate = formatDate(program.startDate ?? cohort?.starts_at ?? null);
+  const deadline = formatDate(program.registrationDeadline ?? cohort?.registration_deadline ?? null);
 
   const details: [string, ReactNode][] = [
     ["Duration", program.duration],
