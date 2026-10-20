@@ -223,6 +223,17 @@
     opacity: 1;
   }
 
+  /* Safety net for legacy hard-coded dark text classes in dark mode. Prefer semantic
+     text-foreground/text-muted-foreground utilities in new components. */
+  .dark [class*="text-[#0B1F3A]"],
+  .dark [class*="text-[#0b1f3a]"],
+  .dark [class*="text-[#101A8A]"],
+  .dark [class*="text-[#101a8a]"],
+  .dark [class*="text-[#0F172A]"],
+  .dark [class*="text-[#0f172a]"] {
+    color: var(--foreground) !important;
+  }
+
   /* Readable brand navy text/icons on dark backgrounds */
   .text-brand-navy {
     color: var(--brand-navy-text);
