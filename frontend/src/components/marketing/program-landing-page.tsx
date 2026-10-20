@@ -285,7 +285,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
       <section id="pricing" className="scroll-mt-24 border-t border-border/70 bg-muted">
         <div className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6 sm:py-20">
           <h2 className="font-heading text-3xl font-bold sm:text-4xl">Tuition & Payment Options</h2>
-          <p className="mt-3 text-muted-foreground">{isRegistrationClosed ? "Registration closes on 31 October 2026. Register now." : "Choose the payment option that works best for you."}</p>
+          <p className="mt-3 text-muted-foreground">{isRegistrationClosed ? "Registration closed on 31 October 2026. Join the waitlist for the next intake." : "Choose the payment option that works best for you."}</p>
           <div className="mt-10 grid gap-4 text-left sm:grid-cols-2">
             <div className="rounded-xl border border-border/70 bg-card p-6 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-orange">Pay in Full</p>
