@@ -59,7 +59,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
   const waitlistHref = `/waitlist/${program.pageSlug}`;
   const isComingSoon = Boolean(program.comingSoon);
   const registrationDeadlineIso = program.registrationDeadline ?? cohort?.registration_deadline;
-  const isRegistrationClosed = !isComingSoon && Boolean(registrationDeadlineIso && Date.parse(registrationDeadlineIso) < Date.now());
+  const isRegistrationClosed = !isComingSoon && Boolean(program.registrationClosed);
   const primaryHref = isComingSoon ? "/contact" : isRegistrationClosed ? waitlistHref : checkoutHref;
   const primaryLabel = isComingSoon ? "Get notified" : isRegistrationClosed ? "Join waitlist" : "Register now";
   const priceLabel = cohort && cohort.price > 0 ? `${cohort.price}` : null;
