@@ -284,10 +284,11 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
   const waitlistHref = getProgramWaitlistHref(cohort.slug);
   const postcard = getProgramPostcard(cohort.slug);
   const program = getProgramPage(cohort.slug);
-  const isProgramRegistrationLive = Boolean(program && !program.comingSoon);
-  // The public program page is authoritative for this course launch; do not let a stale
-  // cohort-level waitlist flag hide its live registration CTA.
-  const waitlistOpen = isProgramRegistrationLive ? false : Boolean(cohort.waitlist_open);
+  const registrationDeadline = cohort.registration_deadline ?? program?.registrationDeadline ?? null;
+  const isProgramRegistrationClosed = Boolean(program && registrationDeadline && Date.parse(registrationDeadline) < Date.now());
+  const isProgramRegistrationLive = Boolean(program && !program.comingSoon && !isProgramRegistrationClosed);
+  // Keep expired registration deadlines authoritative even if a stale cohort status says open.
+  const waitlistOpen = isProgramRegistrationClosed || (isProgramRegistrationLive ? false : Boolean(cohort.waitlist_open));
   const engineering = getEngineeringProgramPage(cohort.slug);
   const displayName = program?.headline ?? cohort.name;
 
@@ -307,7 +308,7 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-md bg-brand-orange/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-brand-orange">
-            {waitlistOpen ? "Waitlist open" : "Open for registration"}
+            {isProgramRegistrationClosed ? "Registration closed" : waitlistOpen ? "Waitlist open" : "Open for registration"}
           </span>
           {isLive && !waitlistOpen && (
             <span className="inline-flex items-center gap-1.5 rounded-md bg-red-500/15 px-2 py-0.5 text-xs font-semibold uppercase text-red-600 dark:text-red-300">
@@ -342,7 +343,7 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
           <>
             {isProgramRegistrationLive ? (
               <p className="text-sm font-semibold leading-relaxed text-brand-orange">
-                Registration closes: 31 October 2026 · Classes start: 2 November 2026 · Fully remote · Live sessions
+                Registration closed: 7 October 2026 · Classes start: 9 November 2026 · Fully remote · Live sessions
               </p>
             ) : (
             <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
