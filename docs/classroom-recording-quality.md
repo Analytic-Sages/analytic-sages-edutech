@@ -14,6 +14,30 @@ Set these in the backend hosting environment (for example, Render), then redeplo
 
 The explicit recording helper also uses the documented POST /accounts/{account_id}/realtime/kit/{app_id}/recordings endpoint and sends the same video/audio profile. Normal classroom meetings continue to use automatic recording, so do not call the explicit helper in parallel with an active recording.
 
+## Content-first layout (custom recording app)
+
+The repository now includes a separate RealtimeKit recording renderer in `recording-app/`. It deliberately does not render the meeting UI:
+
+- While a screen is shared, the shared content fills the complete 16:9 recording frame; chat, participant gallery, controls, and browser meeting chrome are not rendered.
+- When screen sharing stops, the renderer falls back to the active/pinned speaker, then a participant video. If no one has joined yet, it displays a neutral waiting screen.
+- It preserves participant audio and keeps the 1920×1080 H.264 / AAC stereo recording profile.
+- When `REALTIMEKIT_RECORDING_APP_URL` is configured in the backend, default automatic recording is disabled for new meetings. The backend starts the custom recorder when an instructor/staff member joins, rather than starting an empty recording when the first student arrives.
+
+### Deploy and activate the custom renderer
+
+1. Deploy the standalone app from `recording-app/` to Cloudflare Workers/Static Assets:
+   ```bash
+   cd recording-app
+   npm install
+   npx wrangler login
+   npm run deploy
+   ```
+2. Use the resulting public HTTPS URL as `REALTIMEKIT_RECORDING_APP_URL` in the **backend** hosting environment (Render), with no `authToken` or `config` query string. Redeploy the backend after setting it.
+3. Confirm the RealtimeKit app has a `recorder_preset_v2` preset with `is_recorder=true` and `hidden_participant=true`; do not remove `is_recorder`.
+4. Run a short instructor-led test class. Share a full screen, stop sharing, then resume sharing. Verify the recording switches automatically between screen content and instructor view, and check audio sync and 1920×1080 output before using it for a real class.
+
+Until the custom app is deployed and its URL is configured on the backend, the existing default RealtimeKit recording behavior remains active. The code change alone does not deploy the renderer or activate the URL.
+
 ## Cloudflare dashboard checks still required
 
 1. Open **Cloudflare Dashboard → RealtimeKit → your application**.

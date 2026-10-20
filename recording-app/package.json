@@ -1,0 +1,27 @@
+{
+  "name": "analytic-sages-content-first-recorder",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "deploy": "npm run build && wrangler deploy"
+  },
+  "dependencies": {
+    "@cloudflare/realtimekit": "^2.0.1",
+    "@cloudflare/realtimekit-react": "^2.0.1",
+    "@cloudflare/realtimekit-react-ui": "^2.0.1",
+    "@cloudflare/realtimekit-recording-sdk": "0.0.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.0",
+    "wrangler": "^4.0.0"
+  }
+}

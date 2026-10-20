@@ -540,6 +540,24 @@ class ClassroomService:
                 detail=str(exc),
             ) from exc
 
+        # Start the custom content-first recorder only when instructional staff
+        # enter the room. Students joining first must not trigger a recording that
+        # begins on an empty classroom, and repeated staff joins are idempotent.
+        instructional_staff = staff or (
+            member is not None
+            and member.role in {CohortMemberRole.INSTRUCTOR, CohortMemberRole.TA}
+        )
+        if (
+            instructional_staff
+            and self.realtimekit.configured
+            and self.settings.realtimekit_recording_app_url
+        ):
+            if not self.realtimekit.start_recording(meeting_id=meeting_id):
+                logger.error(
+                    "Could not start content-first recording for classroom session %s",
+                    session.id,
+                )
+
         return ClassroomJoinResponse(
             session_id=session.id,
             mode=self.realtimekit.mode,  # type: ignore[arg-type]

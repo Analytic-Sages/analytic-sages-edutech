@@ -284,7 +284,24 @@ function CohortCard({ cohort }: { cohort: PublicCohortCard }) {
   const waitlistHref = getProgramWaitlistHref(cohort.slug);
   const postcard = getProgramPostcard(cohort.slug);
   const program = getProgramPage(cohort.slug);
-  const isProgramRegistrationClosed = Boolean(program && (program.registrationClosed || (program.registrationDeadline && Date.now() > Date.parse(program.registrationDeadline))));
+  const [deadlineCheckTime, setDeadlineCheckTime] = useState<number | null>(null);
+
+  useEffect(() => {
+    // Update the timestamp from an asynchronous browser callback, keeping React
+    // render and effect execution free of synchronous setState calls.
+    const timer = window.setTimeout(() => {
+      setDeadlineCheckTime(Date.now());
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const isProgramRegistrationClosed = Boolean(
+    program &&
+      (program.registrationClosed ||
+        (deadlineCheckTime !== null &&
+          program.registrationDeadline &&
+          deadlineCheckTime > Date.parse(program.registrationDeadline))),
+  );
   const isProgramRegistrationLive = Boolean(program && !program.comingSoon && !isProgramRegistrationClosed);
   // Keep expired registration deadlines authoritative even if a stale cohort status says open.
   const waitlistOpen = isProgramRegistrationClosed || (isProgramRegistrationLive ? false : Boolean(cohort.waitlist_open));

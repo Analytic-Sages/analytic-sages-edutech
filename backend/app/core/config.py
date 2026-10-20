@@ -91,6 +91,10 @@ class Settings(BaseSettings):
     # can sync their recording URL automatically. Requires recording enabled on the
     # Cloudflare account.
     realtimekit_record_on_start: bool = True
+    # Public URL of the content-first custom recording app. When configured, the
+    # service starts that recorder explicitly for instructor joins instead of using
+    # RealtimeKit's default full-meeting-grid recorder.
+    realtimekit_recording_app_url: str | None = None
     # Recording output is configured per meeting so code/query text stays legible
     # in archived composite recordings. Cloudflare caps each dimension at 1920px.
     realtimekit_recording_video_width: int = Field(default=1920, ge=1, le=1920)

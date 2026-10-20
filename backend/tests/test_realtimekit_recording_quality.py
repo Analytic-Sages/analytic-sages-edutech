@@ -28,8 +28,14 @@ class FakeClient:
         return None
 
     def post(self, url: str, *, headers: dict, json: dict) -> FakeResponse:
-        self.calls.append({"url": url, "headers": headers, "json": json})
+        self.calls.append({"method": "POST", "url": url, "headers": headers, "json": json})
         return FakeResponse()
+
+    def get(self, url: str, *, headers: dict, params: dict | None = None) -> FakeResponse:
+        self.calls.append({"method": "GET", "url": url, "headers": headers, "params": params})
+        response = FakeResponse()
+        response.json = lambda: {"success": True, "data": {"recordings": []}}
+        return response
 
 
 def configured_settings(monkeypatch):
@@ -38,6 +44,7 @@ def configured_settings(monkeypatch):
     monkeypatch.setattr(settings, "cloudflare_api_token", "token-test")
     monkeypatch.setattr(settings, "realtimekit_app_id", "app-test")
     monkeypatch.setattr(settings, "realtimekit_record_on_start", True)
+    monkeypatch.setattr(settings, "realtimekit_recording_app_url", None)
     monkeypatch.setattr(settings, "realtimekit_recording_video_width", 1920)
     monkeypatch.setattr(settings, "realtimekit_recording_video_height", 1080)
     monkeypatch.setattr(settings, "realtimekit_recording_video_codec", "H264")
@@ -74,8 +81,7 @@ def test_explicit_recording_uses_documented_recordings_endpoint(monkeypatch) -> 
 
     assert RealtimeKitService(settings).start_recording(meeting_id="meeting-123") is True
 
-    assert len(fake_client.calls) == 1
-    call = fake_client.calls[0]
+    call = next(call for call in fake_client.calls if call.get("method") == "POST")
     assert call["url"].endswith("/realtime/kit/app-test/recordings")
     assert call["json"]["meeting_id"] == "meeting-123"
     assert call["json"]["video_config"] == {
@@ -83,3 +89,30 @@ def test_explicit_recording_uses_documented_recordings_endpoint(monkeypatch) -> 
         "width": 1920,
         "height": 1080,
     }
+
+
+def test_custom_recording_url_is_sent_to_realtimekit(monkeypatch) -> None:
+    settings = configured_settings(monkeypatch)
+    fake_client = FakeClient(timeout=30.0)
+    monkeypatch.setattr(realtimekit_module.httpx, "Client", lambda **kwargs: fake_client)
+
+    assert RealtimeKitService(settings).start_recording(
+        meeting_id="meeting-123",
+        recording_url="https://recorder.example.workers.dev",
+    ) is True
+
+    call = next(call for call in fake_client.calls if call.get("method") == "POST")
+    assert call["json"]["url"] == "https://recorder.example.workers.dev"
+    assert call["json"]["video_config"] == {"codec": "H264", "width": 1920, "height": 1080}
+
+
+def test_custom_recorder_disables_default_auto_recording(monkeypatch) -> None:
+    settings = configured_settings(monkeypatch)
+    settings.realtimekit_recording_app_url = "https://recorder.example.workers.dev"
+    fake_client = FakeClient(timeout=30.0)
+    monkeypatch.setattr(realtimekit_module.httpx, "Client", lambda **kwargs: fake_client)
+
+    RealtimeKitService(settings).create_meeting(title="SQL Workshop")
+
+    call = next(call for call in fake_client.calls if call.get("method") == "POST")
+    assert call["json"]["record_on_start"] is False

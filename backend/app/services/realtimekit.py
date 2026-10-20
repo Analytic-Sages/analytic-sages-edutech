@@ -102,7 +102,10 @@ class RealtimeKitService:
 
         payload = {
             "title": title,
-            "record_on_start": self.settings.realtimekit_record_on_start,
+            "record_on_start": (
+                self.settings.realtimekit_record_on_start
+                and not self.settings.realtimekit_recording_app_url
+            ),
             "persist_chat": True,
             # Per-meeting settings override the RealtimeKit app defaults. H.264
             # is broadly playable and 1080p gives screen-shared code/queries
@@ -378,7 +381,7 @@ class RealtimeKitService:
         )
         return False
 
-    def start_recording(self, *, meeting_id: str) -> bool:
+    def start_recording(self, *, meeting_id: str, recording_url: str | None = None) -> bool:
         """Start a meeting recording with the same quality profile as auto-recording.
 
         RealtimeKit's documented API is POST /recordings with meeting_id in the
@@ -388,6 +391,15 @@ class RealtimeKitService:
         """
         if not self.configured or not meeting_id or str(meeting_id).startswith("mock-"):
             return False
+        # Repeated staff joins must not create duplicate recordings. RealtimeKit
+        # allows only one active composite recording per meeting by default.
+        try:
+            active = self.list_recordings(meeting_id=meeting_id)
+            if any(str(item.get("status") or "").upper() in OPEN_RECORDING_STATUSES for item in active):
+                return True
+        except Exception:
+            logger.warning("Could not check active RealtimeKit recordings for %s", meeting_id)
+
         payload = {
             "meeting_id": str(meeting_id),
             "video_config": {
@@ -397,6 +409,9 @@ class RealtimeKitService:
             },
             "audio_config": {"codec": "AAC", "channel": "stereo"},
         }
+        custom_url = recording_url or self.settings.realtimekit_recording_app_url
+        if custom_url:
+            payload["url"] = custom_url
         try:
             with httpx.Client(timeout=30.0) as client:
                 response = client.post(
