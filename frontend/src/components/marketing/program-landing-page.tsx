@@ -56,12 +56,15 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
   }, [program.cohortSlug]);
 
   const checkoutHref = `/checkout/cohort/${program.cohortSlug}`;
+  const waitlistHref = `/waitlist/${program.pageSlug}`;
   const isComingSoon = Boolean(program.comingSoon);
-  const primaryHref = isComingSoon ? "/contact" : checkoutHref;
-  const primaryLabel = isComingSoon ? "Get notified" : "Register now";
+  const registrationDeadlineIso = cohort?.registration_deadline ?? program.registrationDeadline;
+  const isRegistrationClosed = !isComingSoon && Boolean(registrationDeadlineIso && Date.parse(registrationDeadlineIso) < Date.now());
+  const primaryHref = isComingSoon ? "/contact" : isRegistrationClosed ? waitlistHref : checkoutHref;
+  const primaryLabel = isComingSoon ? "Get notified" : isRegistrationClosed ? "Join waitlist" : "Register now";
   const priceLabel = cohort && cohort.price > 0 ? `${cohort.price}` : null;
-  const startDate = formatDate(cohort?.starts_at ?? null);
-  const deadline = formatDate(cohort?.registration_deadline ?? null);
+  const startDate = formatDate(cohort?.starts_at ?? program.startDate ?? null);
+  const deadline = formatDate(cohort?.registration_deadline ?? program.registrationDeadline ?? null);
 
   const details: [string, ReactNode][] = [
     ["Duration", program.duration],
@@ -70,7 +73,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
     ["Format", program.format],
     ["Time Commitment", program.timeCommitment],
     ["Price", !isComingSoon ? <CurrencyPrice amount={50} showBasePrice={false} /> : null],
-    ["Payment", program.paymentOptions],
+    ["Payment", isRegistrationClosed ? "Registration closed on 7 October 2026. Join the waitlist for the next intake." : program.paymentOptions],
   ];
 
   return (
@@ -96,7 +99,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
             ) : (
               <p className="mt-6 text-sm text-white/65 sm:text-base">
                 {isComingSoon
-                  ? "Cohort 1 · Starts 2 November 2026 · $50 / ₦70,000 · Registration closes 31 October · Fully remote · Live sessions"
+                  ? "Cohort 1 · Classes start 9 November 2026 · $50 / ₦70,000 · Registration closed 7 October · Fully remote · Live sessions"
                   : [
                       deadline ? `Registration closes: ${deadline}` : null,
                       startDate ? `Classes start: ${startDate}` : null,
@@ -109,8 +112,8 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
             )}
             <div className="mt-8 max-w-md rounded-lg border border-white/15 bg-white/5 px-4 py-4 backdrop-blur-sm">
               <CurrencyPrice amount={50} className="font-heading text-3xl font-bold tracking-tight text-white sm:text-4xl" tone="inverse" />
-              <div className="mt-3 flex flex-col gap-2 rounded-lg border border-brand-orange/30 bg-brand-orange/10 p-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-semibold text-white">Convert tuition to your currency</p><p className="text-xs text-white/65">Choose the currency you want to see across the course page.</p></div><CurrencySelector /></div><p className="mt-3 text-sm font-medium text-brand-orange">Registration is LIVE</p>
-              <p className="mt-2 text-sm leading-relaxed text-white/80">Pay in full, or secure your seat with <CurrencyPrice amount={28} className="font-semibold text-white" tone="inverse" showBasePrice={false} /> now and complete the final <CurrencyPrice amount={28} className="font-semibold text-white" tone="inverse" showBasePrice={false} /> payment in Week 3.</p>
+              <div className="mt-3 flex flex-col gap-2 rounded-lg border border-brand-orange/30 bg-brand-orange/10 p-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-semibold text-white">Convert tuition to your currency</p><p className="text-xs text-white/65">Choose the currency you want to see across the course page.</p></div><CurrencySelector /></div><p className="mt-3 text-sm font-medium text-brand-orange">{isRegistrationClosed ? "Registration closed on 7 October 2026" : "Registration is open"}</p>
+              <p className="mt-2 text-sm leading-relaxed text-white/80">{isRegistrationClosed ? "The next class starts 9 November 2026. Join the waitlist to hear about the next intake." : <>Pay in full, or secure your seat with <CurrencyPrice amount={28} className="font-semibold text-white" tone="inverse" showBasePrice={false} /> now and complete the final <CurrencyPrice amount={28} className="font-semibold text-white" tone="inverse" showBasePrice={false} /> payment in Week 3.</>}</p>
             </div>
             <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row lg:justify-start">
               <ButtonLink
@@ -281,7 +284,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
       <section id="pricing" className="scroll-mt-24 border-t border-white/10 bg-[#0D1727]">
         <div className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6 sm:py-20">
           <h2 className="font-heading text-3xl font-bold sm:text-4xl">Tuition & Payment Options</h2>
-          <p className="mt-3 text-muted-foreground">Registration is LIVE. Choose the payment option that works best for you.</p>
+          <p className="mt-3 text-muted-foreground">{isRegistrationClosed ? "Registration closed on 7 October 2026. Join the waitlist for the next intake." : "Choose the payment option that works best for you."}</p>
           <div className="mt-10 grid gap-4 text-left sm:grid-cols-2">
             <div className="rounded-xl border border-white/10 bg-[#111C2D] p-6 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-orange">Pay in Full</p>
@@ -294,9 +297,9 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Secure your seat with the initial payment, followed by <CurrencyPrice amount={28} showBasePrice={false} /> in Week 3.</p>
             </div>
           </div>
-          <p className="mt-6 text-sm text-muted-foreground">Select your preferred tuition option below to finalize registration. Seats are limited to ensure direct project reviews.</p>
+          <p className="mt-6 text-sm text-muted-foreground">{isRegistrationClosed ? "Registration is closed. Join the waitlist to be notified about the next intake." : "Select your preferred tuition option below to finalize registration. Seats are limited to ensure direct project reviews."}</p>
           <ButtonLink href={primaryHref} size="lg" className="mt-7 h-12 rounded-full bg-brand-orange px-10 text-base text-white hover:bg-brand-orange/90">
-            Register Now <ArrowRight className="ml-2 size-4" />
+            {primaryLabel} <ArrowRight className="ml-2 size-4" />
           </ButtonLink>
         </div>
       </section>
@@ -346,16 +349,18 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
         <p className="mt-4 text-muted-foreground">
           {isComingSoon
             ? "Registration is not open yet. Get notified when this programme launches. It is separate from our other live instructor-led courses."
-            : deadline
-              ? `Registration closes ${deadline}.`
-              : "Join this cohort for structured, instructor-led SQL blockchain analytics."}
+            : isRegistrationClosed
+              ? `Registration closed ${deadline ? `on ${deadline}` : "on 7 October 2026"}. Classes start ${startDate ?? "9 November 2026"}. Join the waitlist for the next intake.`
+              : deadline
+                ? `Registration closes ${deadline}.`
+                : "Join this cohort for structured, instructor-led SQL blockchain analytics."}
         </p>
         <ButtonLink
           href={primaryHref}
           size="lg"
           className="mt-8 h-12 rounded-full bg-brand-orange px-10 text-base text-white hover:bg-brand-orange/90"
         >
-          {isComingSoon ? "Get notified" : "Register Now"}
+          {primaryLabel}
           <span className="ml-2 flex size-6 items-center justify-center rounded-full bg-white text-brand-orange">
             <ArrowRight className="size-3.5" />
           </span>
@@ -376,9 +381,7 @@ export function ProgramLandingPage({ program }: { program: ProgramPageContent })
           href={primaryHref}
           className="h-12 w-full rounded-full bg-brand-orange text-white hover:bg-brand-orange/90"
         >
-          {isComingSoon
-            ? "Get notified"
-            : `Register${priceLabel ? ` · ${priceLabel}` : ""}`}
+          {isComingSoon ? "Get notified" : isRegistrationClosed ? "Join waitlist" : `Register${priceLabel ? ` · ${priceLabel}` : ""}`}
         </ButtonLink>
       </div>
     </div>
